@@ -12,6 +12,8 @@ option(BUILD_CXX_TESTS    "Build C++ header tests"      ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+include(GNUInstallDirs)
+
 # Core C library
 set(LIB_SOURCES
     src/primes.c
@@ -107,7 +109,6 @@ if(BUILD_TESTS)
 endif()
 
 # Installation
-include(GNUInstallDirs)
 install(TARGETS wignernj
     EXPORT  wignernjTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
