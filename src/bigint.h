@@ -10,12 +10,21 @@
  * Arbitrary-precision non-negative integer stored as a little-endian array
  * of uint64_t words.  Sign is tracked externally by callers (wigner_exact_t).
  *
+ * "Little-endian" here refers to the *logical* word ordering --
+ * words[0] holds the least-significant base-2^64 digit, words[size-1]
+ * the most-significant.  This is independent of the host CPU's byte
+ * order: each uint64_t is stored in native byte order, all arithmetic
+ * is done at value level (no byte-level casts or union tricks), and
+ * the only memcpy()/memset() operations act on whole uint64_t arrays.
+ * The library therefore behaves identically on little- and big-endian
+ * machines.
+ *
  * Invariant: words[size-1] != 0 unless size == 0 (representing zero).
  */
 typedef struct {
-    uint64_t *words;   /* little-endian base-2^64 digits */
-    size_t    size;    /* number of significant words    */
-    size_t    cap;     /* allocated capacity             */
+    uint64_t *words;   /* logical little-endian base-2^64 digits */
+    size_t    size;    /* number of significant words            */
+    size_t    cap;     /* allocated capacity                     */
 } bigint_t;
 
 /* Lifecycle */
