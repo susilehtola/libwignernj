@@ -22,6 +22,18 @@ foreach(test_name
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
 
+# ── Allocation-failure injection harness ──────────────────────────────────────
+# fork()-based; only built on POSIX systems.
+if(NOT WIN32)
+    add_executable(test_oom test_oom.c)
+    target_link_libraries(test_oom PRIVATE wignernj m)
+    target_include_directories(test_oom PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    add_test(NAME test_oom COMMAND test_oom)
+endif()
+
 # ── C++ header tests ──────────────────────────────────────────────────────────
 
 if(BUILD_CXX_TESTS)
