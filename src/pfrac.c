@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2026 Susi Lehtola */
 #include "pfrac.h"
+#include "xalloc.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -13,7 +14,7 @@ static void pfrac_fatal(const char *msg)
 
 void pfrac_init(pfrac_t *f)
 {
-    f->exp = (int *)calloc((size_t)g_nprimes, sizeof(int));
+    f->exp = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
 }
 
 void pfrac_free(pfrac_t *f)

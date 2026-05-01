@@ -8,6 +8,7 @@
 #endif
 
 #include "bigint.h"
+#include "xalloc.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -20,7 +21,7 @@ static void bigint_ensure(bigint_t *a, size_t need)
     if (need > a->cap) {
         size_t nc = a->cap ? a->cap * 2 : 4;
         while (nc < need) nc *= 2;
-        a->words = (uint64_t *)realloc(a->words, nc * sizeof(uint64_t));
+        a->words = (uint64_t *)xrealloc(a->words, nc * sizeof(uint64_t));
         memset(a->words + a->cap, 0, (nc - a->cap) * sizeof(uint64_t));
         a->cap = nc;
     }

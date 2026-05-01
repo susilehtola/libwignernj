@@ -18,6 +18,7 @@
 #include "pfrac.h"
 #include "primes.h"
 #include "wigner.h"
+#include "xalloc.h"
 #include <stdlib.h>
 
 /* ── selection rules ─────────────────────────────────────────────────────── */
@@ -126,7 +127,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     build_outer_sqrt_3j(&outer, tj1, tj2, tj3, tm1, tm2, tm3);
 
     /* ── Pass 1: find LCM exponents (max denom exponent per prime) ── */
-    lcm_exp = (int *)calloc((size_t)g_nprimes, sizeof(int));
+    lcm_exp = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
 
     pfrac_init(&term);
     for (s = s_min; s <= s_max; s++) {

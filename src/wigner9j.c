@@ -30,6 +30,7 @@
 #include "pfrac.h"
 #include "primes.h"
 #include "wigner.h"
+#include "xalloc.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -202,10 +203,10 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     add_delta_sqrt(&outer, tj22, tj21, tj23);
     add_delta_sqrt(&outer, tj22, tj12, tj32);
 
-    global_lcm = (int *)calloc((size_t)g_nprimes, sizeof(int));
-    lcm1 = (int *)malloc((size_t)g_nprimes * sizeof(int));
-    lcm2 = (int *)malloc((size_t)g_nprimes * sizeof(int));
-    lcm3 = (int *)malloc((size_t)g_nprimes * sizeof(int));
+    global_lcm = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
+    lcm1 = (int *)xmalloc((size_t)g_nprimes * sizeof(int));
+    lcm2 = (int *)xmalloc((size_t)g_nprimes * sizeof(int));
+    lcm3 = (int *)xmalloc((size_t)g_nprimes * sizeof(int));
 
     pfrac_init(&kdep);
     bigint_init(&s1); bigint_init(&s2); bigint_init(&s3);

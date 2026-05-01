@@ -30,6 +30,7 @@
 #include "pfrac.h"
 #include "primes.h"
 #include "wigner.h"
+#include "xalloc.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -211,8 +212,8 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     outer.exp[0] -= 2;
 
     /* Racah integer sums for both 3j symbols */
-    lcm0 = (int *)calloc((size_t)g_nprimes, sizeof(int));
-    lcmm = (int *)calloc((size_t)g_nprimes, sizeof(int));
+    lcm0 = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
+    lcmm = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
     bigint_init(&sum0);
     bigint_init(&summ);
 

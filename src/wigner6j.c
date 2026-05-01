@@ -15,6 +15,7 @@
 #include "pfrac.h"
 #include "primes.h"
 #include "wigner.h"
+#include "xalloc.h"
 #include <stdlib.h>
 
 static int triangle_ok(int ta, int tb, int tc)
@@ -105,7 +106,7 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
     add_delta_sqrt(&outer, tj4, tj5, tj3);
 
     /* ── Pass 1: find LCM exponents ── */
-    lcm_exp = (int *)calloc((size_t)g_nprimes, sizeof(int));
+    lcm_exp = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
     pfrac_init(&term);
 
     for (s = s_min; s <= s_max; s++) {

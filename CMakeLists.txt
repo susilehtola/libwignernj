@@ -16,6 +16,7 @@ include(GNUInstallDirs)
 
 # Core C library
 set(LIB_SOURCES
+    src/xalloc.c
     src/primes.c
     src/bigint.c
     src/pfrac.c
