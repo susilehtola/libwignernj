@@ -42,6 +42,7 @@ CMake options (all `ON` by default except `BUILD_PYTHON`):
 | `BUILD_TESTS` | `ON` | C/Fortran test suite |
 | `BUILD_CXX_TESTS` | `ON` | C++ header tests |
 | `BUILD_PYTHON` | `OFF` | Python extension |
+| `BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface |
 
 ## C API
 
@@ -80,6 +81,31 @@ Each function is available in three precisions: `double` (no suffix), `float`
 by selection rules; selection-rule violations are not errors.
 
 Linking: `pkg-config --libs libwignernj` or `-lwignernj -lm`.
+
+## MPFR API
+
+Build with `-DBUILD_MPFR=ON` (requires libmpfr).  Include `wigner_mpfr.h` in
+addition to `wigner.h`.  Set the output precision on `rop` before calling;
+the rounding mode is the last argument.
+
+```c
+#include "wigner.h"
+#include "wigner_mpfr.h"
+
+mpfr_t v;
+mpfr_init2(v, 256);   /* 256-bit precision */
+
+wigner3j_mpfr(v, 4, 4, 0,  2, -2, 0,  MPFR_RNDN);
+wigner6j_mpfr(v, 2, 2, 0,  2,  2, 0,  MPFR_RNDN);
+wigner9j_mpfr(v, 2, 2, 2,  2, 2, 2,  2, 2, 2,  MPFR_RNDN);
+clebsch_gordan_mpfr(v, 2, 2,  2, -2,  4, 0,  MPFR_RNDN);
+racah_w_mpfr(v, 2, 2, 4,  2,  4, 4,  MPFR_RNDN);
+gaunt_mpfr(v, 4, 2,  4, -2,  4, 0,  MPFR_RNDN);
+
+mpfr_clear(v);
+```
+
+Link with `-lwignernj -lmpfr -lm`.
 
 ## C++ API
 
