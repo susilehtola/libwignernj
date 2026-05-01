@@ -4,9 +4,16 @@
 // Tests for the C++11 header-only wrapper (wigner.hpp).
 
 #include "../include/wigner.hpp"
+#include <cfloat>
 #include <cmath>
 #include <cstdio>
 #include <stdexcept>
+
+// long double has 80-bit extended precision on x86-64 ELF, but is just an
+// alias for double on Apple's arm64 / x86-64 ABIs (LDBL_MANT_DIG == 53) and
+// on MSVC.  Scale the long-double tolerance accordingly so the test is not
+// over-tight on platforms where long double is double in disguise.
+static constexpr long double LD_TOL = 4 * LDBL_EPSILON;
 
 static int g_pass = 0;
 static int g_fail = 0;
@@ -53,7 +60,7 @@ int main(void)
     /* ── symbol3j integer API ─────────────────────────────────────────── */
     CHECK_NEAR(wigner::symbol3j<float> (2,2,0, 0,0,0), -1.0f/sqrtf(3.0f), 2e-6f);
     CHECK_NEAR(wigner::symbol3j<double>(2,2,0, 0,0,0), -1.0/sqrt(3.0),    2e-15);
-    CHECK_NEAR(wigner::symbol3j<long double>(2,2,0, 0,0,0), -1.0L/sqrtl(3.0L), 2e-18L);
+    CHECK_NEAR(wigner::symbol3j<long double>(2,2,0, 0,0,0), -1.0L/sqrtl(3.0L), LD_TOL);
 
     /* ── symbol3j real-valued overload ───────────────────────────────── */
     CHECK_NEAR(wigner::symbol3j(1.0, 1.0, 0.0, 0.0, 0.0, 0.0),
@@ -64,7 +71,7 @@ int main(void)
     /* ── symbol6j ─────────────────────────────────────────────────────── */
     CHECK_NEAR(wigner::symbol6j<float> (2,2,2, 2,2,2), 1.0f/6.0f, 2e-6f);
     CHECK_NEAR(wigner::symbol6j<double>(2,2,2, 2,2,2), 1.0/6.0,   2e-15);
-    CHECK_NEAR(wigner::symbol6j<long double>(2,2,2, 2,2,2), 1.0L/6.0L, 2e-18L);
+    CHECK_NEAR(wigner::symbol6j<long double>(2,2,2, 2,2,2), 1.0L/6.0L, LD_TOL);
 
     CHECK_NEAR(wigner::symbol6j(1.0, 1.0, 1.0, 1.0, 1.0, 1.0),
                1.0/6.0, 2e-15);
@@ -108,7 +115,7 @@ int main(void)
 
     /* ── long double symbol9j ─────────────────────────────────────────── */
     CHECK_NEAR(wigner::symbol9j<long double>(1,1,2, 1,1,0, 2,2,2),
-               sqrtl(6.0L)/18.0L, 2e-18L);
+               sqrtl(6.0L)/18.0L, LD_TOL);
 
     /* ── large j ──────────────────────────────────────────────────────── */
     CHECK_NEAR(wigner::symbol3j<double>(100,100,0, 0,0,0),
