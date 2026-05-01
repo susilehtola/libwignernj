@@ -8,6 +8,19 @@ on:
   pull_request:
 
 jobs:
+  # ── Build-system consistency ──────────────────────────────────────────────
+  # The CMake LIB_SOURCES list and setup.py sources list compile the same C
+  # library twice; if they drift, the Python extension links with an
+  # undefined-symbol error that surfaces as "0 tests collected" rather than
+  # a clear failure.  This check is fast (<1 s) and catches the drift early.
+  check-source-lists:
+    name: "Source-list consistency"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare CMakeLists.txt and setup.py source lists
+        run: python3 tools/check_source_lists.py
+
   # ── Build and test matrix ─────────────────────────────────────────────────
   build:
     name: ${{ matrix.name }}
