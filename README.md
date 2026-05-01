@@ -44,6 +44,12 @@ CMake options (all `ON` by default except `BUILD_PYTHON`):
 | `BUILD_PYTHON` | `OFF` | Python extension |
 | `BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface |
 
+A separate preprocessor switch `-DBIGINT_FORCE_PORTABLE` (passed via
+`CMAKE_C_FLAGS`) forces the multiword-integer back-end onto its pure-C99
+fallback path even on compilers that support `__uint128_t`; this is
+exercised in the CI matrix to verify that the native and fallback code
+paths produce bit-identical output.
+
 ## C API
 
 ```c
@@ -74,6 +80,9 @@ double      racah_w  (int tj1, int tj2, int tJ, int tj3, int tj12, int tj23);
 
 /* Gaunt coefficient:  integral Y_{l1}^{m1} Y_{l2}^{m2} Y_{l3}^{m3} dΩ */
 double      gaunt  (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
+
+/* Real-spherical-harmonic Gaunt coefficient (Wikipedia/Condon-Shortley) */
+double      gaunt_real(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 ```
 
 Each function is available in three precisions: `double` (no suffix), `float`
@@ -85,8 +94,10 @@ Linking: `pkg-config --libs libwignernj` or `-lwignernj -lm`.
 ## MPFR API
 
 Build with `-DBUILD_MPFR=ON` (requires libmpfr).  Include `wigner_mpfr.h` in
-addition to `wigner.h`.  Set the output precision on `rop` before calling;
-the rounding mode is the last argument.
+addition to `wigner.h`.  Set the output precision on `rop` via `mpfr_init2`
+before calling; the rounding mode is the last argument and may be any of the
+standard MPFR modes (`MPFR_RNDN`, `MPFR_RNDZ`, `MPFR_RNDD`, `MPFR_RNDU`,
+`MPFR_RNDA`).
 
 ```c
 #include "wigner.h"
@@ -101,6 +112,7 @@ wigner9j_mpfr(v, 2, 2, 2,  2, 2, 2,  2, 2, 2,  MPFR_RNDN);
 clebsch_gordan_mpfr(v, 2, 2,  2, -2,  4, 0,  MPFR_RNDN);
 racah_w_mpfr(v, 2, 2, 4,  2,  4, 4,  MPFR_RNDN);
 gaunt_mpfr(v, 4, 2,  4, -2,  4, 0,  MPFR_RNDN);
+gaunt_real_mpfr(v, 4, 2,  4, -2,  0, 0,  MPFR_RNDN);
 
 mpfr_clear(v);
 ```
@@ -125,7 +137,7 @@ float  f = wigner::symbol6j<float> (2, 2, 2,  2, 2, 2);
 double v = wigner::symbol3j(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
 double c = wigner::cg(0.5, 0.5, 0.5, -0.5, 1.0, 0.0);
 
-// Available functions: symbol3j, symbol6j, symbol9j, cg, racahw, gaunt
+// Available functions: symbol3j, symbol6j, symbol9j, cg, racahw, gaunt, gauntreal
 ```
 
 Link with `-lwignernj -lm` (and `-lmpfr` if `BUILD_MPFR=ON`).
@@ -146,6 +158,7 @@ wigner.wigner9j(1, 1, 2, 1, 1, 2, 2, 2, 4)
 wigner.clebsch_gordan(1, 1, 1, -1, 2, 0)
 wigner.racah_w(1, 1, 2, 1, 2, 2)
 wigner.gaunt(2, 1, 2, -1, 2, 0, precision='longdouble')
+wigner.gaunt_real(2, 1, 2, -1, 0, 0)
 ```
 
 The optional `precision=` keyword selects `'float'`, `'double'` (default), or
@@ -154,7 +167,8 @@ The optional `precision=` keyword selects `'float'`, `'double'` (default), or
 ## Fortran API
 
 The `wigner` module provides real-valued wrappers `w3j`, `w6j`, `w9j`, `wcg`,
-`wracahw`, `wgaunt` that accept double-precision real arguments:
+`wracahw`, `wgaunt`, and `wgaunt_real` that accept double-precision real
+arguments:
 
 ```fortran
 use wigner
@@ -162,6 +176,8 @@ real(8) :: v
 v = w3j(1.0d0, 1.0d0, 0.0d0,  0.0d0, 0.0d0, 0.0d0)
 v = w6j(1.0d0, 1.0d0, 2.0d0,  1.0d0, 1.0d0, 2.0d0)
 v = wcg(0.5d0, 0.5d0, 0.5d0, -0.5d0, 1.0d0, 0.0d0)
+v = wgaunt(2.0d0, 1.0d0, 2.0d0, -1.0d0, 2.0d0, 0.0d0)
+v = wgaunt_real(2.0d0, 1.0d0, 2.0d0, -1.0d0, 0.0d0, 0.0d0)
 ```
 
 Raw `bind(c)` interfaces using `2*j` integers are also available for all
@@ -184,6 +200,20 @@ See [docs/reference.md](docs/reference.md#limitations) for details.
 
 Full API reference with mathematical definitions, selection rules, and
 per-language examples: [docs/reference.md](docs/reference.md).
+
+## Repository layout
+
+- `include/`, `src/` — C99 core library and language wrappers
+- `tests/` — C/C++/Fortran unit tests, OOM-injection harness, symmetry
+  oracles; Python tests under `tests/python/`
+- `tests/gen_refs.py` — regenerates the sympy-based reference tables
+  consumed by `tests/test_3j.c`, `test_6j.c`, etc.
+- `tests/cmake_downstream/` — minimal out-of-tree project demonstrating
+  consumption via `find_package(wignernj REQUIRED COMPONENTS Fortran)`
+- `benchmarks/` — `bench_compare.c` and Makefile for reproducing the
+  comparison against WIGXJPF and GSL
+- `tools/` — prime-table and source-list generators run at build time
+- `docs/` — extended reference and the descriptor paper
 
 ## License
 

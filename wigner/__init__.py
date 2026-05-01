@@ -31,6 +31,11 @@ Example::
     import wigner
     wigner.wigner3j(1, 1, 0, 0, 0, 0)          # -1/sqrt(3) ≈ -0.5774
     wigner.wigner3j(0.5, 0.5, 1, 0.5, -0.5, 0) # 1/sqrt(6) ≈ 0.4082
+    wigner.gaunt(2, 1, 2, -1, 2, 0)            # complex Y_l^m Gaunt
+    wigner.gaunt_real(2, 1, 2, -1, 0, 0)       # real-Y Gaunt
+
+Functions exposed: ``wigner3j``, ``wigner6j``, ``wigner9j``,
+``clebsch_gordan``, ``racah_w``, ``gaunt``, ``gaunt_real``.
 """
 __version__ = "0.1.0"
 
