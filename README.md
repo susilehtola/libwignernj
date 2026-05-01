@@ -1,7 +1,7 @@
 # libwignernj
 
 Exact evaluation of Wigner 3j, 6j, and 9j symbols, Clebsch-Gordan coefficients,
-Racah W-coefficients, and Gaunt coefficients in ANSI C.
+Racah W-coefficients, and Gaunt coefficients in C99.
 
 All intermediate arithmetic is exact integer arithmetic using a prime-factorization
 representation; floating-point conversion happens only at the final step.  Results

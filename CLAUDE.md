@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this library is
 
-**libwignernj** — exact evaluation of Wigner 3j, 6j, 9j symbols, Clebsch-Gordan coefficients, Racah W coefficients, and Gaunt coefficients in ANSI C, following the prime-factorization algorithm of Johansson & Forssén (SIAM J. Sci. Comput. 38(1), A376–A384, 2016; doi:10.1137/15M1021908). The key property: all intermediate arithmetic is exact integer arithmetic; floating-point conversion happens only at the final step. Results are accurate to the last bit of the chosen output precision.
+**libwignernj** — exact evaluation of Wigner 3j, 6j, 9j symbols, Clebsch-Gordan coefficients, Racah W coefficients, and Gaunt coefficients in C99, following the prime-factorization algorithm of Johansson & Forssén (SIAM J. Sci. Comput. 38(1), A376–A384, 2016; doi:10.1137/15M1021908). The key property: all intermediate arithmetic is exact integer arithmetic; floating-point conversion happens only at the final step. Results are accurate to the last bit of the chosen output precision.
 
 Language interfaces: C (primary), C++ (header-only wrapper that links against `libwignernj`), Python (CPython extension), Fortran 90 (iso_c_binding).
 
