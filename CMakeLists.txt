@@ -47,15 +47,27 @@ endif()
 target_link_libraries(wignernj PRIVATE m)
 
 # MPFR arbitrary-precision interface (optional)
+#
+# mpfr.h does `#include <gmp.h>`, but on multi-prefix packagings (notably
+# Homebrew on macOS) GMP lives in its own prefix and mpfr.pc does not
+# propagate the GMP include path.  We therefore pull GMP in alongside MPFR.
 if(BUILD_MPFR)
     find_package(PkgConfig QUIET)
     if(PKG_CONFIG_FOUND)
         pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
+        pkg_check_modules(GMP            IMPORTED_TARGET gmp)
         target_link_libraries(wignernj PUBLIC PkgConfig::MPFR)
+        if(GMP_FOUND)
+            target_link_libraries(wignernj PUBLIC PkgConfig::GMP)
+        endif()
     else()
         find_library(MPFR_LIB NAMES mpfr REQUIRED)
         find_path   (MPFR_INC mpfr.h     REQUIRED)
+        find_path   (GMP_INC  gmp.h)
         target_include_directories(wignernj PUBLIC ${MPFR_INC})
+        if(GMP_INC)
+            target_include_directories(wignernj PUBLIC ${GMP_INC})
+        endif()
         target_link_libraries     (wignernj PUBLIC ${MPFR_LIB})
     endif()
     target_compile_definitions(wignernj PUBLIC WIGNER_HAVE_MPFR)
