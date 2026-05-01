@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 Susi Lehtola
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wigner"
+version = "0.1.0"
+description = "Exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization"
+requires-python = ">=3.7"
+license = {text = "BSD-3-Clause"}
+classifiers = [
+    "License :: OSI Approved :: BSD 3-Clause \"New\" or \"Revised\" License",
+    "Programming Language :: C",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "sympy"]
+numpy = ["numpy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]

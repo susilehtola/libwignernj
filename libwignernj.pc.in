@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 Susi Lehtola
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: libwignernj
+Description: Exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization
+Version: @PROJECT_VERSION@
+Libs: -L${libdir} -lwignernj -lm
+Cflags: -I${includedir}

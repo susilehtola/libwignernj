@@ -1,0 +1,29 @@
+# Build directories
+build*/
+objdir/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+*.egg
+dist/
+*.so
+*.pyd
+
+# CMake generated
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+*.pc
+*.cmake
+!wignernjConfig.cmake.in
+
+# Editor / OS
+.DS_Store
+*.swp
+*.swo
+*~
