@@ -174,7 +174,6 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     int *global_lcm, *lcm1, *lcm2, *lcm3;
 
     wigner_exact_init(out);
-    primes_init();
 
     if (!selection_rules_9j(tj11,tj12,tj13,tj21,tj22,tj23,tj31,tj32,tj33)) {
         out->is_zero = 1;

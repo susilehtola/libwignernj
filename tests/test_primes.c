@@ -5,7 +5,6 @@
 
 int main(void)
 {
-    primes_init();
 
     /* First few primes */
     TEST_ASSERT(g_primes[0] == 2);

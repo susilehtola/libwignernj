@@ -7,7 +7,6 @@
 
 void pfrac_init(pfrac_t *f)
 {
-    primes_init();
     f->exp = (int *)calloc((size_t)g_nprimes, sizeof(int));
 }
 

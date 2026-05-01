@@ -26,7 +26,6 @@ static void clebsch_gordan_exact(int tj1, int tm1, int tj2, int tm2,
 {
     int phase;
     wigner_exact_init(out);
-    primes_init();
 
     /* m conservation */
     if (tm1 + tm2 != tM) { out->is_zero = 1; return; }

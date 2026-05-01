@@ -109,7 +109,6 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     bigint_t sum_pos, sum_neg, scaled;
 
     wigner_exact_init(out);
-    primes_init();
 
     if (!selection_rules_3j(tj1, tj2, tj3, tm1, tm2, tm3)) {
         out->is_zero = 1;

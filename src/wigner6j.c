@@ -86,7 +86,6 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
     bigint_t sum_pos, sum_neg, scaled;
 
     wigner_exact_init(out);
-    primes_init();
 
     if (!selection_rules_6j(tj1, tj2, tj3, tj4, tj5, tj6)) {
         out->is_zero = 1;

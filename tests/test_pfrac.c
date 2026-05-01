@@ -10,7 +10,6 @@ int main(void)
     bigint_t in, id, sn, sd;
     int i2, i3, i5, i;
 
-    primes_init();
     pfrac_init(&f); pfrac_init(&g);
     bigint_init(&in); bigint_init(&id);
     bigint_init(&sn); bigint_init(&sd);

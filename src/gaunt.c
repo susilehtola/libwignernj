@@ -155,7 +155,6 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     int *lcm0, *lcmm;
 
     wigner_exact_init(out);
-    primes_init();
 
     if (!gaunt_selection_rules(tl1, tm1, tl2, tm2, tl3, tm3)) {
         out->is_zero = 1;
