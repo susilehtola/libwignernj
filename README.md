@@ -174,7 +174,7 @@ The prime table covers factorials up to 20000!, which translates to:
 - 3j / 6j / CG / Racah W / Gaunt: j1+j2+j3 ≤ 19999 (equal-j: **j ≤ 6666**)
 - 9j: equal-j **j ≤ 4999** (k-dependent triangle denominators reach (4j+1)!)
 
-Exceeding these limits produces silently wrong results.  The 9j is also
+Exceeding these limits prints a diagnostic to stderr and aborts.  The 9j is also
 O(j²) in computation time; evaluations with j > a few hundred can be slow.
 See [docs/reference.md](docs/reference.md#limitations) for details.
 

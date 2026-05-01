@@ -570,8 +570,8 @@ These limits apply to the sum of the three largest angular momenta appearing
 in any single triangle.  Symbols with very unequal arguments can involve
 larger individual `j` values as long as no triangle sum exceeds 19999.
 
-Exceeding these limits produces silently wrong results: no error is returned
-and no exception is thrown.
+Exceeding these limits causes the library to print a diagnostic to stderr
+and call `abort()`.  The check is unconditional (not gated on `NDEBUG`).
 
 ### Performance scaling
 

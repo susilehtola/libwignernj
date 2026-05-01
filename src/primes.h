@@ -17,7 +17,9 @@
  * set conservatively to 20000 to give a round-number safety margin.
  *
  * Callers must never pass a factorial argument exceeding MAX_FACTORIAL_ARG.
- * Violations produce silently wrong results (no assert, no error return).
+ * pfrac_mul_factorial and pfrac_div_factorial abort with a diagnostic message
+ * if this limit is exceeded.  pfrac_mul_int aborts if its argument exceeds
+ * PRIME_SIEVE_LIMIT.
  *
  * Angular momentum limits implied by MAX_FACTORIAL_ARG
  * -----------------------------------------------------

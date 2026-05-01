@@ -3,7 +3,13 @@
 #include "pfrac.h"
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
+#include <stdio.h>
+
+static void pfrac_fatal(const char *msg)
+{
+    fprintf(stderr, "libwignernj: %s\n", msg);
+    abort();
+}
 
 void pfrac_init(pfrac_t *f)
 {
@@ -30,6 +36,13 @@ void pfrac_mul_factorial(pfrac_t *f, int n)
 {
     int i;
     if (n <= 1) return;
+    if (n > MAX_FACTORIAL_ARG) {
+        fprintf(stderr,
+            "libwignernj: factorial argument %d exceeds MAX_FACTORIAL_ARG=%d "
+            "(angular momenta too large for prime table)\n",
+            n, MAX_FACTORIAL_ARG);
+        pfrac_fatal("aborting");
+    }
     for (i = 0; i < g_nprimes && g_primes[i] <= n; i++)
         f->exp[i] += legendre_valuation(n, i);
 }
@@ -38,6 +51,13 @@ void pfrac_div_factorial(pfrac_t *f, int n)
 {
     int i;
     if (n <= 1) return;
+    if (n > MAX_FACTORIAL_ARG) {
+        fprintf(stderr,
+            "libwignernj: factorial argument %d exceeds MAX_FACTORIAL_ARG=%d "
+            "(angular momenta too large for prime table)\n",
+            n, MAX_FACTORIAL_ARG);
+        pfrac_fatal("aborting");
+    }
     for (i = 0; i < g_nprimes && g_primes[i] <= n; i++)
         f->exp[i] -= legendre_valuation(n, i);
 }
@@ -46,7 +66,13 @@ void pfrac_mul_int(pfrac_t *f, int k)
 {
     int pk, i;
     if (k <= 1) return;
-    /* Factor k into primes and add to exp[] */
+    if (k > PRIME_SIEVE_LIMIT) {
+        fprintf(stderr,
+            "libwignernj: pfrac_mul_int argument %d exceeds PRIME_SIEVE_LIMIT=%d "
+            "(angular momenta too large for prime table)\n",
+            k, PRIME_SIEVE_LIMIT);
+        pfrac_fatal("aborting");
+    }
     for (i = 0; i < g_nprimes && g_primes[i] <= k; i++) {
         pk = g_primes[i];
         while (k % pk == 0) {
@@ -55,7 +81,9 @@ void pfrac_mul_int(pfrac_t *f, int k)
         }
         if (k == 1) break;
     }
-    assert(k == 1); /* k must have no prime factor > PRIME_SIEVE_LIMIT */
+    /* Unreachable when k <= PRIME_SIEVE_LIMIT, but kept as a defensive check. */
+    if (k != 1)
+        pfrac_fatal("pfrac_mul_int: residual factor after full factorization (internal error)");
 }
 
 void pfrac_to_sqrt_rational(const pfrac_t *f,
