@@ -85,6 +85,8 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
     int *lcm_exp;
     pfrac_t outer, term;
     bigint_t sum_pos, sum_neg, scaled;
+    bigint_ws_t ws;
+    size_t mw;
 
     wigner_exact_init(out);
 
@@ -97,6 +99,14 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
     if (s_min > s_max) { out->is_zero = 1; return; }
 
     out->sign = 1; /* phase is carried by (-1)^s in the sum */
+
+    /* Largest factorial argument: max β_u + 1 (the (s+1)! numerator).  Use a
+     * safe upper bound on N for sizing the workspace and bigints. */
+    mw = bigint_words_for_factorial(
+            (tj1 + tj2 + tj3 + tj4 + tj5 + tj6) / 2 + 5);
+
+    bigint_ws_init(&ws);
+    bigint_ws_reserve(&ws, mw);
 
     /* Outer sqrt = product of 4 Delta triangle coefficients */
     pfrac_init(&outer);
@@ -132,10 +142,10 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
         }
     }
 
-    /* ── Pass 2: accumulate sum ── */
-    bigint_init(&sum_pos);
-    bigint_init(&sum_neg);
-    bigint_init(&scaled);
+    /* ── Pass 2: accumulate sum (all bigints pre-sized to mw) ── */
+    bigint_init(&sum_pos); bigint_reserve(&sum_pos, mw);
+    bigint_init(&sum_neg); bigint_reserve(&sum_neg, mw);
+    bigint_init(&scaled);  bigint_reserve(&scaled,  mw);
 
     for (s = s_min; s <= s_max; s++) {
         pfrac_zero(&term);
@@ -153,7 +163,7 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
         for (pi = 0; pi < g_nprimes; pi++) {
             int e = lcm_exp[pi] + term.exp[pi];
             if (e > 0)
-                bigint_mul_prime_pow(&scaled, (uint64_t)g_primes[pi], e);
+                bigint_mul_prime_pow_ws(&scaled, (uint64_t)g_primes[pi], e, &ws);
         }
 
         if ((s & 1) == 0)
@@ -167,20 +177,25 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
         out->sum_sign = sign_diff;
     }
 
-    /* Build output bigints */
+    /* Build output bigints (also pre-sized) */
     bigint_set_u64(&out->int_num,  1);
     bigint_set_u64(&out->int_den,  1);
     bigint_set_u64(&out->sqrt_num, 1);
     bigint_set_u64(&out->sqrt_den, 1);
+    bigint_reserve(&out->int_num,  mw);
+    bigint_reserve(&out->int_den,  mw);
+    bigint_reserve(&out->sqrt_num, mw);
+    bigint_reserve(&out->sqrt_den, mw);
 
-    pfrac_to_sqrt_rational(&outer,
-                            &out->int_num, &out->int_den,
-                            &out->sqrt_num, &out->sqrt_den);
+    pfrac_to_sqrt_rational_ws(&outer,
+                               &out->int_num, &out->int_den,
+                               &out->sqrt_num, &out->sqrt_den, &ws);
 
     /* LCM denominator → int_den */
     for (pi = 0; pi < g_nprimes; pi++) {
         if (lcm_exp[pi] > 0)
-            bigint_mul_prime_pow(&out->int_den, (uint64_t)g_primes[pi], lcm_exp[pi]);
+            bigint_mul_prime_pow_ws(&out->int_den,
+                                    (uint64_t)g_primes[pi], lcm_exp[pi], &ws);
     }
 
     free(lcm_exp);
@@ -189,6 +204,7 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
     bigint_free(&sum_pos);
     bigint_free(&sum_neg);
     bigint_free(&scaled);
+    bigint_ws_free(&ws);
 }
 
 /* ── public API ──────────────────────────────────────────────────────────── */

@@ -25,6 +25,10 @@ void bigint_copy(bigint_t *dst, const bigint_t *src);
 void bigint_set_u64(bigint_t *a, uint64_t v);
 void bigint_set_zero(bigint_t *a);
 int  bigint_is_zero(const bigint_t *a);
+/* Pre-allocate at least `cap` words of capacity, without changing the
+ * stored value or its size.  Use to avoid realloc churn when the maximum
+ * size is known in advance. */
+void bigint_reserve(bigint_t *a, size_t cap);
 
 /* Comparison (unsigned magnitudes) */
 int  bigint_cmp(const bigint_t *a, const bigint_t *b); /* -1, 0, +1 */
@@ -41,6 +45,41 @@ void bigint_div_u64(bigint_t *r, const bigint_t *a, uint64_t b);
 void bigint_mul_prime_pow(bigint_t *a, uint64_t p, int k);
 /* Exact division by p^k in-place. */
 void bigint_div_prime_pow(bigint_t *a, uint64_t p, int k);
+
+/*
+ * Workspace for the workspace-aware multiplication helpers below.
+ * Pre-allocating once at the start of a wignerXj_exact call eliminates the
+ * malloc/realloc traffic that otherwise dominates the per-call cost.
+ *
+ * Lifecycle:  bigint_ws_init  ->  bigint_ws_reserve  ->  ...use...  ->  bigint_ws_free
+ */
+typedef struct {
+    bigint_t mul_temp;   /* temp for bigint_mul_ws when destination is aliased */
+    bigint_t pp_pw;      /* p^k accumulator in the binary-exponentiation loop */
+    bigint_t pp_base;    /* current base in the binary-exponentiation loop  */
+} bigint_ws_t;
+
+void bigint_ws_init   (bigint_ws_t *ws);
+void bigint_ws_free   (bigint_ws_t *ws);
+/* Pre-allocate every workspace bigint to at least `max_words` words. */
+void bigint_ws_reserve(bigint_ws_t *ws, size_t max_words);
+
+/* In-place product: r = a * b, using ws->mul_temp as scratch when r aliases
+ * either operand.  Bit-identical output to bigint_mul. */
+void bigint_mul_ws           (bigint_t *r, const bigint_t *a, const bigint_t *b,
+                               bigint_ws_t *ws);
+/* In-place a *= p^k, using ws->pp_pw and ws->pp_base as scratch.
+ * Bit-identical output to bigint_mul_prime_pow. */
+void bigint_mul_prime_pow_ws (bigint_t *a, uint64_t p, int k, bigint_ws_t *ws);
+
+/*
+ * Upper bound on the number of 64-bit words needed to represent N!, with
+ * enough slack to also cover the LCM of (N+1) sum terms and one cross
+ * product of two such bigints.  Use this to pre-size every long-lived
+ * bigint inside a wignerXj_exact call so that no realloc occurs in the
+ * inner Racah-sum loop.
+ */
+size_t bigint_words_for_factorial(int N);
 
 /* Bit operations */
 int  bigint_bit_length(const bigint_t *a); /* floor(log2(a))+1, 0 for zero */

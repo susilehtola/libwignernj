@@ -106,3 +106,24 @@ void pfrac_to_sqrt_rational(const pfrac_t *f,
         }
     }
 }
+
+void pfrac_to_sqrt_rational_ws(const pfrac_t *f,
+                                bigint_t *int_num,  bigint_t *int_den,
+                                bigint_t *sqrt_num, bigint_t *sqrt_den,
+                                bigint_ws_t *ws)
+{
+    int i, e, ae, half;
+    for (i = 0; i < g_nprimes; i++) {
+        e = f->exp[i];
+        if (e == 0) continue;
+        ae   = (e > 0) ? e : -e;
+        half = ae / 2;
+        if (e > 0) {
+            if (half > 0) bigint_mul_prime_pow_ws(int_num,  (uint64_t)g_primes[i], half, ws);
+            if (ae & 1)   bigint_mul_prime_pow_ws(sqrt_num, (uint64_t)g_primes[i], 1,    ws);
+        } else {
+            if (half > 0) bigint_mul_prime_pow_ws(int_den,  (uint64_t)g_primes[i], half, ws);
+            if (ae & 1)   bigint_mul_prime_pow_ws(sqrt_den, (uint64_t)g_primes[i], 1,    ws);
+        }
+    }
+}

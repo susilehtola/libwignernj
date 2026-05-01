@@ -56,4 +56,12 @@ void pfrac_to_sqrt_rational(const pfrac_t *f,
                              bigint_t *int_num,  bigint_t *int_den,
                              bigint_t *sqrt_num, bigint_t *sqrt_den);
 
+/* Workspace-aware variant: identical output to pfrac_to_sqrt_rational, but
+ * uses ws->pp_pw / ws->pp_base / ws->mul_temp as scratch for prime-power
+ * binary exponentiation, avoiding the per-call allocations of the original. */
+void pfrac_to_sqrt_rational_ws(const pfrac_t *f,
+                                bigint_t *int_num,  bigint_t *int_den,
+                                bigint_t *sqrt_num, bigint_t *sqrt_den,
+                                bigint_ws_t *ws);
+
 #endif /* PFRAC_H */

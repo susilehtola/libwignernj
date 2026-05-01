@@ -78,13 +78,17 @@ static void add_delta_sqrt(pfrac_t *f, int ta, int tb, int tc)
  * lcm_exp must be a caller-allocated array of g_nprimes ints (need not be
  * zeroed; this function initialises it).
  */
+/* Inner Racah sum for one of the three 6j symbols.  Caller-owned scratch
+ * bigints (sum_pos, sum_neg, scaled) are reused across all calls of one 9j
+ * evaluation, eliminating per-call bigint allocations. */
 static void racah_6j_sum(int tj1, int tj2, int tj3,
                           int tj4, int tj5, int tj6,
-                          bigint_t *sum_out, int *sum_sign_out, int *lcm_exp)
+                          bigint_t *sum_out, int *sum_sign_out, int *lcm_exp,
+                          bigint_t *sum_pos, bigint_t *sum_neg,
+                          bigint_t *scaled, bigint_ws_t *ws)
 {
     int s, s_min, s_max, pi;
     pfrac_t term;
-    bigint_t sum_pos, sum_neg, scaled;
 
     {
         int a = (tj1+tj2+tj3)/2, b = (tj1+tj5+tj6)/2;
@@ -112,9 +116,8 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
     }
 
     pfrac_init(&term);
-    bigint_init(&sum_pos);
-    bigint_init(&sum_neg);
-    bigint_init(&scaled);
+    bigint_set_zero(sum_pos);
+    bigint_set_zero(sum_neg);
 
     /* Pass 1: find LCM exponents */
     for (s = s_min; s <= s_max; s++) {
@@ -144,21 +147,18 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
         pfrac_div_factorial(&term, (tj2+tj3+tj5+tj6)/2 - s);
         pfrac_div_factorial(&term, (tj1+tj3+tj4+tj6)/2 - s);
         pfrac_mul_factorial(&term, s + 1);
-        bigint_set_u64(&scaled, 1);
+        bigint_set_u64(scaled, 1);
         for (pi = 0; pi < g_nprimes; pi++) {
             int e = lcm_exp[pi] + term.exp[pi];
-            if (e > 0) bigint_mul_prime_pow(&scaled, (uint64_t)g_primes[pi], e);
+            if (e > 0) bigint_mul_prime_pow_ws(scaled, (uint64_t)g_primes[pi], e, ws);
         }
-        if ((s & 1) == 0) bigint_add(&sum_pos, &sum_pos, &scaled);
-        else              bigint_add(&sum_neg, &sum_neg, &scaled);
+        if ((s & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
+        else              bigint_add(sum_neg, sum_neg, scaled);
     }
 
-    *sum_sign_out = bigint_sub_signed(sum_out, &sum_pos, &sum_neg);
+    *sum_sign_out = bigint_sub_signed(sum_out, sum_pos, sum_neg);
 
     pfrac_free(&term);
-    bigint_free(&sum_pos);
-    bigint_free(&sum_neg);
-    bigint_free(&scaled);
 }
 
 /* ── exact 9j ────────────────────────────────────────────────────────────── */
@@ -173,6 +173,8 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     bigint_t sum_pos, sum_neg, scaled, s1, s2, s3, tmp;
     int ss1, ss2, ss3;
     int *global_lcm, *lcm1, *lcm2, *lcm3;
+    bigint_ws_t ws;
+    size_t mw, mw_prod;
 
     wigner_exact_init(out);
 
@@ -188,6 +190,19 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     if (tk_min > tk_max) { out->is_zero = 1; return; }
 
     out->sign = (((tj13 + tj22 + tj31) & 1) == 0) ? 1 : -1;
+
+    /* Largest factorial argument is bounded by max(β_u + 1) over all three
+     * inner 6j calls, which in turn is at most (sum of all 9 tj plus 2*tk_max)/2
+     * + 1.  We use a uniform safe upper bound for sizing. */
+    mw = bigint_words_for_factorial(
+            (tj11 + tj12 + tj13 + tj21 + tj22 + tj23
+             + tj31 + tj32 + tj33 + 2 * tk_max) / 2 + 5);
+    /* The 9j accumulator also holds products of three 6j-sized bigints,
+     * so allocate up to ~5x that for the long-lived bigints. */
+    mw_prod = 5 * mw;
+
+    bigint_ws_init(&ws);
+    bigint_ws_reserve(&ws, mw_prod);
 
     /*
      * Outer sqrt: product of the six k-independent Δ factors, two per 6j:
@@ -209,11 +224,19 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     lcm3 = (int *)xmalloc((size_t)g_nprimes * sizeof(int));
 
     pfrac_init(&kdep);
-    bigint_init(&s1); bigint_init(&s2); bigint_init(&s3);
-    bigint_init(&tmp);
-    bigint_init(&scaled);
-    bigint_init(&sum_pos);
-    bigint_init(&sum_neg);
+    bigint_init(&s1); bigint_reserve(&s1, mw);
+    bigint_init(&s2); bigint_reserve(&s2, mw);
+    bigint_init(&s3); bigint_reserve(&s3, mw);
+    bigint_init(&tmp);    bigint_reserve(&tmp,    mw_prod);
+    bigint_init(&scaled); bigint_reserve(&scaled, mw_prod);
+    bigint_init(&sum_pos); bigint_reserve(&sum_pos, mw_prod);
+    bigint_init(&sum_neg); bigint_reserve(&sum_neg, mw_prod);
+    /* Per-call scratch for the inner racah_6j_sum, hoisted out so it is
+     * allocated once per 9j evaluation rather than once per (tk, sub-6j). */
+    bigint_t inner_pos, inner_neg, inner_scaled;
+    bigint_init(&inner_pos);    bigint_reserve(&inner_pos,    mw);
+    bigint_init(&inner_neg);    bigint_reserve(&inner_neg,    mw);
+    bigint_init(&inner_scaled); bigint_reserve(&inner_scaled, mw);
 
     /* ── Pass 1: global LCM ───────────────────────────────────────────────── */
     for (tk = tk_min; tk <= tk_max; tk += 2) {
@@ -227,9 +250,12 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
         add_delta_sqrt(&kdep, tj21, tj32, tk); add_delta_sqrt(&kdep, tj21, tj32, tk);
         add_delta_sqrt(&kdep, tj12, tj23, tk); add_delta_sqrt(&kdep, tj12, tj23, tk);
 
-        racah_6j_sum(tj11,tj21,tj31, tj32,tj33,tk,  &tmp,&ss1,lcm1);
-        racah_6j_sum(tj11,tj12,tj13, tj23,tj33,tk,  &tmp,&ss2,lcm2);
-        racah_6j_sum(tj22,tj21,tj23, tk,tj12,tj32,  &tmp,&ss3,lcm3);
+        racah_6j_sum(tj11,tj21,tj31, tj32,tj33,tk,  &tmp,&ss1,lcm1,
+                     &inner_pos, &inner_neg, &inner_scaled, &ws);
+        racah_6j_sum(tj11,tj12,tj13, tj23,tj33,tk,  &tmp,&ss2,lcm2,
+                     &inner_pos, &inner_neg, &inner_scaled, &ws);
+        racah_6j_sum(tj22,tj21,tj23, tk,tj12,tj32,  &tmp,&ss3,lcm3,
+                     &inner_pos, &inner_neg, &inner_scaled, &ws);
 
         for (pi = 0; pi < g_nprimes; pi++) {
             /* kdep.exp[pi] is the sqrt-argument exponent; divide by 2 for value */
@@ -245,9 +271,12 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
         add_delta_sqrt(&kdep, tj21, tj32, tk); add_delta_sqrt(&kdep, tj21, tj32, tk);
         add_delta_sqrt(&kdep, tj12, tj23, tk); add_delta_sqrt(&kdep, tj12, tj23, tk);
 
-        racah_6j_sum(tj11,tj21,tj31, tj32,tj33,tk,  &s1,&ss1,lcm1);
-        racah_6j_sum(tj11,tj12,tj13, tj23,tj33,tk,  &s2,&ss2,lcm2);
-        racah_6j_sum(tj22,tj21,tj23, tk,tj12,tj32,  &s3,&ss3,lcm3);
+        racah_6j_sum(tj11,tj21,tj31, tj32,tj33,tk,  &s1,&ss1,lcm1,
+                     &inner_pos, &inner_neg, &inner_scaled, &ws);
+        racah_6j_sum(tj11,tj12,tj13, tj23,tj33,tk,  &s2,&ss2,lcm2,
+                     &inner_pos, &inner_neg, &inner_scaled, &ws);
+        racah_6j_sum(tj22,tj21,tj23, tk,tj12,tj32,  &s3,&ss3,lcm3,
+                     &inner_pos, &inner_neg, &inner_scaled, &ws);
 
         if (bigint_is_zero(&s1) || bigint_is_zero(&s2) || bigint_is_zero(&s3))
             continue;
@@ -256,12 +285,12 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
         bigint_set_u64(&scaled, (uint64_t)(tk + 1)); /* factor (2k+1) */
         for (pi = 0; pi < g_nprimes; pi++) {
             int e = global_lcm[pi] + kdep.exp[pi] / 2 - lcm1[pi] - lcm2[pi] - lcm3[pi];
-            if (e > 0) bigint_mul_prime_pow(&scaled, (uint64_t)g_primes[pi], e);
+            if (e > 0) bigint_mul_prime_pow_ws(&scaled, (uint64_t)g_primes[pi], e, &ws);
         }
 
-        bigint_mul(&tmp, &scaled, &s1);
-        bigint_mul(&scaled, &tmp, &s2);
-        bigint_mul(&tmp, &scaled, &s3);
+        bigint_mul_ws(&tmp,    &scaled, &s1, &ws);
+        bigint_mul_ws(&scaled, &tmp,    &s2, &ws);
+        bigint_mul_ws(&tmp,    &scaled, &s3, &ws);
 
         /* outer_phase absorbed into out->sign; accumulate by ss1*ss2*ss3 */
         if (ss1 * ss2 * ss3 > 0) bigint_add(&sum_pos, &sum_pos, &tmp);
@@ -270,17 +299,17 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
 
     out->sum_sign = bigint_sub_signed(&out->sum, &sum_pos, &sum_neg);
 
-    bigint_set_u64(&out->int_num,  1);
-    bigint_set_u64(&out->int_den,  1);
-    bigint_set_u64(&out->sqrt_num, 1);
-    bigint_set_u64(&out->sqrt_den, 1);
-    pfrac_to_sqrt_rational(&outer,
-                           &out->int_num, &out->int_den,
-                           &out->sqrt_num, &out->sqrt_den);
+    bigint_set_u64(&out->int_num,  1); bigint_reserve(&out->int_num,  mw_prod);
+    bigint_set_u64(&out->int_den,  1); bigint_reserve(&out->int_den,  mw_prod);
+    bigint_set_u64(&out->sqrt_num, 1); bigint_reserve(&out->sqrt_num, mw_prod);
+    bigint_set_u64(&out->sqrt_den, 1); bigint_reserve(&out->sqrt_den, mw_prod);
+    pfrac_to_sqrt_rational_ws(&outer,
+                              &out->int_num, &out->int_den,
+                              &out->sqrt_num, &out->sqrt_den, &ws);
     for (pi = 0; pi < g_nprimes; pi++) {
         if (global_lcm[pi] > 0)
-            bigint_mul_prime_pow(&out->int_den,
-                                 (uint64_t)g_primes[pi], global_lcm[pi]);
+            bigint_mul_prime_pow_ws(&out->int_den,
+                                    (uint64_t)g_primes[pi], global_lcm[pi], &ws);
     }
 
     free(global_lcm);
@@ -291,6 +320,10 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     bigint_free(&scaled);
     bigint_free(&sum_pos);
     bigint_free(&sum_neg);
+    bigint_free(&inner_pos);
+    bigint_free(&inner_neg);
+    bigint_free(&inner_scaled);
+    bigint_ws_free(&ws);
 }
 
 /* ── public API ──────────────────────────────────────────────────────────── */

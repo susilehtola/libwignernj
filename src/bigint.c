@@ -26,6 +26,11 @@ static void bigint_ensure(bigint_t *a, size_t need)
     }
 }
 
+void bigint_reserve(bigint_t *a, size_t cap)
+{
+    bigint_ensure(a, cap);
+}
+
 static void bigint_trim(bigint_t *a)
 {
     while (a->size > 0 && a->words[a->size - 1] == 0)
@@ -225,6 +230,106 @@ void bigint_div_prime_pow(bigint_t *a, uint64_t p, int k)
 {
     int i;
     for (i = 0; i < k; i++) bigint_div_u64(a, a, p);
+}
+
+/* ── workspace-aware variants ────────────────────────────────────────────── */
+
+void bigint_ws_init(bigint_ws_t *ws)
+{
+    bigint_init(&ws->mul_temp);
+    bigint_init(&ws->pp_pw);
+    bigint_init(&ws->pp_base);
+}
+
+void bigint_ws_free(bigint_ws_t *ws)
+{
+    bigint_free(&ws->mul_temp);
+    bigint_free(&ws->pp_pw);
+    bigint_free(&ws->pp_base);
+}
+
+void bigint_ws_reserve(bigint_ws_t *ws, size_t max_words)
+{
+    bigint_ensure(&ws->mul_temp, max_words);
+    bigint_ensure(&ws->pp_pw,    max_words);
+    bigint_ensure(&ws->pp_base,  max_words);
+}
+
+void bigint_mul_ws(bigint_t *r, const bigint_t *a, const bigint_t *b,
+                   bigint_ws_t *ws)
+{
+    size_t i, j;
+    bigint_t *dest;
+    int aliased;
+    if (a->size == 0 || b->size == 0) { bigint_set_zero(r); return; }
+    aliased = (r == a || r == b);
+    if (aliased) {
+        bigint_ensure(&ws->mul_temp, a->size + b->size);
+        memset(ws->mul_temp.words, 0, (a->size + b->size) * sizeof(uint64_t));
+        ws->mul_temp.size = a->size + b->size;
+        dest = &ws->mul_temp;
+    } else {
+        bigint_ensure(r, a->size + b->size);
+        memset(r->words, 0, (a->size + b->size) * sizeof(uint64_t));
+        r->size = a->size + b->size;
+        dest = r;
+    }
+    for (i = 0; i < a->size; i++) {
+        uint64_t carry = 0;
+        for (j = 0; j < b->size; j++) {
+            uint64_t lo, hi;
+            bigint_mul_add2(a->words[i], b->words[j],
+                            dest->words[i+j], carry, &lo, &hi);
+            dest->words[i+j] = lo;
+            carry            = hi;
+        }
+        dest->words[i + b->size] += carry;
+    }
+    bigint_trim(dest);
+    if (aliased) bigint_copy(r, dest);
+}
+
+void bigint_mul_prime_pow_ws(bigint_t *a, uint64_t p, int k, bigint_ws_t *ws)
+{
+    int i;
+    if (k <= 0) return;
+    if (k <= 8) {
+        for (i = 0; i < k; i++) bigint_mul_u64(a, a, p);
+        return;
+    }
+    /* Binary exponentiation using ws->pp_pw and ws->pp_base as scratch.
+     * No allocations occur if ws was reserved to the worst-case size. */
+    bigint_set_u64(&ws->pp_pw,   1);
+    bigint_set_u64(&ws->pp_base, p);
+    while (k > 0) {
+        if (k & 1) bigint_mul_ws(&ws->pp_pw,   &ws->pp_pw,   &ws->pp_base, ws);
+        k >>= 1;
+        if (k > 0)  bigint_mul_ws(&ws->pp_base, &ws->pp_base, &ws->pp_base, ws);
+    }
+    bigint_mul_ws(a, a, &ws->pp_pw, ws);
+}
+
+size_t bigint_words_for_factorial(int N)
+{
+    /* Stirling: log2(N!) ≈ N*log2(N) - N*log2(e) + 0.5*log2(N) + log2(sqrt(2π))
+     *
+     * The returned size is generous: we double the Stirling bound so that
+     * any LCM-sized bigint, plus the cross-product temporaries it produces
+     * in bigint_mul_ws (whose size is operand1.size + operand2.size words),
+     * fits without forcing the workspace to realloc inside the hot loop.
+     */
+    double bits, log2N;
+    size_t base;
+    if (N <= 1) return 8;
+    log2N = log((double)N) * 1.4426950408889634;
+    bits  = (double)N * log2N
+          - (double)N * 1.4426950408889634
+          + 0.5 * log2N
+          + 1.33
+          + 64.0;
+    if (bits < 64.0) bits = 64.0;
+    base = (size_t)(bits / 64.0) + 4;
+    return 2 * base;  /* headroom for mid-multiplication temporaries */
 }
 
 /* ── bit length ──────────────────────────────────────────────────────────── */

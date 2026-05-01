@@ -77,7 +77,8 @@ static void gaunt_racah_bounds(int tj1, int tj2, int tj3, int tm1, int tm2,
  */
 static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
                                 int tm1, int tm2,
-                                bigint_t *sum_out, int *sum_sign_out, int *lcm_exp)
+                                bigint_t *sum_out, int *sum_sign_out, int *lcm_exp,
+                                bigint_ws_t *ws, size_t mw)
 {
     int s, s_min, s_max, pi;
     pfrac_t term;
@@ -92,9 +93,9 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
     }
 
     pfrac_init(&term);
-    bigint_init(&sum_pos);
-    bigint_init(&sum_neg);
-    bigint_init(&scaled);
+    bigint_init(&sum_pos); bigint_reserve(&sum_pos, mw);
+    bigint_init(&sum_neg); bigint_reserve(&sum_neg, mw);
+    bigint_init(&scaled);  bigint_reserve(&scaled,  mw);
 
     /* Pass 1: LCM exponents */
     for (s = s_min; s <= s_max; s++) {
@@ -123,7 +124,7 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
         for (pi = 0; pi < g_nprimes; pi++) {
             int diff = lcm_exp[pi] - term.exp[pi];
             if (diff > 0)
-                bigint_mul_prime_pow(&scaled, (uint64_t)g_primes[pi], diff);
+                bigint_mul_prime_pow_ws(&scaled, (uint64_t)g_primes[pi], diff, ws);
         }
         if ((s & 1) == 0) bigint_add(&sum_pos, &sum_pos, &scaled);
         else              bigint_add(&sum_neg, &sum_neg, &scaled);
@@ -154,6 +155,8 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     bigint_t sum0, summ;
     int ss0, ssm;
     int *lcm0, *lcmm;
+    bigint_ws_t ws;
+    size_t mw, mw_prod;
 
     wigner_exact_init(out);
 
@@ -164,6 +167,15 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
 
     /* Phase = (-1)^m3 */
     out->sign = (((tm3 / 2) & 1) == 0) ? 1 : -1;
+
+    /* Largest factorial argument bounded by (tl1+tl2+tl3)/2 + 1.  The
+     * combined outer pfrac and the cross product of the two Racah sums
+     * push the largest bigint to ~2x that, so allocate accordingly. */
+    mw      = bigint_words_for_factorial((tl1 + tl2 + tl3) / 2 + 5);
+    mw_prod = 2 * mw;
+
+    bigint_ws_init(&ws);
+    bigint_ws_reserve(&ws, mw_prod);
 
     /*
      * Combined outer pfrac (argument under the outer sqrt, without π):
@@ -214,35 +226,38 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     /* Racah integer sums for both 3j symbols */
     lcm0 = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
     lcmm = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
-    bigint_init(&sum0);
-    bigint_init(&summ);
+    bigint_init(&sum0); bigint_reserve(&sum0, mw);
+    bigint_init(&summ); bigint_reserve(&summ, mw);
 
-    gaunt_3j_racah_sum(tl1, tl2, tl3, 0, 0, &sum0, &ss0, lcm0);
+    gaunt_3j_racah_sum(tl1, tl2, tl3, 0, 0, &sum0, &ss0, lcm0, &ws, mw);
     if (bigint_is_zero(&sum0)) { out->is_zero = 1; goto cleanup; }
 
-    gaunt_3j_racah_sum(tl1, tl2, tl3, tm1, tm2, &summ, &ssm, lcmm);
+    gaunt_3j_racah_sum(tl1, tl2, tl3, tm1, tm2, &summ, &ssm, lcmm, &ws, mw);
     if (bigint_is_zero(&summ)) { out->is_zero = 1; goto cleanup; }
 
     /* Product of the two Racah sums */
-    bigint_mul(&out->sum, &sum0, &summ);
+    bigint_reserve(&out->sum, mw_prod);
+    bigint_mul_ws(&out->sum, &sum0, &summ, &ws);
     out->sum_sign = ss0 * ssm;
 
     /* Convert outer pfrac */
-    bigint_set_u64(&out->int_num,  1);
-    bigint_set_u64(&out->int_den,  1);
-    bigint_set_u64(&out->sqrt_num, 1);
-    bigint_set_u64(&out->sqrt_den, 1);
-    pfrac_to_sqrt_rational(&outer, &out->int_num, &out->int_den,
-                           &out->sqrt_num, &out->sqrt_den);
+    bigint_set_u64(&out->int_num,  1); bigint_reserve(&out->int_num,  mw_prod);
+    bigint_set_u64(&out->int_den,  1); bigint_reserve(&out->int_den,  mw_prod);
+    bigint_set_u64(&out->sqrt_num, 1); bigint_reserve(&out->sqrt_num, mw_prod);
+    bigint_set_u64(&out->sqrt_den, 1); bigint_reserve(&out->sqrt_den, mw_prod);
+    pfrac_to_sqrt_rational_ws(&outer, &out->int_num, &out->int_den,
+                              &out->sqrt_num, &out->sqrt_den, &ws);
 
     /* Combined LCM denominator → int_den */
     for (pi = 0; pi < g_nprimes; pi++) {
         int e = lcm0[pi] + lcmm[pi];
         if (e > 0)
-            bigint_mul_prime_pow(&out->int_den, (uint64_t)g_primes[pi], e);
+            bigint_mul_prime_pow_ws(&out->int_den,
+                                    (uint64_t)g_primes[pi], e, &ws);
     }
 
 cleanup:
+    bigint_ws_free(&ws);
     free(lcm0);
     free(lcmm);
     pfrac_free(&outer);

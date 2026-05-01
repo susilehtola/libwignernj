@@ -108,6 +108,8 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     int *lcm_exp;        /* max denominator exponent per prime across all s */
     pfrac_t outer, term;
     bigint_t sum_pos, sum_neg, scaled;
+    bigint_ws_t ws;
+    size_t mw;
 
     wigner_exact_init(out);
 
@@ -121,6 +123,13 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
 
     /* Overall phase: (-1)^(j1-j2-m3) */
     out->sign = ((((tj1 - tj2 - tm3) / 2) & 1) == 0) ? 1 : -1;
+
+    /* Largest factorial argument is bounded by (tj1+tj2+tj3)/2+1 plus
+     * (tji+|tmi|)/2 ≤ tji.  Use a safe upper bound for sizing. */
+    mw = bigint_words_for_factorial((tj1 + tj2 + tj3) / 2 + 5);
+
+    bigint_ws_init(&ws);
+    bigint_ws_reserve(&ws, mw);
 
     /* Compute outer sqrt factor */
     pfrac_init(&outer);
@@ -149,10 +158,10 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
         }
     }
 
-    /* ── Pass 2: accumulate scaled integer Racah sum ── */
-    bigint_init(&sum_pos);
-    bigint_init(&sum_neg);
-    bigint_init(&scaled);
+    /* ── Pass 2: accumulate scaled integer Racah sum (pre-sized bigints) ── */
+    bigint_init(&sum_pos); bigint_reserve(&sum_pos, mw);
+    bigint_init(&sum_neg); bigint_reserve(&sum_neg, mw);
+    bigint_init(&scaled);  bigint_reserve(&scaled,  mw);
 
     for (s = s_min; s <= s_max; s++) {
         /* Rebuild term s denominator */
@@ -169,7 +178,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
         for (pi = 0; pi < g_nprimes; pi++) {
             int diff = lcm_exp[pi] - term.exp[pi];
             if (diff > 0)
-                bigint_mul_prime_pow(&scaled, (uint64_t)g_primes[pi], diff);
+                bigint_mul_prime_pow_ws(&scaled, (uint64_t)g_primes[pi], diff, &ws);
         }
 
         /* Accumulate with sign (-1)^s */
@@ -190,16 +199,21 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     bigint_set_u64(&out->int_den,  1);
     bigint_set_u64(&out->sqrt_num, 1);
     bigint_set_u64(&out->sqrt_den, 1);
+    bigint_reserve(&out->int_num,  mw);
+    bigint_reserve(&out->int_den,  mw);
+    bigint_reserve(&out->sqrt_num, mw);
+    bigint_reserve(&out->sqrt_den, mw);
 
     /* Outer sqrt factor → int_num, int_den, sqrt_num, sqrt_den */
-    pfrac_to_sqrt_rational(&outer,
-                            &out->int_num, &out->int_den,
-                            &out->sqrt_num, &out->sqrt_den);
+    pfrac_to_sqrt_rational_ws(&outer,
+                               &out->int_num, &out->int_den,
+                               &out->sqrt_num, &out->sqrt_den, &ws);
 
     /* LCM denominator: prod p_i^lcm_exp[i] → absorbed into int_den */
     for (pi = 0; pi < g_nprimes; pi++) {
         if (lcm_exp[pi] > 0)
-            bigint_mul_prime_pow(&out->int_den, (uint64_t)g_primes[pi], lcm_exp[pi]);
+            bigint_mul_prime_pow_ws(&out->int_den,
+                                    (uint64_t)g_primes[pi], lcm_exp[pi], &ws);
     }
 
     free(lcm_exp);
@@ -208,6 +222,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     bigint_free(&sum_pos);
     bigint_free(&sum_neg);
     bigint_free(&scaled);
+    bigint_ws_free(&ws);
 }
 
 /* ── public API ──────────────────────────────────────────────────────────── */
