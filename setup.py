@@ -4,6 +4,7 @@ from setuptools import setup, Extension
 
 sources = [
     "src/python/wignermodule.c",
+    "src/xalloc.c",
     "src/primes.c",
     "src/bigint.c",
     "src/pfrac.c",
