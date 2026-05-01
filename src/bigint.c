@@ -410,3 +410,21 @@ long double bigint_to_long_double(const bigint_t *a)
     return ldexpl((long double)m, exp2);
 #endif
 }
+
+/* ── MPFR conversion ─────────────────────────────────────────────────────── */
+
+#ifdef WIGNER_HAVE_MPFR
+void bigint_to_mpfr(mpfr_t rop, const bigint_t *a, mpfr_rnd_t rnd)
+{
+    size_t i;
+    if (a->size == 0) { mpfr_set_zero(rop, +1); return; }
+    /* Accumulate most-significant word first: rop = rop*2^32 + half */
+    mpfr_set_zero(rop, +1);
+    for (i = a->size; i-- > 0;) {
+        mpfr_mul_2ui(rop, rop, 32, rnd);
+        mpfr_add_ui(rop, rop, (unsigned long)(a->words[i] >> 32), rnd);
+        mpfr_mul_2ui(rop, rop, 32, rnd);
+        mpfr_add_ui(rop, rop, (unsigned long)(a->words[i] & 0xFFFFFFFFUL), rnd);
+    }
+}
+#endif

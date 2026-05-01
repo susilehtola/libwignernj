@@ -42,6 +42,18 @@ if(BUILD_CXX_TESTS)
     endif()
 endif()
 
+# ── MPFR tests ────────────────────────────────────────────────────────────────
+
+if(BUILD_MPFR)
+    add_executable(test_mpfr test_mpfr.c)
+    target_link_libraries(test_mpfr PRIVATE wignernj)
+    target_include_directories(test_mpfr PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    add_test(NAME test_mpfr COMMAND test_mpfr)
+endif()
+
 # ── Fortran interface tests ───────────────────────────────────────────────────
 
 if(BUILD_FORTRAN AND TARGET wignernj_fortran)

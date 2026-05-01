@@ -149,3 +149,41 @@ long double wigner_exact_to_long_double(const wigner_exact_t *e)
 
     return (long double)(e->sign * e->sum_sign) * ldexpl(m, iexp);
 }
+
+/* ── MPFR conversion ─────────────────────────────────────────────────────── */
+
+#ifdef WIGNER_HAVE_MPFR
+void wigner_exact_to_mpfr(mpfr_t rop, const wigner_exact_t *e, mpfr_rnd_t rnd)
+{
+    mpfr_prec_t prec = mpfr_get_prec(rop);
+    mpfr_t tmp, aux;
+
+    if (e->is_zero || bigint_is_zero(&e->sum)) {
+        mpfr_set_zero(rop, +1);
+        return;
+    }
+
+    mpfr_init2(tmp, prec);
+    mpfr_init2(aux, prec);
+
+    /* rop = sum * int_num / int_den */
+    bigint_to_mpfr(rop, &e->sum,     rnd);
+    bigint_to_mpfr(tmp, &e->int_num, rnd);
+    mpfr_mul(rop, rop, tmp, rnd);
+    bigint_to_mpfr(tmp, &e->int_den, rnd);
+    mpfr_div(rop, rop, tmp, rnd);
+
+    /* rop *= sqrt(sqrt_num / sqrt_den) */
+    bigint_to_mpfr(tmp, &e->sqrt_num, rnd);
+    bigint_to_mpfr(aux, &e->sqrt_den, rnd);
+    mpfr_div(tmp, tmp, aux, rnd);
+    mpfr_sqrt(tmp, tmp, rnd);
+    mpfr_mul(rop, rop, tmp, rnd);
+
+    if (e->sign * e->sum_sign < 0)
+        mpfr_neg(rop, rop, MPFR_RNDN);
+
+    mpfr_clear(tmp);
+    mpfr_clear(aux);
+}
+#endif

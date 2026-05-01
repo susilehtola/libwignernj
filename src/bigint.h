@@ -61,4 +61,10 @@ float       bigint_frexpf(const bigint_t *a, int *out_exp);
 double      bigint_frexp (const bigint_t *a, int *out_exp);
 long double bigint_frexpl(const bigint_t *a, int *out_exp);
 
+/* MPFR conversion (only available when compiled with WIGNER_HAVE_MPFR). */
+#ifdef WIGNER_HAVE_MPFR
+#include <mpfr.h>
+void bigint_to_mpfr(mpfr_t rop, const bigint_t *a, mpfr_rnd_t rnd);
+#endif
+
 #endif /* BIGINT_H */

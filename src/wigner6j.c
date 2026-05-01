@@ -222,3 +222,14 @@ long double wigner6j_l(int tj1, int tj2, int tj3, int tj4, int tj5, int tj6)
     wigner_exact_free(&e);
     return result;
 }
+
+#ifdef WIGNER_HAVE_MPFR
+void wigner6j_mpfr(mpfr_t rop, int tj1, int tj2, int tj3,
+                               int tj4, int tj5, int tj6, mpfr_rnd_t rnd)
+{
+    wigner_exact_t e;
+    wigner6j_exact(tj1, tj2, tj3, tj4, tj5, tj6, &e);
+    wigner_exact_to_mpfr(rop, &e, rnd);
+    wigner_exact_free(&e);
+}
+#endif

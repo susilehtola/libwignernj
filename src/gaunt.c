@@ -55,3 +55,41 @@ long double gaunt_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
                  * (long double)(tl3 + 1) / (4.0L * acosl(-1.0L)));
     return norm * w0 * wigner3j_l(tl1, tl2, tl3, tm1, tm2, tm3);
 }
+
+#ifdef WIGNER_HAVE_MPFR
+#include "wigner_mpfr.h"
+void gaunt_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
+                             int tl3, int tm3, mpfr_rnd_t rnd)
+{
+    mpfr_prec_t prec;
+    mpfr_t w0, norm, pi;
+
+    if (tm1 + tm2 + tm3 != 0) { mpfr_set_zero(rop, +1); return; }
+
+    prec = mpfr_get_prec(rop);
+    wigner3j_mpfr(rop, tl1, tl2, tl3, 0, 0, 0, rnd);
+    if (mpfr_zero_p(rop)) return;
+
+    mpfr_init2(w0,   prec);
+    mpfr_init2(norm, prec);
+    mpfr_init2(pi,   prec);
+
+    wigner3j_mpfr(w0, tl1, tl2, tl3, tm1, tm2, tm3, rnd);
+
+    /* norm = sqrt[(tl1+1)(tl2+1)(tl3+1) / (4*pi)] */
+    mpfr_const_pi(pi, rnd);
+    mpfr_mul_ui(pi, pi, 4, rnd);
+    mpfr_set_ui(norm, (unsigned long)(tl1 + 1), rnd);
+    mpfr_mul_ui(norm, norm, (unsigned long)(tl2 + 1), rnd);
+    mpfr_mul_ui(norm, norm, (unsigned long)(tl3 + 1), rnd);
+    mpfr_div(norm, norm, pi, rnd);
+    mpfr_sqrt(norm, norm, rnd);
+
+    mpfr_mul(rop, rop, w0,   rnd);
+    mpfr_mul(rop, rop, norm, rnd);
+
+    mpfr_clear(w0);
+    mpfr_clear(norm);
+    mpfr_clear(pi);
+}
+#endif

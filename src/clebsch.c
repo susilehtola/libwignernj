@@ -83,3 +83,15 @@ long double clebsch_gordan_l(int tj1, int tm1, int tj2, int tm2, int tJ, int tM)
     wigner_exact_free(&e);
     return r;
 }
+
+#ifdef WIGNER_HAVE_MPFR
+#include <mpfr.h>
+void clebsch_gordan_mpfr(mpfr_t rop, int tj1, int tm1, int tj2, int tm2,
+                                     int tJ, int tM, mpfr_rnd_t rnd)
+{
+    wigner_exact_t e;
+    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &e);
+    wigner_exact_to_mpfr(rop, &e, rnd);
+    wigner_exact_free(&e);
+}
+#endif
