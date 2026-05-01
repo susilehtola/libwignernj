@@ -6,14 +6,41 @@
 /*
  * Prime table and Legendre factorial valuation.
  *
- * Covers all primes up to PRIME_SIEVE_LIMIT, which is sufficient for
- * factorials up to MAX_FACTORIAL_ARG! as needed by Wigner symbol computations
- * with angular momenta up to ~j_max = 1000.
+ * Hard correctness limit
+ * ----------------------
+ * pfrac_mul_factorial(n) is correct only when every prime p <= n is in the
+ * table, i.e. p <= PRIME_SIEVE_LIMIT.  The first prime above PRIME_SIEVE_LIMIT
+ * is 20021, so the function is correct for n <= 20020.  MAX_FACTORIAL_ARG is
+ * set conservatively to 20000 to give a round-number safety margin.
+ *
+ * Callers must never pass a factorial argument exceeding MAX_FACTORIAL_ARG.
+ * Violations produce silently wrong results (no assert, no error return).
+ *
+ * Angular momentum limits implied by MAX_FACTORIAL_ARG
+ * -----------------------------------------------------
+ * The largest factorial argument in each symbol comes from the triangle-
+ * coefficient denominator (j1+j2+j3+1)!, so:
+ *
+ *   3j, 6j, CG, Racah W, Gaunt:
+ *     j1+j2+j3 <= 19999  (equal-j: j <= 6666)
+ *
+ *   9j (via wigner9j_exact):
+ *     The k-dependent Delta denominators reach (4j+1)! for equal j, so
+ *     j <= 4999 when all nine angular momenta are equal.
+ *
+ * Performance note
+ * ----------------
+ * The Racah sum has O(j) terms for 3j/6j and O(j^2) total for 9j (outer k
+ * loop times inner Racah sums).  Intermediate bigints grow as ~j/ln2 bits.
+ * Practical performance horizons (order of magnitude, modern hardware):
+ *
+ *   3j / 6j  :  j ~ 1000  in milliseconds;  j ~ 6000  in seconds
+ *   9j       :  j ~  100  in milliseconds;  j ~ 1000  in minutes
  */
 
-#define PRIME_SIEVE_LIMIT   20011   /* sieve all primes up to this value */
+#define PRIME_SIEVE_LIMIT   20011   /* sieve all primes up to this value    */
 #define MAX_PRIME_COUNT     2263    /* upper bound: pi(20011) = 2262        */
-#define MAX_FACTORIAL_ARG   20000   /* maximum n for which n! may be needed */
+#define MAX_FACTORIAL_ARG   20000   /* hard limit: see note above           */
 
 /* Number of primes found (set by primes_init). */
 extern int g_nprimes;

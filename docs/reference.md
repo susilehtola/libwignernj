@@ -547,6 +547,65 @@ violated.  No computation is performed for zero results.
 
 ---
 
+## Limitations
+
+### Angular momentum range (correctness)
+
+All intermediate factorials are factored by trial division against a prime
+table sieved up to `PRIME_SIEVE_LIMIT = 20011`.  A factorial argument `n`
+that has a prime factor larger than 20011 would be silently mis-factored.
+The first such `n` is 20021 (which is prime).  `MAX_FACTORIAL_ARG = 20000`
+is set conservatively below this boundary.
+
+The binding factorial argument in each coefficient is the triangle-coefficient
+denominator `(j1+j2+j3+1)!`.  The resulting hard limits on the sum of angular
+momenta are:
+
+| Symbol | Binding factorial | Limit on sum | Equal-j limit |
+|---|---|---|---|
+| 3j, 6j, CG, Racah W, Gaunt | `(j1+j2+j3+1)!` | j1+j2+j3 ≤ 19999 | **j ≤ 6666** |
+| 9j | `(4j+1)!` (k-dependent Δ at k = k_max) | 4j ≤ 19999 | **j ≤ 4999** |
+
+These limits apply to the sum of the three largest angular momenta appearing
+in any single triangle.  Symbols with very unequal arguments can involve
+larger individual `j` values as long as no triangle sum exceeds 19999.
+
+Exceeding these limits produces silently wrong results: no error is returned
+and no exception is thrown.
+
+### Performance scaling
+
+The Racah summation has O(j) terms for 3j and 6j; the 9j outer loop over the
+intermediate quantum number k adds another factor of O(j), giving O(j²) total.
+Intermediate bigints grow proportional to j/ln 2 bits (the LCM denominator
+grows as the primorial).
+
+Approximate wall-clock times on a modern single core:
+
+| Symbol | j ~ 100 | j ~ 1000 | j ~ 5000 |
+|---|---|---|---|
+| 3j / 6j | < 1 ms | < 1 s | minutes |
+| 9j | ~ 1 ms | ~ hours | impractical |
+
+The 9j is the most expensive because it multiplies three large bigints at every
+k step.  For the highest 9j angular momenta supported by the prime table
+(j ~ 5000), a single evaluation may take hours or more.
+
+### Argument type
+
+All C API arguments are plain `int`.  Angular momenta up to j = 6666
+correspond to `tj = 13332`, well within `INT_MAX`.  No overflow can occur in
+intermediate index calculations for inputs within the correctness range.
+
+### Thread safety
+
+`primes_init()` (called automatically on the first symbol evaluation) is not
+thread-safe: it writes global arrays on first call.  Call it explicitly once
+from the main thread before spawning workers, or accept the benign data race
+(writes are deterministic and idempotent).
+
+---
+
 ## License
 
 BSD 3-Clause — see [LICENSE](../LICENSE).
