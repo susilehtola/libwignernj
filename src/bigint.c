@@ -66,6 +66,19 @@ int bigint_cmp(const bigint_t *a, const bigint_t *b)
     return 0;
 }
 
+/*
+ * The four "linear" routines below (add, sub_uu, mul_u64, div_u64) all use
+ * a read-then-write pattern at index i: each iteration first reads the
+ * operand word(s) at i and only then writes r->words[i].  This makes them
+ * correct even when r aliases an operand, so we can write the result
+ * directly into r and avoid the per-call temp + copy that the previous
+ * implementation always performed.
+ *
+ * bigint_mul cannot be aliased away as easily: its inner loop reads
+ * operand words ahead of where it writes, so when r aliases a or b a
+ * separate destination is still required.  We use one in that case only.
+ */
+
 /* ── addition ────────────────────────────────────────────────────────────── */
 
 void bigint_add(bigint_t *r, const bigint_t *a, const bigint_t *b)
@@ -74,18 +87,15 @@ void bigint_add(bigint_t *r, const bigint_t *a, const bigint_t *b)
     const bigint_t *sml = (a->size >= b->size) ? b : a;
     size_t n = big->size, i;
     uint64_t carry = 0;
-    bigint_t tmp;
-    bigint_init(&tmp);
-    bigint_ensure(&tmp, n + 1);
-    tmp.size = n + 1;
+    if (n == 0) { bigint_set_zero(r); return; }
+    bigint_ensure(r, n + 1);
     for (i = 0; i < sml->size; i++)
-        tmp.words[i] = bigint_addc(big->words[i], sml->words[i], carry, &carry);
+        r->words[i] = bigint_addc(big->words[i], sml->words[i], carry, &carry);
     for (; i < n; i++)
-        tmp.words[i] = bigint_addc(big->words[i], 0, carry, &carry);
-    tmp.words[n] = carry;
-    bigint_trim(&tmp);
-    bigint_copy(r, &tmp);
-    bigint_free(&tmp);
+        r->words[i] = bigint_addc(big->words[i], 0, carry, &carry);
+    r->words[n] = carry;
+    r->size = n + 1;
+    bigint_trim(r);
 }
 
 /* ── subtraction (unsigned, a >= b assumed) ─────────────────────────────── */
@@ -94,17 +104,14 @@ static void bigint_sub_uu(bigint_t *r, const bigint_t *a, const bigint_t *b)
 {
     uint64_t borrow = 0;
     size_t i;
-    bigint_t tmp;
-    bigint_init(&tmp);
-    bigint_ensure(&tmp, a->size);
-    tmp.size = a->size;
+    if (a->size == 0) { bigint_set_zero(r); return; }
+    bigint_ensure(r, a->size);
     for (i = 0; i < b->size; i++)
-        tmp.words[i] = bigint_subb(a->words[i], b->words[i], borrow, &borrow);
+        r->words[i] = bigint_subb(a->words[i], b->words[i], borrow, &borrow);
     for (; i < a->size; i++)
-        tmp.words[i] = bigint_subb(a->words[i], 0, borrow, &borrow);
-    bigint_trim(&tmp);
-    bigint_copy(r, &tmp);
-    bigint_free(&tmp);
+        r->words[i] = bigint_subb(a->words[i], 0, borrow, &borrow);
+    r->size = a->size;
+    bigint_trim(r);
 }
 
 int bigint_sub_signed(bigint_t *r, const bigint_t *a, const bigint_t *b)
@@ -121,46 +128,59 @@ void bigint_mul_u64(bigint_t *r, const bigint_t *a, uint64_t b)
 {
     size_t i;
     uint64_t carry = 0;
-    bigint_t tmp;
     if (b == 0 || a->size == 0) { bigint_set_zero(r); return; }
-    bigint_init(&tmp);
-    bigint_ensure(&tmp, a->size + 1);
-    tmp.size = a->size + 1;
+    bigint_ensure(r, a->size + 1);
     for (i = 0; i < a->size; i++) {
         uint64_t lo, hi;
         bigint_mul_add(a->words[i], b, carry, &lo, &hi);
-        tmp.words[i] = lo;
-        carry        = hi;
+        r->words[i] = lo;
+        carry       = hi;
     }
-    tmp.words[a->size] = carry;
-    bigint_trim(&tmp);
-    bigint_copy(r, &tmp);
-    bigint_free(&tmp);
+    r->words[a->size] = carry;
+    r->size = a->size + 1;
+    bigint_trim(r);
 }
 
 void bigint_mul(bigint_t *r, const bigint_t *a, const bigint_t *b)
 {
     size_t i, j;
-    bigint_t res;
+    bigint_t local;
+    bigint_t *dest;
+    int aliased;
     if (a->size == 0 || b->size == 0) { bigint_set_zero(r); return; }
-    bigint_init(&res);
-    bigint_ensure(&res, a->size + b->size);
-    memset(res.words, 0, (a->size + b->size) * sizeof(uint64_t));
-    res.size = a->size + b->size;
+    /* The inner loop reads res.words[i+j] *after* writes to lower indices
+     * within the same outer-i sweep have moved on, so destination aliasing
+     * with an operand corrupts that operand mid-loop.  Only use a temp
+     * when the destination is actually aliased. */
+    aliased = (r == a || r == b);
+    if (aliased) {
+        bigint_init(&local);
+        bigint_ensure(&local, a->size + b->size);
+        memset(local.words, 0, (a->size + b->size) * sizeof(uint64_t));
+        local.size = a->size + b->size;
+        dest = &local;
+    } else {
+        bigint_ensure(r, a->size + b->size);
+        memset(r->words, 0, (a->size + b->size) * sizeof(uint64_t));
+        r->size = a->size + b->size;
+        dest = r;
+    }
     for (i = 0; i < a->size; i++) {
         uint64_t carry = 0;
         for (j = 0; j < b->size; j++) {
             uint64_t lo, hi;
             bigint_mul_add2(a->words[i], b->words[j],
-                            res.words[i+j], carry, &lo, &hi);
-            res.words[i+j] = lo;
-            carry          = hi;
+                            dest->words[i+j], carry, &lo, &hi);
+            dest->words[i+j] = lo;
+            carry            = hi;
         }
-        res.words[i + b->size] += carry;
+        dest->words[i + b->size] += carry;
     }
-    bigint_trim(&res);
-    bigint_copy(r, &res);
-    bigint_free(&res);
+    bigint_trim(dest);
+    if (aliased) {
+        bigint_copy(r, &local);
+        bigint_free(&local);
+    }
 }
 
 /* ── division by scalar ──────────────────────────────────────────────────── */
@@ -169,15 +189,12 @@ void bigint_div_u64(bigint_t *r, const bigint_t *a, uint64_t b)
 {
     size_t i;
     uint64_t rem = 0;
-    bigint_t tmp;
-    bigint_init(&tmp);
-    bigint_ensure(&tmp, a->size);
-    tmp.size = a->size;
+    if (a->size == 0) { bigint_set_zero(r); return; }
+    bigint_ensure(r, a->size);
     for (i = a->size; i-- > 0;)
-        tmp.words[i] = bigint_div128(rem, a->words[i], b, &rem);
-    bigint_trim(&tmp);
-    bigint_copy(r, &tmp);
-    bigint_free(&tmp);
+        r->words[i] = bigint_div128(rem, a->words[i], b, &rem);
+    r->size = a->size;
+    bigint_trim(r);
 }
 
 void bigint_mul_prime_pow(bigint_t *a, uint64_t p, int k)
