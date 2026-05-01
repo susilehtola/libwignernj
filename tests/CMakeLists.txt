@@ -12,6 +12,7 @@ foreach(test_name
     test_9j
     test_derived
     test_precisions
+    test_symmetry
 )
     add_executable(${test_name} ${test_name}.c)
     target_link_libraries(${test_name} PRIVATE wignernj m)
