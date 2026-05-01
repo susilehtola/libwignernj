@@ -92,6 +92,41 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
 
+  # ── Pure-C99 bigint fallback ──────────────────────────────────────────────
+  # bigint.c uses __uint128_t on GCC/Clang/ICC for 64x64 -> 128 products and
+  # 128/64 divisions; on compilers without that extension (notably MSVC) a
+  # pure-C99 fallback is selected automatically.  This job forces the
+  # fallback via -DBIGINT_FORCE_PORTABLE and runs the full test suite to
+  # ensure the two code paths produce identical bit-exact results.
+  c99-fallback:
+    name: "Ubuntu / GCC / pure-C99 bigint fallback"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y gfortran libmpfr-dev
+
+      - name: Configure (force C99 fallback)
+        env:
+          CC: gcc
+          CXX: g++
+        run: |
+          cmake -B build \
+            -DBUILD_FORTRAN=ON \
+            -DBUILD_MPFR=ON \
+            -DBUILD_CXX_TESTS=ON \
+            -DBUILD_TESTS=ON \
+            -DCMAKE_C_FLAGS="-DBIGINT_FORCE_PORTABLE"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --parallel
+
   # ── Address and undefined-behaviour sanitizers ────────────────────────────
   sanitize:
     name: "Ubuntu / Clang / ASAN+UBSAN"

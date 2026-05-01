@@ -1,13 +1,12 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright (c) 2026 Susi Lehtola */
-
-/* __uint128_t is required; available on GCC, Clang, and ICC.
- * MSVC does not support this type — see issue tracker for status. */
-#if defined(_MSC_VER)
-#  error "bigint.c requires __uint128_t (GCC/Clang/ICC). MSVC is not yet supported."
-#endif
-
+ * Copyright (c) 2026 Susi Lehtola
+ *
+ * 64-bit and 128-bit arithmetic primitives are abstracted into
+ * bigint_arith.h, which provides a native __uint128_t-based path on
+ * GCC/Clang/ICC and a pure-C99 fallback on other compilers (e.g. MSVC).
+ */
 #include "bigint.h"
+#include "bigint_arith.h"
 #include "xalloc.h"
 #include <stdlib.h>
 #include <string.h>
@@ -79,16 +78,10 @@ void bigint_add(bigint_t *r, const bigint_t *a, const bigint_t *b)
     bigint_init(&tmp);
     bigint_ensure(&tmp, n + 1);
     tmp.size = n + 1;
-    for (i = 0; i < sml->size; i++) {
-        __uint128_t s = (__uint128_t)big->words[i] + sml->words[i] + carry;
-        tmp.words[i] = (uint64_t)s;
-        carry        = (uint64_t)(s >> 64);
-    }
-    for (; i < n; i++) {
-        __uint128_t s = (__uint128_t)big->words[i] + carry;
-        tmp.words[i] = (uint64_t)s;
-        carry        = (uint64_t)(s >> 64);
-    }
+    for (i = 0; i < sml->size; i++)
+        tmp.words[i] = bigint_addc(big->words[i], sml->words[i], carry, &carry);
+    for (; i < n; i++)
+        tmp.words[i] = bigint_addc(big->words[i], 0, carry, &carry);
     tmp.words[n] = carry;
     bigint_trim(&tmp);
     bigint_copy(r, &tmp);
@@ -105,16 +98,10 @@ static void bigint_sub_uu(bigint_t *r, const bigint_t *a, const bigint_t *b)
     bigint_init(&tmp);
     bigint_ensure(&tmp, a->size);
     tmp.size = a->size;
-    for (i = 0; i < b->size; i++) {
-        __uint128_t d = (__uint128_t)a->words[i] - b->words[i] - borrow;
-        tmp.words[i] = (uint64_t)d;
-        borrow       = (uint64_t)(-(int64_t)(d >> 64)); /* 1 if underflow */
-    }
-    for (; i < a->size; i++) {
-        __uint128_t d = (__uint128_t)a->words[i] - borrow;
-        tmp.words[i] = (uint64_t)d;
-        borrow       = (uint64_t)(-(int64_t)(d >> 64));
-    }
+    for (i = 0; i < b->size; i++)
+        tmp.words[i] = bigint_subb(a->words[i], b->words[i], borrow, &borrow);
+    for (; i < a->size; i++)
+        tmp.words[i] = bigint_subb(a->words[i], 0, borrow, &borrow);
     bigint_trim(&tmp);
     bigint_copy(r, &tmp);
     bigint_free(&tmp);
@@ -140,9 +127,10 @@ void bigint_mul_u64(bigint_t *r, const bigint_t *a, uint64_t b)
     bigint_ensure(&tmp, a->size + 1);
     tmp.size = a->size + 1;
     for (i = 0; i < a->size; i++) {
-        __uint128_t p = (__uint128_t)a->words[i] * b + carry;
-        tmp.words[i] = (uint64_t)p;
-        carry        = (uint64_t)(p >> 64);
+        uint64_t lo, hi;
+        bigint_mul_add(a->words[i], b, carry, &lo, &hi);
+        tmp.words[i] = lo;
+        carry        = hi;
     }
     tmp.words[a->size] = carry;
     bigint_trim(&tmp);
@@ -162,10 +150,11 @@ void bigint_mul(bigint_t *r, const bigint_t *a, const bigint_t *b)
     for (i = 0; i < a->size; i++) {
         uint64_t carry = 0;
         for (j = 0; j < b->size; j++) {
-            __uint128_t p = (__uint128_t)a->words[i] * b->words[j]
-                          + res.words[i+j] + carry;
-            res.words[i+j] = (uint64_t)p;
-            carry          = (uint64_t)(p >> 64);
+            uint64_t lo, hi;
+            bigint_mul_add2(a->words[i], b->words[j],
+                            res.words[i+j], carry, &lo, &hi);
+            res.words[i+j] = lo;
+            carry          = hi;
         }
         res.words[i + b->size] += carry;
     }
@@ -179,16 +168,13 @@ void bigint_mul(bigint_t *r, const bigint_t *a, const bigint_t *b)
 void bigint_div_u64(bigint_t *r, const bigint_t *a, uint64_t b)
 {
     size_t i;
-    __uint128_t rem = 0;
+    uint64_t rem = 0;
     bigint_t tmp;
     bigint_init(&tmp);
     bigint_ensure(&tmp, a->size);
     tmp.size = a->size;
-    for (i = a->size; i-- > 0;) {
-        __uint128_t cur = (rem << 64) | a->words[i];
-        tmp.words[i] = (uint64_t)(cur / b);
-        rem          = cur % b;
-    }
+    for (i = a->size; i-- > 0;)
+        tmp.words[i] = bigint_div128(rem, a->words[i], b, &rem);
     bigint_trim(&tmp);
     bigint_copy(r, &tmp);
     bigint_free(&tmp);

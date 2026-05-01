@@ -61,6 +61,7 @@ Clebsch-Gordan and Racah W are thin wrappers over the Wigner symbols. Gaunt has 
 |------|------|
 | `src/primes.c` | Sieve of Eratosthenes; `legendre_valuation(n, pi)` = v_p(n!) via Legendre's formula |
 | `src/bigint.c` | Unsigned multiword integer (little-endian `uint64_t` words) + sign; `bigint_to_{float,double,long_double}` with correct IEEE 754 round-to-nearest |
+| `src/bigint_arith.h` | 64-bit arithmetic primitives (mul/add/sub/div with carry); native `__uint128_t` path on GCC/Clang/ICC, pure-C99 fallback (32×32 partial products, 64/32 long division) on other compilers including MSVC. `-DBIGINT_FORCE_PORTABLE` forces the fallback. |
 | `src/pfrac.c` | Prime-factored rational: signed `int exp[]` indexed by prime table index; `pfrac_mul_factorial` / `pfrac_div_factorial`; `pfrac_to_sqrt_rational` |
 | `src/wigner_exact.c` | `wigner_exact_t` struct and `wigner_exact_to_*` conversion |
 | `src/wigner3j.c` | `wigner3j_exact()` + public `wigner3j_f/wigner3j/wigner3j_l` |
