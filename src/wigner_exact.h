@@ -37,6 +37,10 @@ void wigner3j_exact(int tj1, int tj2, int tj3, int tm1, int tm2, int tm3,
                     wigner_exact_t *out);
 void wigner6j_exact(int tj1, int tj2, int tj3, int tj4, int tj5, int tj6,
                     wigner_exact_t *out);
+void wigner9j_exact(int tj11, int tj12, int tj13,
+                    int tj21, int tj22, int tj23,
+                    int tj31, int tj32, int tj33,
+                    wigner_exact_t *out);
 void wigner_exact_free(wigner_exact_t *e);
 
 float       wigner_exact_to_float      (const wigner_exact_t *e);
