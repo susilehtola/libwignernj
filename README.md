@@ -167,6 +167,11 @@ three precisions (the `long double` variants require gfortran or Cray Fortran).
 
 Link with `-lwignernj_fortran -lwignernj -lm`.
 
+## Documentation
+
+Full API reference with mathematical definitions, selection rules, and
+per-language examples: [docs/reference.md](docs/reference.md).
+
 ## License
 
 BSD 3-Clause — see [LICENSE](LICENSE).
