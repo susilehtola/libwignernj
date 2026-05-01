@@ -127,6 +127,30 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
 
+  # ── Downstream CMake package detection ────────────────────────────────────
+  # Verifies that an installed libwignernj exports the C, C++ (header-only
+  # wrapper), and Fortran 90 interfaces correctly so that a downstream CMake
+  # project can locate them via find_package(wignernj REQUIRED [COMPONENTS
+  # Fortran]) and link against the wignernj::wignernj / wignernj::
+  # wignernj_fortran imported targets.  Built as a separate, out-of-tree
+  # CMake project against the installed library.
+  cmake-downstream:
+    name: "Ubuntu / GCC / downstream find_package(wignernj)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y gfortran
+
+      - name: Test downstream detection (C + C++ only)
+        run: tests/cmake_downstream/run.sh
+
+      - name: Test downstream detection (C + C++ + Fortran)
+        run: tests/cmake_downstream/run.sh --with-fortran
+
   # ── Address and undefined-behaviour sanitizers ────────────────────────────
   sanitize:
     name: "Ubuntu / Clang / ASAN+UBSAN"

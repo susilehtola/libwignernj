@@ -75,6 +75,7 @@ if(BUILD_MPFR)
 endif()
 
 # Fortran interface (optional, only if compiler found)
+set(WIGNERNJ_HAS_FORTRAN OFF)
 if(BUILD_FORTRAN)
     include(CheckLanguage)
     check_language(Fortran)
@@ -86,8 +87,21 @@ if(BUILD_FORTRAN)
             Fortran_MODULE_DIRECTORY
                 ${CMAKE_CURRENT_BINARY_DIR}/fortran_modules
         )
+        # Propagate the .mod-file directory to consumers, both at build
+        # time and after install, so downstream Fortran compilations
+        # find `use wigner` automatically.
+        target_include_directories(wignernj_fortran INTERFACE
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/fortran_modules>
+            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/wignernj/fortran>
+        )
+        install(TARGETS wignernj_fortran
+            EXPORT  wignernjTargets
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        )
         install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/fortran_modules/
-                DESTINATION include/wignernj/fortran)
+                DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/wignernj/fortran)
+        set(WIGNERNJ_HAS_FORTRAN ON)
     else()
         message(STATUS "No Fortran compiler found -- skipping Fortran interface")
     endif()
