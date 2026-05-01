@@ -10,7 +10,7 @@ are accurate to the last bit of the chosen output precision.
 Algorithm: Johansson & Forssén, SIAM J. Sci. Comput. 38(1), A376–A384, 2016.
 doi:[10.1137/15M1021908](https://doi.org/10.1137/15M1021908)
 
-Language interfaces: C (primary), C++ (header-only), Python (CPython extension),
+Language interfaces: C (primary), C++ (header-only wrapper, links against `libwignernj`), Python (CPython extension),
 Fortran 90 (iso_c_binding).
 
 ## Argument convention
@@ -110,7 +110,9 @@ Link with `-lwignernj -lmpfr -lm`.
 ## C++ API
 
 The header-only wrapper `wigner.hpp` provides a template interface that accepts
-either `2*j` integers or real-valued doubles (half-integers):
+either `2*j` integers or real-valued doubles (half-integers).  The wrapper has
+no separate translation unit, but every function forwards to a C symbol in
+`libwignernj`, so you still need to link the C library (`-lwignernj -lm`):
 
 ```cpp
 #include "wigner.hpp"
@@ -126,7 +128,7 @@ double c = wigner::cg(0.5, 0.5, 0.5, -0.5, 1.0, 0.0);
 // Available functions: symbol3j, symbol6j, symbol9j, cg, racahw, gaunt
 ```
 
-No linking required beyond what the C library already requires.
+Link with `-lwignernj -lm` (and `-lmpfr` if `BUILD_MPFR=ON`).
 
 ## Python API
 

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **libwignernj** — exact evaluation of Wigner 3j, 6j, 9j symbols, Clebsch-Gordan coefficients, Racah W coefficients, and Gaunt coefficients in ANSI C, following the prime-factorization algorithm of Johansson & Forssén (SIAM J. Sci. Comput. 38(1), A376–A384, 2016; doi:10.1137/15M1021908). The key property: all intermediate arithmetic is exact integer arithmetic; floating-point conversion happens only at the final step. Results are accurate to the last bit of the chosen output precision.
 
-Language interfaces: C (primary), C++ (header-only), Python (CPython extension), Fortran 90 (iso_c_binding).
+Language interfaces: C (primary), C++ (header-only wrapper that links against `libwignernj`), Python (CPython extension), Fortran 90 (iso_c_binding).
 
 All public API arguments use `2*j` integers (so `j=3/2` is passed as `tj=3`). This avoids floating-point half-integer representation throughout.
 
@@ -71,7 +71,7 @@ Clebsch-Gordan and Racah W are thin wrappers over the Wigner symbols. Gaunt has 
 | `src/gaunt.c` | `gaunt*`: own exact pipeline — combined pfrac for [Δ]²·factorials·normalization, two Racah sums multiplied as bigints, then `÷sqrt(π)` at float step |
 | `include/wigner.h` | Public C API — all functions, all precisions |
 | `include/wigner_mpfr.h` | MPFR API — requires `BUILD_MPFR=ON`; set precision on `rop` before calling |
-| `include/wigner.hpp` | C++11 header-only: `wigner::symbol3j<T>()`, real-valued overloads, `std::invalid_argument` for non-half-integer inputs |
+| `include/wigner.hpp` | C++11 header-only wrapper (links `wignernj`): `wigner::symbol3j<T>()`, real-valued overloads, `std::invalid_argument` for non-half-integer inputs |
 | `src/fortran/wigner_f90.F90` | Fortran module `wigner`: raw `bind(c)` interfaces + `w3j/w6j/w9j/wcg/wracah/wgaunt` real-valued wrappers |
 | `src/python/wignermodule.c` | CPython extension `_wigner`: parses int/float/Fraction, `precision=` kwarg |
 | `wigner/__init__.py` | Re-exports from `_wigner` |

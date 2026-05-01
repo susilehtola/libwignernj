@@ -3,6 +3,12 @@
 //
 // C++11 header-only wrapper around the libwignernj C API.
 //
+// "Header-only" means the C++ side has no separate .cpp -- every template and
+// overload below is inline.  It does NOT mean stand-alone: each specialisation
+// forwards to a C function (wigner3j, wigner6j_l, ...) defined in libwignernj,
+// so you still need to link -lwignernj -lm (and -lmpfr if MPFR support was
+// compiled in) for the resulting program to link.
+//
 // Usage:
 //   #include "wigner.hpp"
 //   double v = wigner::symbol3j<double>(2, 2, 0, 0, 0, 0);
