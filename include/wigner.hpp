@@ -17,6 +17,14 @@
 //
 // Throws std::invalid_argument if a real-valued argument is not a half-integer.
 // Returns 0 silently for symbols that vanish by selection rules.
+//
+// Phase conventions: identical to those of the underlying C library.  3j, 6j,
+// 9j, Clebsch-Gordan, and Racah W are pure SU(2) algebraic objects and carry
+// no spherical-harmonic phase convention; the Clebsch-Gordan coefficient uses
+// the Condon-Shortley sign of Edmonds and Varshalovich.  The Gaunt and real-
+// Gaunt routines assume the Condon-Shortley phase for Y_l^m, with the real
+// spherical harmonics defined by the Wikipedia/Condon-Shortley construction.
+// See include/wigner.h for the explicit formulas.
 
 #ifndef WIGNER_HPP
 #define WIGNER_HPP

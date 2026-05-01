@@ -9,6 +9,11 @@
  * Convention: rop is the first argument; set its precision before calling.
  * rnd is the MPFR rounding mode applied to each elementary operation.
  *
+ * Phase conventions: identical to the floating-point API; see the header
+ * comment of wigner.h.  In short, 3j/6j/9j/CG/Racah W are convention-free
+ * SU(2) algebraic objects (CG signs use Condon–Shortley); the Gaunt and
+ * real-Gaunt routines assume the Condon–Shortley phase for Y_l^m.
+ *
  * Example:
  *   mpfr_t v;
  *   mpfr_init2(v, 256);

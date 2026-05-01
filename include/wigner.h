@@ -11,6 +11,28 @@
  * Functions returning 0 / 0.0f / 0.0L for symbols that vanish by selection
  * rules are not errors; only programmer-visible violations (wrong parity,
  * |m| > j) are treated as returning zero without any diagnostics.
+ *
+ * Phase conventions
+ * -----------------
+ * The Wigner 3j, 6j, and 9j symbols, the Clebsch–Gordan coefficient, and
+ * the Racah W coefficient are pure algebraic SU(2) objects.  Their values
+ * are fixed entirely by the Racah/Wigner combinatorial formulas; no
+ * spherical-harmonic phase convention enters anywhere.  The Clebsch–Gordan
+ * coefficient is defined with the Condon–Shortley sign convention used by
+ * Edmonds (1957) and Varshalovich et al. (1988):
+ *   <j1 m1; j2 m2 | J M> = (-1)^(j1-j2+M) sqrt(2J+1) * 3j(j1,j2,J;m1,m2,-M),
+ * which makes every Clebsch–Gordan coefficient real.
+ *
+ * The phase convention for Y_l^m enters only the Gaunt routines below
+ * (gaunt and gaunt_real), since both are defined as integrals of three
+ * spherical harmonics.  We adopt the Condon–Shortley phase for Y_l^m,
+ *   Y_l^m(θ,φ) = (-1)^m sqrt[(2l+1)/(4π) · (l-m)!/(l+m)!] P_l^m(cos θ) e^{i m φ}
+ *                  (m ≥ 0),
+ *   Y_l^{-m}   = (-1)^m (Y_l^m)*,
+ * which is the convention of Edmonds, Varshalovich, and the bulk of the
+ * atomic-, molecular-, and nuclear-physics literature.  The real spherical
+ * harmonics used by gaunt_real follow the Wikipedia/Condon–Shortley
+ * construction; see the comment block above gaunt_real() below.
  */
 #ifndef WIGNER_H
 #define WIGNER_H
@@ -74,6 +96,8 @@ long double racah_w_l(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23);
 /*   = integral Y_{l1}^{m1} Y_{l2}^{m2} Y_{l3}^{m3} dΩ                     */
 /*   = sqrt[(2l1+1)(2l2+1)(2l3+1)/(4π)]                                     */
 /*     * (l1 l2 l3; 0 0 0) * (l1 l2 l3; m1 m2 m3)                          */
+/* The closed-form expression in terms of two 3j symbols assumes the         */
+/* Condon–Shortley phase for Y_l^m (see file header above).                  */
 /* l arguments must be non-negative integers; tl = 2*l (always even).       */
 
 float       gaunt_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);

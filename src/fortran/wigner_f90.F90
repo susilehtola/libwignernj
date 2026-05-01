@@ -9,6 +9,15 @@
 !   2. Real-valued convenience wrappers w3j, w6j, w9j, wcg, wracahw, wgaunt
 !      that accept double-precision real j/m arguments and convert internally.
 !
+! Phase conventions: identical to those of the underlying C library.  The
+! Wigner 3j/6j/9j symbols, Clebsch-Gordan coefficient, and Racah W are pure
+! SU(2) algebraic objects and carry no spherical-harmonic phase convention;
+! the Clebsch-Gordan sign uses the Condon-Shortley convention of Edmonds
+! and Varshalovich.  The Gaunt and real-Gaunt routines assume the
+! Condon-Shortley phase for Y_l^m, with the real spherical harmonics
+! defined by the Wikipedia/Condon-Shortley construction.  See the header
+! comment of include/wigner.h for the explicit formulas.
+!
 ! Compile with preprocessing enabled (gfortran uses .F90 extension automatically,
 ! or pass -cpp).  The preprocessor guard on c_long_double handles platforms
 ! where 'long double' has no Fortran equivalent.

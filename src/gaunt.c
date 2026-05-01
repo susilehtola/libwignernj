@@ -3,6 +3,16 @@
  *
  * Gaunt coefficients: integral of three complex spherical harmonics.
  *
+ * Phase convention:
+ *   Y_l^m is taken in the Condon–Shortley phase, i.e.
+ *     Y_l^m(θ,φ) = (-1)^m sqrt[(2l+1)/(4π) · (l-m)!/(l+m)!]
+ *                  · P_l^m(cos θ) · e^{i m φ}    (m ≥ 0),
+ *     Y_l^{-m}    = (-1)^m (Y_l^m)*,
+ *   the convention of Edmonds (1957) and Varshalovich et al. (1988).
+ *   The closed-form expression below in terms of two 3j symbols holds
+ *   only under this phase convention; users of a different phase must
+ *   adjust at the call site.
+ *
  * Definition:
  *   G(l1,m1,l2,m2,l3,m3)
  *       = integral Y_{l1}^{m1}(Ω) Y_{l2}^{m2}(Ω) Y_{l3}^{m3}(Ω) dΩ
