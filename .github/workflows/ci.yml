@@ -129,7 +129,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install
-        run: pip install -e .
+        run: pip install -e . pytest
 
       - name: Test
         run: python -m pytest tests/python/ -v
