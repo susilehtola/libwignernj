@@ -6,11 +6,6 @@
  */
 #include "run_tests.h"
 #include "../include/wigner.h"
-#include <math.h>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846264338327950288
-#endif
 
 /* Clebsch-Gordan */
 typedef struct{int tj1,tm1,tj2,tm2,tJ,tM;double val;}cg_t;

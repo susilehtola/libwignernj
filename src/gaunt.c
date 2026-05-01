@@ -265,6 +265,159 @@ cleanup:
     bigint_free(&summ);
 }
 
+/* ── Real-spherical-harmonic Gaunt coefficient ──────────────────────────────
+ *
+ *   G^R(l1,m1,l2,m2,l3,m3)  =  ∫ S_{l1,m1} S_{l2,m2} S_{l3,m3} dΩ
+ *
+ * with the Condon–Shortley / Wikipedia convention for the real harmonics:
+ *
+ *   S_{l,0}    = Y_l^0
+ *   S_{l,m>0}  = (1/√2)( Y_l^{-m} + (-1)^m Y_l^m )
+ *   S_{l,m<0}  = (i/√2)( Y_l^{ m}  - (-1)^|m| Y_l^{-m} )
+ *
+ * Substituting into the integral expresses the real Gaunt as a small (≤ 2)
+ * linear combination of complex Gaunts at the same (l1,l2,l3) but at
+ * (s_1 |m_1|, s_2 |m_2|, s_3 |m_3|) for sign assignments s_i ∈ {±1} that
+ * satisfy s_1|m_1| + s_2|m_2| + s_3|m_3| = 0.
+ *
+ * Two further reductions make this run at the cost of *one* complex-Gaunt
+ * evaluation:
+ *
+ *   (a) The (≤ 2) valid sign tuples form a sign-flipped pair (s, -s).  The
+ *       complex Gaunt is invariant under simultaneous sign flip of all
+ *       m-arguments when l1+l2+l3 is even -- which is required for any
+ *       non-zero Gaunt at all -- so both tuples evaluate to the same
+ *       G^C.  We therefore compute G^C only once and multiply by the
+ *       sum of the two tuple coefficients.
+ *
+ *   (b) The total coefficient is rational (or rational times √2) with
+ *       small numerator and denominator (∈ {0, ±1, ±2} divided by
+ *       √2^k where k ∈ {0,2,3} is the number of non-zero |m_i|), and
+ *       can be absorbed exactly into the wigner_exact_t pipeline by
+ *       multiplying int_num/int_den/sqrt_den by small integers -- so
+ *       last-bit accuracy is preserved.
+ *
+ * If the ≤ 2 tuple coefficients sum to zero, or if the parity of the
+ * |m_i| does not admit a valid sign tuple, the real Gaunt is zero.
+ */
+
+/* The integer "tau" part of T(σ, s, a):  T = τ * φ / √2^[a > 0],
+ * with φ = 1 (real) or φ = i.  Returns τ ∈ {±1}; sets *has_i to 1 iff φ = i.
+ * Argument a is the integer m (not 2m); a >= 0 always. */
+static int real_gaunt_T_tau(int sigma, int s, int a, int *has_i)
+{
+    if (a == 0) {
+        *has_i = 0;
+        return 1;
+    }
+    int parity = a & 1;   /* (-1)^a = +1 if a even, -1 if a odd */
+    if (sigma > 0) {                /* m_i > 0 */
+        *has_i = 0;
+        if (s > 0) return parity ? -1 : +1;   /*  T = (-1)^a/√2  */
+        else        return +1;                  /*  T =      1/√2  */
+    } else {                        /* m_i < 0 */
+        *has_i = 1;
+        if (s > 0) return parity ? +1 : -1;   /*  T = -i(-1)^a/√2  */
+        else        return +1;                  /*  T = +i      /√2  */
+    }
+}
+
+static void gaunt_real_exact(int tl1, int tm1, int tl2, int tm2,
+                              int tl3, int tm3, wigner_exact_t *out)
+{
+    wigner_exact_init(out);
+
+    /* ℓ and m must be integer-valued, i.e., tl, tm even. */
+    if ((tl1 | tl2 | tl3 | tm1 | tm2 | tm3) & 1) {
+        out->is_zero = 1;
+        return;
+    }
+    if (tl1 < 0 || tl2 < 0 || tl3 < 0) {
+        out->is_zero = 1;
+        return;
+    }
+
+    int ta[3] = { tm1 < 0 ? -tm1 : tm1,
+                  tm2 < 0 ? -tm2 : tm2,
+                  tm3 < 0 ? -tm3 : tm3 };
+    int sigma[3] = { (tm1 > 0) - (tm1 < 0),
+                     (tm2 > 0) - (tm2 < 0),
+                     (tm3 > 0) - (tm3 < 0) };
+    int a[3] = { ta[0] / 2, ta[1] / 2, ta[2] / 2 };
+    int tl[3] = { tl1, tl2, tl3 };
+
+    /* The phase i^{n_-} (n_- = number of m_i < 0) is the same for every
+     * sign tuple.  If n_- is odd the contribution is purely imaginary,
+     * hence the real Gaunt vanishes by the reality of the integral. */
+    int n_minus = (sigma[0] < 0) + (sigma[1] < 0) + (sigma[2] < 0);
+    if (n_minus & 1) {
+        out->is_zero = 1;
+        return;
+    }
+    int phase_sign = (n_minus == 2) ? -1 : +1;
+
+    /* Sweep the (≤ 8) sign-tuple candidates.  For each that satisfies
+     * Σ s_i a_i = 0, accumulate phase_sign * τ_1 τ_2 τ_3 into total_tau,
+     * and remember the first such tuple as the representative for the
+     * complex-Gaunt evaluation below. */
+    int total_tau     = 0;
+    int has_repr      = 0;
+    int s_repr[3]     = {1, 1, 1};
+    for (int s1_idx = 0; s1_idx < 2; s1_idx++) {
+        if (s1_idx == 1 && a[0] == 0) break;
+        int s1 = (s1_idx == 0) ? +1 : -1;
+        for (int s2_idx = 0; s2_idx < 2; s2_idx++) {
+            if (s2_idx == 1 && a[1] == 0) break;
+            int s2 = (s2_idx == 0) ? +1 : -1;
+            for (int s3_idx = 0; s3_idx < 2; s3_idx++) {
+                if (s3_idx == 1 && a[2] == 0) break;
+                int s3 = (s3_idx == 0) ? +1 : -1;
+                if (s1 * a[0] + s2 * a[1] + s3 * a[2] != 0) continue;
+
+                int s_tup[3] = { s1, s2, s3 };
+                int tau_prod = 1;
+                int has_i_dummy;
+                for (int i = 0; i < 3; i++)
+                    tau_prod *= real_gaunt_T_tau(sigma[i], s_tup[i],
+                                                 a[i], &has_i_dummy);
+                total_tau += phase_sign * tau_prod;
+                if (!has_repr) {
+                    s_repr[0] = s1;
+                    s_repr[1] = s2;
+                    s_repr[2] = s3;
+                    has_repr  = 1;
+                }
+            }
+        }
+    }
+    if (!has_repr || total_tau == 0) {
+        out->is_zero = 1;
+        return;
+    }
+
+    /* Evaluate the complex Gaunt at the representative tuple. */
+    int p_repr[3] = { s_repr[0] * ta[0],
+                      s_repr[1] * ta[1],
+                      s_repr[2] * ta[2] };
+    gaunt_exact(tl[0], p_repr[0], tl[1], p_repr[1], tl[2], p_repr[2], out);
+    if (out->is_zero) return;
+
+    /* Multiply by  total_tau / √2^k  with k = #{i : a_i > 0}.
+     * Even k:  pure rational, fold into int_num/int_den.
+     * Odd k :  fold the integer part into int_den, the residual 1/√2 into
+     *          sqrt_den (representing an extra factor of √(1/2)). */
+    int abs_tau = total_tau < 0 ? -total_tau : total_tau;
+    if (total_tau < 0) out->sign = -out->sign;
+    if (abs_tau != 1)
+        bigint_mul_u64(&out->int_num, &out->int_num, (uint64_t)abs_tau);
+    int k = (a[0] > 0) + (a[1] > 0) + (a[2] > 0);
+    int half_k = k / 2;
+    for (int i = 0; i < half_k; i++)
+        bigint_mul_u64(&out->int_den, &out->int_den, 2);
+    if (k & 1)
+        bigint_mul_u64(&out->sqrt_den, &out->sqrt_den, 2);
+}
+
 /* ── public API ──────────────────────────────────────────────────────────── */
 
 float gaunt_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
@@ -306,6 +459,59 @@ void gaunt_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
     mpfr_t pi;
 
     gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
+    wigner_exact_to_mpfr(rop, &e, rnd);
+    wigner_exact_free(&e);
+
+    if (!mpfr_zero_p(rop)) {
+        mpfr_init2(pi, mpfr_get_prec(rop));
+        mpfr_const_pi(pi, rnd);
+        mpfr_sqrt(pi, pi, rnd);
+        mpfr_div(rop, rop, pi, rnd);
+        mpfr_clear(pi);
+    }
+}
+#endif
+
+/* ── Real-spherical-harmonic Gaunt: public API ──────────────────────────── */
+
+float gaunt_real_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
+{
+    wigner_exact_t e;
+    float result;
+    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
+    result = wigner_exact_to_float(&e) / sqrtf((float)M_PI);
+    wigner_exact_free(&e);
+    return result;
+}
+
+double gaunt_real(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
+{
+    wigner_exact_t e;
+    double result;
+    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
+    result = wigner_exact_to_double(&e) / sqrt(M_PI);
+    wigner_exact_free(&e);
+    return result;
+}
+
+long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
+{
+    wigner_exact_t e;
+    long double result;
+    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
+    result = wigner_exact_to_long_double(&e) / sqrtl(acosl(-1.0L));
+    wigner_exact_free(&e);
+    return result;
+}
+
+#ifdef WIGNER_HAVE_MPFR
+void gaunt_real_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
+                                  int tl3, int tm3, mpfr_rnd_t rnd)
+{
+    wigner_exact_t e;
+    mpfr_t pi;
+
+    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
     wigner_exact_to_mpfr(rop, &e, rnd);
     wigner_exact_free(&e);
 

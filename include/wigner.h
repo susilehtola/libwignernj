@@ -80,6 +80,23 @@ float       gaunt_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 double      gaunt  (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 long double gaunt_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 
+/* ── Real-spherical-harmonic Gaunt coefficient ──────────────────────────── */
+/* G^R(l1,m1,l2,m2,l3,m3) = integral S_{l1,m1} S_{l2,m2} S_{l3,m3} dΩ        */
+/*                                                                           */
+/* with the Condon–Shortley / Wikipedia convention for the real spherical    */
+/* harmonics S_{l,m}:                                                        */
+/*   S_{l, 0}    = Y_l^0                                                     */
+/*   S_{l,  m>0} = (1/√2)(Y_l^{-m} + (-1)^m Y_l^m)                           */
+/*   S_{l,  m<0} = (i/√2)(Y_l^{ m} - (-1)^|m| Y_l^{-m})                      */
+/*                                                                           */
+/* ℓ and |m| arguments must be non-negative integers; tl = 2*l, tm = 2*m,    */
+/* both always even.  The implementation runs at the cost of a single        */
+/* complex-Gaunt evaluation per call: see src/gaunt.c for the algorithm.     */
+
+float       gaunt_real_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
+double      gaunt_real  (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
+long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
+
 #ifdef __cplusplus
 }
 #endif

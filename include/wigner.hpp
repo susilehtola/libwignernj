@@ -36,6 +36,7 @@ template<typename T> T symbol9j(int,int,int,int,int,int,int,int,int);
 template<typename T> T cg      (int,int,int,int,int,int);
 template<typename T> T racahw  (int,int,int,int,int,int);
 template<typename T> T gaunt   (int,int,int,int,int,int);
+template<typename T> T gauntreal(int,int,int,int,int,int);
 
 template<> inline float
 symbol3j<float>(int a,int b,int c,int d,int e,int f)
@@ -96,6 +97,16 @@ gaunt<double>(int a,int b,int c,int d,int e,int f)
 template<> inline long double
 gaunt<long double>(int a,int b,int c,int d,int e,int f)
 { return gaunt_l(a,b,c,d,e,f); }
+
+template<> inline float
+gauntreal<float>(int a,int b,int c,int d,int e,int f)
+{ return gaunt_real_f(a,b,c,d,e,f); }
+template<> inline double
+gauntreal<double>(int a,int b,int c,int d,int e,int f)
+{ return ::gaunt_real(a,b,c,d,e,f); }
+template<> inline long double
+gauntreal<long double>(int a,int b,int c,int d,int e,int f)
+{ return gaunt_real_l(a,b,c,d,e,f); }
 
 // ── convenience helpers ───────────────────────────────────────────────────
 
@@ -169,6 +180,15 @@ inline T gaunt(double l1, double m1, double l2, double m2,
     return gaunt<T>(detail::to_two_j(l1,"l1"), detail::to_two_j(m1,"m1"),
                     detail::to_two_j(l2,"l2"), detail::to_two_j(m2,"m2"),
                     detail::to_two_j(l3,"l3"), detail::to_two_j(m3,"m3"));
+}
+
+template<typename T = double>
+inline T gauntreal(double l1, double m1, double l2, double m2,
+                   double l3, double m3)
+{
+    return gauntreal<T>(detail::to_two_j(l1,"l1"), detail::to_two_j(m1,"m1"),
+                        detail::to_two_j(l2,"l2"), detail::to_two_j(m2,"m2"),
+                        detail::to_two_j(l3,"l3"), detail::to_two_j(m3,"m3"));
 }
 
 } // namespace wigner

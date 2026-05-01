@@ -60,4 +60,11 @@ void gaunt_mpfr(mpfr_t rop,
                 int tl3, int tm3,
                 mpfr_rnd_t rnd);
 
+/* Real-spherical-harmonic Gaunt  ∫ S_{l1,m1} S_{l2,m2} S_{l3,m3} dΩ */
+void gaunt_real_mpfr(mpfr_t rop,
+                     int tl1, int tm1,
+                     int tl2, int tm2,
+                     int tl3, int tm3,
+                     mpfr_rnd_t rnd);
+
 #endif /* WIGNER_MPFR_H */

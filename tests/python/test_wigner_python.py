@@ -10,7 +10,7 @@ import pytest
 
 try:
     from wigner import (wigner3j, wigner6j, wigner9j,
-                        clebsch_gordan, racah_w, gaunt)
+                        clebsch_gordan, racah_w, gaunt, gaunt_real)
 except ImportError:
     pytest.skip("wigner extension not installed", allow_module_level=True)
 
@@ -201,3 +201,67 @@ class TestGaunt:
     def test_odd_parity_zero(self):
         # l1+l2+l3=3 odd: G=0
         assert near_abs(gaunt(1, 0, 1, 0, 1, 0), 0.0)
+
+
+# ── Real-spherical-harmonic Gaunt ─────────────────────────────────────────────
+
+class TestGauntReal:
+    def test_S00_cubed(self):
+        # ∫ (1/(2 sqrt π))^3 dΩ = 1 / (2 sqrt π)
+        assert near(gaunt_real(0, 0, 0, 0, 0, 0), 1.0 / (2 * math.sqrt(math.pi)))
+
+    def test_l_parity_zero(self):
+        # l1+l2+l3 odd → 0
+        assert near_abs(gaunt_real(1, 0, 1, 0, 1, 0), 0.0)
+
+    def test_S10sq_S20(self):
+        # ∫ S(1,0)^2 S(2,0) dΩ = 1 / sqrt(5 π)
+        assert near(gaunt_real(1, 0, 1, 0, 2, 0), 1.0 / math.sqrt(5 * math.pi))
+
+    def test_S1p1sq_S00(self):
+        # ∫ S(1,+1)^2 S(0,0) dΩ = 1 / (2 sqrt π)
+        assert near(gaunt_real(1, 1, 1, 1, 0, 0), 1.0 / (2 * math.sqrt(math.pi)))
+
+    def test_S1m1sq_S00(self):
+        # symmetry m → -m at n_- = 2
+        assert near(gaunt_real(1, -1, 1, -1, 0, 0),
+                    1.0 / (2 * math.sqrt(math.pi)))
+
+    def test_cos_sin_vanishes(self):
+        # ∫ cos(φ) sin(φ) dφ = 0  ⇒  cos·sin·1 vanishes
+        assert near_abs(gaunt_real(1, 1, 1, -1, 0, 0), 0.0)
+
+    def test_n_minus_odd(self):
+        # one m_i < 0, two > 0: imaginary contribution, real Gaunt = 0
+        assert near_abs(gaunt_real(1, -1, 1, 1, 1, 1), 0.0)
+
+    def test_permutation_symmetry(self):
+        a = gaunt_real(1, 0, 2, 1, 2, -1)
+        b = gaunt_real(2, 1, 1, 0, 2, -1)
+        c = gaunt_real(2, -1, 2, 1, 1, 0)
+        assert near(a, b)
+        assert near(a, c)
+
+    def test_m0_matches_complex_gaunt(self):
+        # When all m_i = 0, S_{l,0} = Y_l^0 so the real and complex Gaunts agree.
+        for l1, l2, l3 in [(1, 1, 0), (2, 2, 0), (2, 2, 4),
+                           (3, 3, 0), (3, 3, 4), (4, 4, 8)]:
+            assert near(gaunt_real(l1, 0, l2, 0, l3, 0),
+                        gaunt(l1, 0, l2, 0, l3, 0))
+
+    def test_higher_l(self):
+        # Spot-check at moderate l (5, 5, 6) using sympy convention.
+        # Computed in sympy via the unitary transform: ~3.7e-2
+        v = gaunt_real(5, 3, 5, -3, 6, 0)
+        # Cross-check against permuted argument list (must match exactly):
+        assert near(v, gaunt_real(5, -3, 5, 3, 6, 0))
+        assert near(v, gaunt_real(6, 0, 5, 3, 5, -3))
+
+    def test_precision_keyword(self):
+        ref = 1.0 / math.sqrt(5 * math.pi)
+        assert near(gaunt_real(1, 0, 1, 0, 2, 0,
+                               precision='float'),  ref, rtol=1e-6)
+        assert near(gaunt_real(1, 0, 1, 0, 2, 0,
+                               precision='double'), ref)
+        assert near(gaunt_real(1, 0, 1, 0, 2, 0,
+                               precision='longdouble'), ref)

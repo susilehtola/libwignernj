@@ -158,6 +158,27 @@ module wigner
     end function
 #endif
 
+    ! --- Real-spherical-harmonic Gaunt ---
+    function gaunt_real_f(tl1,tm1,tl2,tm2,tl3,tm3) bind(c,name='gaunt_real_f')
+      import c_int, c_float
+      integer(c_int), value :: tl1, tm1, tl2, tm2, tl3, tm3
+      real(c_float)         :: gaunt_real_f
+    end function
+
+    function gaunt_real(tl1,tm1,tl2,tm2,tl3,tm3) bind(c,name='gaunt_real')
+      import c_int, c_double
+      integer(c_int), value :: tl1, tm1, tl2, tm2, tl3, tm3
+      real(c_double)        :: gaunt_real
+    end function
+
+#if c_long_double > 0
+    function gaunt_real_l(tl1,tm1,tl2,tm2,tl3,tm3) bind(c,name='gaunt_real_l')
+      import c_int, c_long_double
+      integer(c_int), value :: tl1, tm1, tl2, tm2, tl3, tm3
+      real(c_long_double)   :: gaunt_real_l
+    end function
+#endif
+
   end interface
 
 contains
@@ -250,5 +271,16 @@ contains
     end if
     val = gaunt(to_tj(l1), to_tj(m1), to_tj(l2), to_tj(m2), to_tj(l3), to_tj(m3))
   end function wgaunt
+
+  function wgaunt_real(l1,m1,l2,m2,l3,m3) result(val)
+    real(c_double), intent(in) :: l1, m1, l2, m2, l3, m3
+    real(c_double) :: val
+    if (.not. (is_half_int(l1) .and. is_half_int(m1) .and. is_half_int(l2) .and. &
+               is_half_int(m2) .and. is_half_int(l3) .and. is_half_int(m3))) then
+      write(error_unit,'(A)') 'wigner(Fortran): wgaunt_real: argument is not a half-integer'
+      val = 0.0_c_double; return
+    end if
+    val = gaunt_real(to_tj(l1), to_tj(m1), to_tj(l2), to_tj(m2), to_tj(l3), to_tj(m3))
+  end function wgaunt_real
 
 end module wigner

@@ -28,7 +28,8 @@ from ._wigner import (
     clebsch_gordan,
     racah_w,
     gaunt,
+    gaunt_real,
 )
 
 __all__ = ["wigner3j", "wigner6j", "wigner9j",
-           "clebsch_gordan", "racah_w", "gaunt"]
+           "clebsch_gordan", "racah_w", "gaunt", "gaunt_real"]

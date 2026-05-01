@@ -90,6 +90,25 @@ def sel_gaunt(tl1, tm1, tl2, tm2, tl3, tm3):
         return False
     return True
 
+def sel_gaunt_real(tl1, tm1, tl2, tm2, tl3, tm3):
+    """Selection rules for the real-spherical-harmonic Gaunt coefficient.
+    The l constraints are the same as for the complex Gaunt; m constraints
+    are |m_i| <= l_i and integer m, but no fixed sum rule (the implicit
+    rule comes from the absolute-value sign tuple algebra).  Both signs of
+    m_i are allowed here (cosine vs sine real harmonics)."""
+    if tl1 & 1 or tl2 & 1 or tl3 & 1:    # l must be integer
+        return False
+    if tm1 & 1 or tm2 & 1 or tm3 & 1:    # m must be integer
+        return False
+    if abs(tm1) > tl1 or abs(tm2) > tl2 or abs(tm3) > tl3:
+        return False
+    if not triangle_ok(tl1, tl2, tl3):
+        return False
+    # parity: l1+l2+l3 must be even for 3j(l;0,0,0) to be non-zero
+    if ((tl1 + tl2 + tl3) // 2) & 1:
+        return False
+    return True
+
 # ── sympy wrappers ──────────────────────────────────────────────────────────
 
 def R(tx):
@@ -118,6 +137,48 @@ def sym_gaunt(tl1, tm1, tl2, tm2, tl3, tm3):
     # sympy gaunt(l1,l2,l3,m1,m2,m3) with integer l values
     return _sympy_gaunt(tl1 // 2, tl2 // 2, tl3 // 2,
                         tm1 // 2, tm2 // 2, tm3 // 2)
+
+def sym_gaunt_real(tl1, tm1, tl2, tm2, tl3, tm3):
+    """Real-spherical-harmonic Gaunt coefficient via the unitary
+    transform between real and complex harmonics:
+
+        S_{l, 0}   = Y_l^0
+        S_{l,m>0}  = (1/sqrt(2)) (Y_l^{-m} + (-1)^m Y_l^m)
+        S_{l,m<0}  = (i/sqrt(2)) (Y_l^{ m} - (-1)^|m| Y_l^{-m})
+
+    expanded into a sum (≤ 2 terms) of complex Gaunts.  Returns a
+    sympy expression (which simplifies to a real number)."""
+    from sympy import sqrt as ssqrt, I, S as _S
+    ls = [tl1 // 2, tl2 // 2, tl3 // 2]
+    ms = [tm1 // 2, tm2 // 2, tm3 // 2]
+    a = [abs(m) for m in ms]
+    sigma = [(1 if m > 0 else (-1 if m < 0 else 0)) for m in ms]
+
+    def Tsym(sigma_i, s_i, a_i):
+        if a_i == 0:
+            return _S(1)
+        sign_a = -_S(1) if (a_i & 1) else _S(1)
+        if sigma_i > 0:
+            return (sign_a if s_i > 0 else _S(1)) / ssqrt(2)
+        else:
+            return (-I * sign_a if s_i > 0 else I) / ssqrt(2)
+
+    total = _S(0)
+    for s1 in ([1, -1] if a[0] else [1]):
+        for s2 in ([1, -1] if a[1] else [1]):
+            for s3 in ([1, -1] if a[2] else [1]):
+                if s1*a[0] + s2*a[1] + s3*a[2] != 0:
+                    continue
+                c = Tsym(sigma[0], s1, a[0]) * \
+                    Tsym(sigma[1], s2, a[1]) * \
+                    Tsym(sigma[2], s3, a[2])
+                gc = _sympy_gaunt(ls[0], ls[1], ls[2],
+                                   s1*a[0], s2*a[1], s3*a[2])
+                total += c * gc
+    # Result is mathematically real; take the real part to drop any
+    # leftover imaginary symbolic noise.
+    from sympy import re
+    return re(total)
 
 # ── random valid-tuple generators ──────────────────────────────────────────
 
@@ -466,6 +527,72 @@ def gen_gaunt(target_small, target_large, tl_small=10, tl_large=40):
     return small + large
 
 
+def gen_gaunt_real(target_small, target_large, tl_small=10, tl_large=40):
+    """Reference values for the real-spherical-harmonic Gaunt coefficient.
+
+    For l ≤ 5 we enumerate every (l1,m1,l2,m2,l3,m3) that satisfies the
+    selection rules and pick a random subset of non-zero values.  For
+    l up to tl_large we sample randomly.  The reference value is computed
+    from sympy via sym_gaunt_real (decomposition into complex Gaunts).
+    """
+    print("  Gaunt-real: enumerating l ≤ 5 fully...", flush=True)
+    small_all = []
+    for tl1 in range(0, tl_small + 1, 2):
+        for tl2 in range(0, tl_small + 1, 2):
+            lo = abs(tl1 - tl2)
+            for tl3 in range(lo, min(tl1 + tl2, tl_small) + 1, 2):
+                if not triangle_ok(tl1, tl2, tl3):
+                    continue
+                if ((tl1 + tl2 + tl3) // 2) & 1:    # l1+l2+l3 odd → zero
+                    continue
+                for tm1 in range(-tl1, tl1 + 1, 2):
+                    for tm2 in range(-tl2, tl2 + 1, 2):
+                        for tm3 in range(-tl3, tl3 + 1, 2):
+                            if not sel_gaunt_real(tl1, tm1, tl2, tm2, tl3, tm3):
+                                continue
+                            v = sym_gaunt_real(tl1, tm1, tl2, tm2, tl3, tm3)
+                            if v == 0:
+                                continue
+                            small_all.append(
+                                (tl1, tm1, tl2, tm2, tl3, tm3, float(N(v, 34))))
+    print(f"    found {len(small_all)} non-zero small-l cases", flush=True)
+    random.shuffle(small_all)
+    small = small_all[:target_small]
+
+    print("    collecting large-l cases...", flush=True)
+    seen = set(c[:6] for c in small_all)
+    large = []
+    attempts = 0
+    while len(large) < target_large and attempts < target_large * 300:
+        attempts += 1
+        tl1 = random.randrange(0, tl_large // 2 + 1) * 2
+        tl2 = random.randrange(0, tl_large // 2 + 1) * 2
+        lo = abs(tl1 - tl2); hi = min(tl1 + tl2, tl_large)
+        choices = [t for t in range(lo, hi + 1, 2)
+                   if not (((tl1 + tl2 + t) // 2) & 1)]
+        if not choices:
+            continue
+        tl3 = random.choice(choices)
+        if max(tl1, tl2, tl3) <= tl_small:
+            continue
+        if not triangle_ok(tl1, tl2, tl3):
+            continue
+        tm1 = random.choice(list(range(-tl1, tl1 + 1, 2)))
+        tm2 = random.choice(list(range(-tl2, tl2 + 1, 2)))
+        tm3 = random.choice(list(range(-tl3, tl3 + 1, 2)))
+        args = (tl1, tm1, tl2, tm2, tl3, tm3)
+        if not sel_gaunt_real(*args) or args in seen:
+            continue
+        seen.add(args)
+        v = sym_gaunt_real(*args)
+        if v == 0:
+            continue
+        large.append(args + (float(N(v, 34)),))
+    print(f"    → {len(small)} small + {len(large)} large = "
+          f"{len(small)+len(large)} total", flush=True)
+    return small + large
+
+
 # ── C file emitters ─────────────────────────────────────────────────────────
 
 SPDX = """\
@@ -594,6 +721,73 @@ def emit_derived(cg_cases, racah_cases, gaunt_cases):
           f"{len(gaunt_cases)} Gaunt = {total})")
 
 
+def emit_gaunt_real(cases):
+    path = os.path.join(OUTDIR, "test_gaunt_real.c")
+    with open(path, "w") as f:
+        f.write(SPDX.format(ver=sympy.__version__))
+        f.write('#include "run_tests.h"\n')
+        f.write('#include "../include/wigner.h"\n')
+        f.write('#include <math.h>\n\n')
+
+        f.write("/* Hand-derived sanity checks (independent of sympy). */\n"
+                "#ifndef M_PI\n#define M_PI 3.14159265358979323846\n#endif\n\n")
+
+        f.write("/* sympy-derived reference values for ∫ S_{l1,m1} S_{l2,m2} S_{l3,m3} dΩ */\n")
+        f.write("typedef struct{int tl1,tm1,tl2,tm2,tl3,tm3;double val;}gaunt_real_t;\n")
+        f.write("static const gaunt_real_t g_gaunt_real[]={\n")
+        for c in cases:
+            f.write("    {%d,%d,%d,%d,%d,%d, %s},\n" % c)
+        f.write("};\n\n")
+
+        f.write("int main(void)\n{\n    int i;\n    double sqrt_pi = sqrt(M_PI);\n\n")
+
+        f.write("    /* (a) Hand-derived reference cases. */\n")
+        f.write("    TEST_NEAR(gaunt_real(0,0,0,0,0,0), 1.0/(2*sqrt_pi), 1e-15);\n")
+        f.write("    TEST_NEAR(gaunt_real(2,0,2,0,4,0), 1.0/sqrt(5*M_PI), 1e-14);\n")
+        f.write("    TEST_NEAR(gaunt_real(2,2,2,2,0,0), 1.0/(2*sqrt_pi), 1e-14);\n")
+        f.write("    TEST_NEAR(gaunt_real(2,-2,2,-2,0,0), 1.0/(2*sqrt_pi), 1e-14);\n")
+        f.write("    TEST_NEAR(gaunt_real(4,4,4,4,0,0), 1.0/(2*sqrt_pi), 1e-14);\n")
+        f.write("    /* parity / triangle violations and pairwise cancellations: */\n")
+        f.write("    TEST_ABS(gaunt_real(2,0,2,0,2,0), 0.0, 1e-15);   /* l1+l2+l3 odd */\n")
+        f.write("    TEST_ABS(gaunt_real(2,2,2,-2,0,0), 0.0, 1e-15);  /* cos*sin*1 vanishes */\n")
+        f.write("    TEST_ABS(gaunt_real(2,2,2,2,0,0)-gaunt_real(2,2,2,2,0,0), 0.0, 1e-15);\n")
+        f.write("    TEST_ABS(gaunt_real(2,-2,2,2,2,2), 0.0, 1e-15);  /* odd # of m_i<0 */\n\n")
+
+        f.write("    /* (b) Permutation symmetry: G^R is symmetric in the 3 (l_i, m_i). */\n")
+        f.write("    {\n")
+        f.write("        double a = gaunt_real(2,0,4,2,4,-2);\n")
+        f.write("        double b = gaunt_real(4,2,2,0,4,-2);\n")
+        f.write("        double c = gaunt_real(4,-2,4,2,2,0);\n")
+        f.write("        TEST_NEAR(a,b,1e-14);\n")
+        f.write("        TEST_NEAR(a,c,1e-14);\n")
+        f.write("    }\n\n")
+
+        f.write("    /* (c) m=0: real Gaunt agrees with the complex Gaunt. */\n")
+        f.write("    {\n")
+        f.write("        const int cases[][3] = {\n")
+        f.write("            {0,0,0},{2,2,0},{4,4,0},{2,2,4},{4,2,4},\n")
+        f.write("            {6,4,4},{6,6,0},{6,6,4},{6,6,8},{8,8,8},\n")
+        f.write("            {10,8,4},{12,12,0},{12,10,6},{20,16,4}\n")
+        f.write("        };\n")
+        f.write("        const int n = (int)(sizeof(cases)/sizeof(cases[0]));\n")
+        f.write("        for (int j = 0; j < n; j++) {\n")
+        f.write("            int l1 = cases[j][0], l2 = cases[j][1], l3 = cases[j][2];\n")
+        f.write("            double r = gaunt_real(l1,0,l2,0,l3,0);\n")
+        f.write("            double c = gaunt(l1,0,l2,0,l3,0);\n")
+        f.write("            TEST_NEAR(r,c,1e-14);\n")
+        f.write("        }\n")
+        f.write("    }\n\n")
+
+        f.write("    /* (d) sympy reference table */\n")
+        f.write("    for (i = 0; i < (int)(sizeof(g_gaunt_real)/sizeof(g_gaunt_real[0])); i++) {\n")
+        f.write("        const gaunt_real_t *c = &g_gaunt_real[i];\n")
+        f.write("        double got = gaunt_real(c->tl1,c->tm1,c->tl2,c->tm2,c->tl3,c->tm3);\n")
+        f.write("        TEST_NEAR(got, c->val, 1e-12);\n")
+        f.write("    }\n\n")
+        f.write("    SUMMARY();\n}\n")
+    print(f"  Wrote {path} ({len(cases)} sympy cases + hand-derived/symmetry checks)")
+
+
 # ── main ─────────────────────────────────────────────────────────────────────
 
 def main():
@@ -622,10 +816,15 @@ def main():
 
     emit_derived(ccg, crac, cgnt)
 
+    print("Generating real-Gaunt references...")
+    cgr = gen_gaunt_real(target_small=200, target_large=60,
+                          tl_small=10, tl_large=40)
+    emit_gaunt_real(cgr)
+
     elapsed = time.time() - t0
     print(f"\nDone in {elapsed:.1f}s")
     print(f"  3j:{len(c3j)}  6j:{len(c6j)}  9j:{len(c9j)}")
-    print(f"  CG:{len(ccg)}  Racah:{len(crac)}  Gaunt:{len(cgnt)}")
+    print(f"  CG:{len(ccg)}  Racah:{len(crac)}  Gaunt:{len(cgnt)}  GauntReal:{len(cgr)}")
 
 
 if __name__ == "__main__":

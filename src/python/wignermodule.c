@@ -252,6 +252,36 @@ static PyObject *py_gaunt(PyObject *self, PyObject *args, PyObject *kwargs)
     return make_result(gaunt_l(tl1,tm1,tl2,tm2,tl3,tm3), prec);
 }
 
+/* ── gaunt_real ────────────────────────────────────────────────────────── */
+
+static const char gaunt_real_doc[] =
+    "gaunt_real(l1, m1, l2, m2, l3, m3, precision='double') -> float\n\n"
+    "Real-spherical-harmonic Gaunt coefficient:\n"
+    "    integral S_{l1,m1} S_{l2,m2} S_{l3,m3} dΩ\n"
+    "with the standard Condon-Shortley / Wikipedia convention for the real\n"
+    "spherical harmonics S_{l,m}.  l must be non-negative integers and\n"
+    "|m_i| <= l_i; signed m selects cosine-type (m>0), sine-type (m<0), or\n"
+    "the m=0 harmonic.";
+
+static PyObject *py_gaunt_real(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    static char *kwlist[] = {"l1","m1","l2","m2","l3","m3","precision",NULL};
+    PyObject *l1o,*m1o,*l2o,*m2o,*l3o,*m3o,*prec_obj=NULL;
+    int tl1,tm1,tl2,tm2,tl3,tm3;
+    Precision prec;
+    (void)self;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOOOO|O", kwlist,
+                                     &l1o,&m1o,&l2o,&m2o,&l3o,&m3o,&prec_obj))
+        return NULL;
+    if (parse_half_int(l1o,&tl1,"l1") || parse_half_int(m1o,&tm1,"m1") ||
+        parse_half_int(l2o,&tl2,"l2") || parse_half_int(m2o,&tm2,"m2") ||
+        parse_half_int(l3o,&tl3,"l3") || parse_half_int(m3o,&tm3,"m3"))
+        return NULL;
+    prec = parse_precision(prec_obj);
+    if ((int)prec < 0) return NULL;
+    return make_result(gaunt_real_l(tl1,tm1,tl2,tm2,tl3,tm3), prec);
+}
+
 /* ── module definition ─────────────────────────────────────────────────── */
 
 static PyMethodDef wigner_methods[] = {
@@ -261,6 +291,7 @@ static PyMethodDef wigner_methods[] = {
     {"clebsch_gordan", (PyCFunction)py_clebsch_gordan, METH_VARARGS|METH_KEYWORDS, clebsch_gordan_doc},
     {"racah_w",        (PyCFunction)py_racah_w,        METH_VARARGS|METH_KEYWORDS, racah_w_doc},
     {"gaunt",          (PyCFunction)py_gaunt,          METH_VARARGS|METH_KEYWORDS, gaunt_doc},
+    {"gaunt_real",     (PyCFunction)py_gaunt_real,     METH_VARARGS|METH_KEYWORDS, gaunt_real_doc},
     {NULL, NULL, 0, NULL}
 };
 

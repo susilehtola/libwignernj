@@ -11,6 +11,7 @@ foreach(test_name
     test_6j
     test_9j
     test_derived
+    test_gaunt_real
     test_precisions
     test_symmetry
 )
