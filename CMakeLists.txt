@@ -9,8 +9,6 @@ option(BUILD_PYTHON       "Build Python extension"       OFF)
 option(BUILD_TESTS        "Build test suite"             ON)
 option(BUILD_CXX_TESTS    "Build C++ header tests"      ON)
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Core C library
@@ -28,6 +26,10 @@ set(LIB_SOURCES
 )
 
 add_library(wignernj ${LIB_SOURCES})
+set_target_properties(wignernj PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+)
 target_include_directories(wignernj
     PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:include>
@@ -69,6 +71,8 @@ if(BUILD_PYTHON)
         )
         target_include_directories(_wigner PRIVATE src include)
         set_target_properties(_wigner PROPERTIES
+            C_STANDARD 99
+            C_STANDARD_REQUIRED ON
             OUTPUT_NAME "_wigner"
             LIBRARY_OUTPUT_DIRECTORY
                 ${CMAKE_CURRENT_BINARY_DIR}/wigner
