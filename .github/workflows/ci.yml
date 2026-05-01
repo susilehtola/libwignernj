@@ -1,0 +1,135 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 Susi Lehtola
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # ── Build and test matrix ─────────────────────────────────────────────────
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Ubuntu / GCC"
+            os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+            fortran: ON
+            mpfr: ON
+
+          - name: "Ubuntu / Clang"
+            os: ubuntu-latest
+            cc: clang
+            cxx: clang++
+            fortran: ON
+            mpfr: ON
+
+          - name: "macOS / Clang"
+            os: macos-latest
+            cc: clang
+            cxx: clang++
+            fortran: ON
+            mpfr: ON
+
+          # Confirm the library builds without optional features.
+          - name: "Ubuntu / GCC / minimal"
+            os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+            fortran: OFF
+            mpfr: OFF
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y gfortran libmpfr-dev
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install gcc mpfr
+          GFC=$(find "$(brew --prefix gcc)/bin" -name 'gfortran-*' \
+                | sort -t- -k2 -V | tail -1)
+          echo "FC=$GFC" >> "$GITHUB_ENV"
+
+      - name: Configure
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -B build \
+            -DBUILD_FORTRAN=${{ matrix.fortran }} \
+            -DBUILD_MPFR=${{ matrix.mpfr }} \
+            -DBUILD_CXX_TESTS=ON \
+            -DBUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --parallel
+
+  # ── Address and undefined-behaviour sanitizers ────────────────────────────
+  sanitize:
+    name: "Ubuntu / Clang / ASAN+UBSAN"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libmpfr-dev
+
+      - name: Configure
+        env:
+          CC: clang
+          CXX: clang++
+        run: |
+          cmake -B build \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_FORTRAN=OFF \
+            -DBUILD_MPFR=ON \
+            -DBUILD_CXX_TESTS=ON \
+            -DBUILD_TESTS=ON \
+            -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all" \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --parallel
+
+  # ── Python extension ──────────────────────────────────────────────────────
+  python:
+    name: "Python ${{ matrix.python-version }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.11", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install
+        run: pip install -e .
+
+      - name: Test
+        run: python -m pytest tests/python/ -v
