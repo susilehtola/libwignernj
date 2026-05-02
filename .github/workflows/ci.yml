@@ -186,11 +186,12 @@ jobs:
 
   # ── Python extension ──────────────────────────────────────────────────────
   python:
-    name: "Python ${{ matrix.python-version }}"
-    runs-on: ubuntu-latest
+    name: "Python ${{ matrix.python-version }} on ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.9", "3.11", "3.13"]
 
     steps:
@@ -205,3 +206,32 @@ jobs:
 
       - name: Test
         run: python -m pytest tests/python/ -v
+
+  # ── Windows / MSVC ────────────────────────────────────────────────────────
+  # Verifies that the library builds and the test suite passes under
+  # Microsoft Visual C++ on Windows.  MSVC has no __uint128_t, so the
+  # pure-C99 fallback path of bigint_arith.h is exercised here without an
+  # explicit -DBIGINT_FORCE_PORTABLE.  Fortran and MPFR are disabled on
+  # this runner -- gfortran is not part of a default MSVC toolchain and
+  # libmpfr is not in the runner image.  C++ tests are kept on, since the
+  # header-only wrapper exercises both the C library and a C++11 compiler.
+  build-windows:
+    name: "Windows / MSVC"
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        shell: cmd
+        run: |
+          cmake -B build ^
+            -DBUILD_FORTRAN=OFF ^
+            -DBUILD_MPFR=OFF ^
+            -DBUILD_TESTS=ON ^
+            -DBUILD_CXX_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure --parallel
