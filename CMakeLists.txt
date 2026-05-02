@@ -90,6 +90,17 @@ if(BUILD_FORTRAN)
                 ${CMAKE_CURRENT_BINARY_DIR}/fortran_modules
             VERSION   ${PROJECT_VERSION}
             SOVERSION ${PROJECT_VERSION_MAJOR}
+            # Bake $ORIGIN into the installed library so that, when a
+            # downstream binary's DT_RUNPATH points at some non-system
+            # prefix where libwignernj_fortran.so lives, the dynamic
+            # linker still finds its co-located libwignernj.so.0
+            # transitive dependency.  Linkers configured with
+            # --no-copy-dt-needed-entries (the Ubuntu default) do not
+            # propagate libwignernj.so.0 into the consuming binary's
+            # NEEDED list, and DT_RUNPATH (unlike DT_RPATH) is *not*
+            # searched for transitive deps -- so without this the
+            # downstream Fortran consumer fails on those distros.
+            INSTALL_RPATH "$ORIGIN"
         )
         # Propagate the .mod-file directory to consumers, both at build
         # time and after install, so downstream Fortran compilations
