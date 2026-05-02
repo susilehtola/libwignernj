@@ -35,6 +35,7 @@ jobs:
             cxx: g++
             fortran: ON
             mpfr: ON
+            quadmath: ON
             shared: ON
 
           - name: "Ubuntu / GCC / static"
@@ -43,6 +44,7 @@ jobs:
             cxx: g++
             fortran: ON
             mpfr: ON
+            quadmath: ON
             shared: OFF
 
           - name: "Ubuntu / Clang"
@@ -51,6 +53,7 @@ jobs:
             cxx: clang++
             fortran: ON
             mpfr: ON
+            quadmath: ON
             shared: ON
 
           - name: "macOS / Clang"
@@ -59,6 +62,9 @@ jobs:
             cxx: clang++
             fortran: ON
             mpfr: ON
+            # macOS clang ships without libquadmath; __float128 is not
+            # available on the homebrew-installed clang either.
+            quadmath: OFF
             shared: ON
 
           # Confirm the library builds without optional features.
@@ -68,6 +74,7 @@ jobs:
             cxx: g++
             fortran: OFF
             mpfr: OFF
+            quadmath: OFF
             shared: ON
 
     steps:
@@ -77,7 +84,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y gfortran libmpfr-dev
+          sudo apt-get install -y gfortran libmpfr-dev libquadmath0
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -96,6 +103,7 @@ jobs:
             -DBUILD_SHARED_LIBS=${{ matrix.shared }} \
             -DBUILD_FORTRAN=${{ matrix.fortran }} \
             -DBUILD_MPFR=${{ matrix.mpfr }} \
+            -DBUILD_QUADMATH=${{ matrix.quadmath }} \
             -DBUILD_CXX_TESTS=ON \
             -DBUILD_TESTS=ON
 

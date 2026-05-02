@@ -129,6 +129,45 @@ double wigner_exact_to_double(const wigner_exact_t *e)
     return (double)(e->sign * e->sum_sign) * ldexp(m, iexp);
 }
 
+#ifdef WIGNER_HAVE_QUADMATH
+static __float128 apply_sqrt_exp_q(__float128 m, int sqrt_diff, int *iexp)
+{
+    if (sqrt_diff & 1) {
+        if (sqrt_diff > 0) {
+            m      *= sqrtq(2.0Q);
+            *iexp  += (sqrt_diff - 1) / 2;
+        } else {
+            m      /= sqrtq(2.0Q);
+            *iexp  += (sqrt_diff + 1) / 2;
+        }
+    } else {
+        *iexp += sqrt_diff / 2;
+    }
+    return m;
+}
+
+__float128 wigner_exact_to_float128(const wigner_exact_t *e)
+{
+    int es, en, ed, esn, esd, iexp;
+    __float128 ms, mn, md, msn, msd, m;
+
+    if (e->is_zero) return 0.0Q;
+    if (bigint_is_zero(&e->sum)) return 0.0Q;
+
+    ms  = bigint_frexp_q(&e->sum,      &es);
+    mn  = bigint_frexp_q(&e->int_num,  &en);
+    md  = bigint_frexp_q(&e->int_den,  &ed);
+    msn = bigint_frexp_q(&e->sqrt_num, &esn);
+    msd = bigint_frexp_q(&e->sqrt_den, &esd);
+
+    m    = ms * (mn / md) * sqrtq(msn / msd);
+    iexp = es + en - ed;
+    m    = apply_sqrt_exp_q(m, esn - esd, &iexp);
+
+    return (__float128)(e->sign * e->sum_sign) * ldexpq(m, iexp);
+}
+#endif
+
 long double wigner_exact_to_long_double(const wigner_exact_t *e)
 {
     int es, en, ed, esn, esd, iexp;

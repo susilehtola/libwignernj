@@ -241,6 +241,18 @@ long double wigner6j_l(int tj1, int tj2, int tj3, int tj4, int tj5, int tj6)
     return result;
 }
 
+#ifdef WIGNER_HAVE_QUADMATH
+__float128 wigner6j_q(int tj1, int tj2, int tj3, int tj4, int tj5, int tj6)
+{
+    wigner_exact_t e;
+    __float128 result;
+    wigner6j_exact(tj1, tj2, tj3, tj4, tj5, tj6, &e);
+    result = wigner_exact_to_float128(&e);
+    wigner_exact_free(&e);
+    return result;
+}
+#endif
+
 #ifdef WIGNER_HAVE_MPFR
 void wigner6j_mpfr(mpfr_t rop, int tj1, int tj2, int tj3,
                                int tj4, int tj5, int tj6, mpfr_rnd_t rnd)

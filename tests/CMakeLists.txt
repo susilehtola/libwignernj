@@ -66,6 +66,18 @@ if(BUILD_CXX_TESTS)
     endif()
 endif()
 
+# ── libquadmath tests ─────────────────────────────────────────────────────────
+
+if(BUILD_QUADMATH)
+    add_executable(test_quadmath test_quadmath.c)
+    target_link_libraries(test_quadmath PRIVATE wignernj quadmath ${LIBM_LINK})
+    target_include_directories(test_quadmath PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    add_test(NAME test_quadmath COMMAND test_quadmath)
+endif()
+
 # ── MPFR tests ────────────────────────────────────────────────────────────────
 
 if(BUILD_MPFR)
@@ -93,4 +105,22 @@ if(BUILD_FORTRAN AND TARGET wignernj_f03)
             ${CMAKE_CURRENT_BINARY_DIR}/../fortran_modules
     )
     add_test(NAME test_wigner_fortran COMMAND test_wigner_fortran)
+
+    if(BUILD_QUADMATH)
+        add_executable(test_wigner_quadmath
+            fortran/test_wigner_quadmath.F90
+        )
+        target_link_libraries(test_wigner_quadmath
+            PRIVATE wignernj_f03 wignernj quadmath ${LIBM_LINK})
+        target_compile_definitions(test_wigner_quadmath
+            PRIVATE WIGNERNJ_HAVE_QUADMATH)
+        target_include_directories(test_wigner_quadmath PRIVATE
+            ${CMAKE_CURRENT_BINARY_DIR}/../fortran_modules
+        )
+        set_target_properties(test_wigner_quadmath PROPERTIES
+            Fortran_MODULE_DIRECTORY
+                ${CMAKE_CURRENT_BINARY_DIR}/../fortran_modules
+        )
+        add_test(NAME test_wigner_quadmath COMMAND test_wigner_quadmath)
+    endif()
 endif()

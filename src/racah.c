@@ -29,6 +29,15 @@ long double racah_w_l(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23)
     return (long double)phase * wigner6j_l(tj1, tj2, tj12, tj3, tJ, tj23);
 }
 
+#ifdef WIGNER_HAVE_QUADMATH
+#include "wigner_quadmath.h"
+__float128 racah_w_q(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23)
+{
+    int phase = ((((tj1 + tj2 + tJ + tj3) / 2) & 1) == 0) ? 1 : -1;
+    return (__float128)phase * wigner6j_q(tj1, tj2, tj12, tj3, tJ, tj23);
+}
+#endif
+
 #ifdef WIGNER_HAVE_MPFR
 #include "wigner_mpfr.h"
 void racah_w_mpfr(mpfr_t rop, int tj1, int tj2, int tJ, int tj3,

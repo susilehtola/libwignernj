@@ -498,6 +498,48 @@ double bigint_to_double(const bigint_t *a)
     return ldexp((double)m, exp2);
 }
 
+#ifdef WIGNER_HAVE_QUADMATH
+/*
+ * Build the float128 value by Horner-style evaluation of the top up to
+ * three 64-bit words: r = w[size-1]*2^128 + w[size-2]*2^64 + w[size-3], scaled
+ * by 2^((size-3)*64).  192 bits of input feed a 113-bit mantissa, so the
+ * top-bit retention is unconditional and the bottom ~79 bits are truncated
+ * by the float128 add itself (round-to-nearest-even).  Sticky bits below
+ * the top three words are not preserved, so a tied half-ulp result may
+ * round to even either way; this is within the 2-ulp tolerance the
+ * verification harness uses for every precision.
+ */
+static __float128 bigint_top_float128(const bigint_t *a, int *out_exp)
+{
+    if (a->size == 0) { *out_exp = 0; return 0.0Q; }
+    size_t k = (a->size >= 3) ? (a->size - 3) : 0;
+    __float128 r = 0.0Q;
+    for (size_t i = a->size; i-- > k; ) {
+        r = r * 0x1.0p64Q + (__float128)a->words[i];
+    }
+    *out_exp = (int)k * 64;
+    return r;
+}
+
+__float128 bigint_to_float128(const bigint_t *a)
+{
+    int e;
+    __float128 r = bigint_top_float128(a, &e);
+    return ldexpq(r, e);
+}
+
+__float128 bigint_frexp_q(const bigint_t *a, int *out_exp)
+{
+    int e;
+    __float128 r = bigint_top_float128(a, &e);
+    if (a->size == 0) { *out_exp = 0; return 0.0Q; }
+    int e2;
+    __float128 mant = frexpq(r, &e2);
+    *out_exp = e + e2;
+    return mant;
+}
+#endif /* WIGNER_HAVE_QUADMATH */
+
 long double bigint_to_long_double(const bigint_t *a)
 {
     int mant = (LDBL_MANT_DIG <= 64) ? LDBL_MANT_DIG : 64;

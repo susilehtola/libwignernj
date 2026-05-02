@@ -47,6 +47,11 @@ float       wigner_exact_to_float      (const wigner_exact_t *e);
 double      wigner_exact_to_double     (const wigner_exact_t *e);
 long double wigner_exact_to_long_double(const wigner_exact_t *e);
 
+#ifdef WIGNER_HAVE_QUADMATH
+#include <quadmath.h>
+__float128  wigner_exact_to_float128   (const wigner_exact_t *e);
+#endif
+
 #ifdef WIGNER_HAVE_MPFR
 #include <mpfr.h>
 void wigner_exact_to_mpfr(mpfr_t rop, const wigner_exact_t *e, mpfr_rnd_t rnd);
