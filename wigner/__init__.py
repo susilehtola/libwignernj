@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026 Susi Lehtola
 """
-wigner — exact Wigner 3j/6j/9j symbols and related coefficients.
+wigner — exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization.
 
 All functions accept angular momentum arguments as integers, floats
 (half-integers), or fractions.Fraction objects.  An optional keyword

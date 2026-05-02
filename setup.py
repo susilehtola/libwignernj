@@ -28,7 +28,7 @@ ext = Extension(
 setup(
     name="wigner",
     version="0.2.0",
-    description="Exact Wigner 3j/6j/9j symbols and related coefficients",
+    description="Exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization",
     packages=["wigner"],
     ext_modules=[ext],
     python_requires=">=3.7",
