@@ -12,6 +12,19 @@ option(BUILD_CXX_TESTS    "Build C++ header tests"      ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# On Windows, the dynamic linker only searches the executable's own
+# directory and PATH for required DLLs.  Without intervention, CMake
+# would put wignernj.dll in <build>/Release and the test executables
+# in <build>/tests/Release, and ctest would fail with status 0xc0000135
+# (STATUS_DLL_NOT_FOUND).  Co-locate every runtime output in a single
+# directory so the in-tree tests resolve the library naturally.  The
+# Linux/macOS layout is left untouched: rpath/runpath already takes
+# care of in-tree resolution there, and downstream tooling such as
+# benchmarks/Makefile expects libwignernj.so directly under build/.
+if(WIN32)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+endif()
+
 include(GNUInstallDirs)
 
 # Core C library
@@ -45,7 +58,17 @@ set_target_properties(wignernj PROPERTIES
     # macro in src/primes.h, gated on WIGNERNJ_BUILDING_DLL below.
     WINDOWS_EXPORT_ALL_SYMBOLS ON
 )
-target_compile_definitions(wignernj PRIVATE WIGNERNJ_BUILDING_DLL)
+if(BUILD_SHARED_LIBS)
+    # Drive the WIGNERNJ_DATA macro alternation in src/primes.h:
+    # WIGNERNJ_BUILDING_DLL only on the library's own translation units
+    # (PRIVATE), WIGNERNJ_DLL also on every consumer (PUBLIC) so that
+    # the data symbols carry __declspec(dllimport) where consumed.  In
+    # a static build neither macro is defined and the macro stays
+    # inert, which is what we want for static linking.
+    target_compile_definitions(wignernj
+        PRIVATE WIGNERNJ_BUILDING_DLL
+        PUBLIC  WIGNERNJ_DLL)
+endif()
 target_include_directories(wignernj
     PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:include>

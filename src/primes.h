@@ -73,13 +73,16 @@
  * alone is sufficient.  Windows DLLs, on the other hand, only expose
  * symbols that are explicitly marked with __declspec(dllexport) -- and
  * CMake's WINDOWS_EXPORT_ALL_SYMBOLS auto-exports functions, not data.
- * Mark the tables with the appropriate decoration on Windows so that
- * consumers (the test binaries in particular) can resolve g_nprimes,
- * g_primes, and g_prime_index across the DLL boundary.  The
- * WIGNERNJ_BUILDING_DLL macro is defined for the wignernj target only,
- * so consumers see the import side of the alternation.
+ * The macro alternation below kicks in only when the library is being
+ * built or consumed as a DLL: WIGNERNJ_DLL is set as a PUBLIC compile
+ * definition on the wignernj target whenever BUILD_SHARED_LIBS is ON,
+ * so consumers (the test binaries) see it automatically.
+ * WIGNERNJ_BUILDING_DLL is set PRIVATE on wignernj only, so only the
+ * library's own translation units take the dllexport branch.  In a
+ * static build neither macro is defined and WIGNERNJ_DATA expands to
+ * nothing, exactly as on ELF.
  */
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(WIGNERNJ_DLL)
 #  if defined(WIGNERNJ_BUILDING_DLL)
 #    define WIGNERNJ_DATA __declspec(dllexport)
 #  else

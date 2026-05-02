@@ -29,12 +29,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: "Ubuntu / GCC"
+          - name: "Ubuntu / GCC / shared"
             os: ubuntu-latest
             cc: gcc
             cxx: g++
             fortran: ON
             mpfr: ON
+            shared: ON
+
+          - name: "Ubuntu / GCC / static"
+            os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+            fortran: ON
+            mpfr: ON
+            shared: OFF
 
           - name: "Ubuntu / Clang"
             os: ubuntu-latest
@@ -42,6 +51,7 @@ jobs:
             cxx: clang++
             fortran: ON
             mpfr: ON
+            shared: ON
 
           - name: "macOS / Clang"
             os: macos-latest
@@ -49,6 +59,7 @@ jobs:
             cxx: clang++
             fortran: ON
             mpfr: ON
+            shared: ON
 
           # Confirm the library builds without optional features.
           - name: "Ubuntu / GCC / minimal"
@@ -57,6 +68,7 @@ jobs:
             cxx: g++
             fortran: OFF
             mpfr: OFF
+            shared: ON
 
     steps:
       - uses: actions/checkout@v4
@@ -81,6 +93,7 @@ jobs:
           CXX: ${{ matrix.cxx }}
         run: |
           cmake -B build \
+            -DBUILD_SHARED_LIBS=${{ matrix.shared }} \
             -DBUILD_FORTRAN=${{ matrix.fortran }} \
             -DBUILD_MPFR=${{ matrix.mpfr }} \
             -DBUILD_CXX_TESTS=ON \
@@ -145,11 +158,17 @@ jobs:
           sudo apt-get update -q
           sudo apt-get install -y gfortran
 
-      - name: Test downstream detection (C + C++ only)
+      - name: Test downstream detection (shared, C + C++)
         run: tests/cmake_downstream/run.sh
 
-      - name: Test downstream detection (C + C++ + Fortran)
+      - name: Test downstream detection (shared, C + C++ + Fortran)
         run: tests/cmake_downstream/run.sh --with-fortran
+
+      - name: Test downstream detection (static, C + C++)
+        run: tests/cmake_downstream/run.sh --static
+
+      - name: Test downstream detection (static, C + C++ + Fortran)
+        run: tests/cmake_downstream/run.sh --static --with-fortran
 
   # ── Address and undefined-behaviour sanitizers ────────────────────────────
   sanitize:
