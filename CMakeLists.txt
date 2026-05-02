@@ -46,7 +46,11 @@ if(NOT MSVC)
 else()
     target_compile_options(wignernj PRIVATE /W3 /O2)
 endif()
-target_link_libraries(wignernj PRIVATE m)
+if(NOT WIN32)
+    # libm is needed for sqrt/ldexp/etc. on every Unix-like target;
+    # MSVC bundles the math functions into the default C runtime.
+    target_link_libraries(wignernj PRIVATE m)
+endif()
 
 # MPFR arbitrary-precision interface (optional)
 #

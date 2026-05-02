@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026 Susi Lehtola
+import sys
+
 from setuptools import setup, Extension
 
 sources = [
@@ -17,12 +19,23 @@ sources = [
     "src/gaunt.c",
 ]
 
+# MSVC has no -std=c99 / -O2 spelling and bundles libm into the
+# default C runtime; the GCC/Clang flags would either be passed
+# silently as cl warnings or, in the libm case, produce a hard
+# linker error (LNK1181: cannot open input file 'm.lib').
+if sys.platform == "win32":
+    extra_compile_args = ["/O2"]
+    libraries = []
+else:
+    extra_compile_args = ["-O2", "-std=c99"]
+    libraries = ["m"]
+
 ext = Extension(
     name="wigner._wigner",
     sources=sources,
     include_dirs=["src", "include"],
-    extra_compile_args=["-O2", "-std=c99"],
-    libraries=["m"],
+    extra_compile_args=extra_compile_args,
+    libraries=libraries,
 )
 
 setup(

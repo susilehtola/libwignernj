@@ -1,6 +1,16 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026 Susi Lehtola
 
+# libm is needed for sqrt/ldexp/etc. on every Unix-like target;
+# MSVC bundles the math functions into the default C runtime, so an
+# explicit -lm there would resolve to a non-existent m.lib.  Use a
+# helper variable that is empty on Windows and "m" everywhere else.
+if(WIN32)
+    set(LIBM_LINK)
+else()
+    set(LIBM_LINK m)
+endif()
+
 # ── C unit tests ──────────────────────────────────────────────────────────────
 
 foreach(test_name
@@ -16,7 +26,7 @@ foreach(test_name
     test_symmetry
 )
     add_executable(${test_name} ${test_name}.c)
-    target_link_libraries(${test_name} PRIVATE wignernj m)
+    target_link_libraries(${test_name} PRIVATE wignernj ${LIBM_LINK})
     target_include_directories(${test_name} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/include
@@ -28,7 +38,7 @@ endforeach()
 # fork()-based; only built on POSIX systems.
 if(NOT WIN32)
     add_executable(test_oom test_oom.c)
-    target_link_libraries(test_oom PRIVATE wignernj m)
+    target_link_libraries(test_oom PRIVATE wignernj ${LIBM_LINK})
     target_include_directories(test_oom PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/include
@@ -44,7 +54,7 @@ if(BUILD_CXX_TESTS)
     if(CMAKE_CXX_COMPILER)
         enable_language(CXX)
         add_executable(test_cpp test_cpp.cpp)
-        target_link_libraries(test_cpp PRIVATE wignernj m)
+        target_link_libraries(test_cpp PRIVATE wignernj ${LIBM_LINK})
         target_include_directories(test_cpp PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}
             ${CMAKE_SOURCE_DIR}/include
@@ -74,7 +84,7 @@ if(BUILD_FORTRAN AND TARGET wignernj_f03)
     add_executable(test_wigner_fortran
         fortran/test_wigner_fortran.f90
     )
-    target_link_libraries(test_wigner_fortran PRIVATE wignernj_f03 wignernj m)
+    target_link_libraries(test_wigner_fortran PRIVATE wignernj_f03 wignernj ${LIBM_LINK})
     target_include_directories(test_wigner_fortran PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}/../fortran_modules
     )
