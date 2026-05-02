@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026 Susi Lehtola
 cmake_minimum_required(VERSION 3.16)
-project(wignernj VERSION 0.1.0 LANGUAGES C)
+project(wignernj VERSION 0.2.0 LANGUAGES C)
 
 option(BUILD_SHARED_LIBS  "Build shared library"         ON)
 option(BUILD_FORTRAN      "Build Fortran interface"      ON)
@@ -33,6 +33,8 @@ add_library(wignernj ${LIB_SOURCES})
 set_target_properties(wignernj PROPERTIES
     C_STANDARD 99
     C_STANDARD_REQUIRED ON
+    VERSION   ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
 )
 target_include_directories(wignernj
     PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -86,6 +88,8 @@ if(BUILD_FORTRAN)
         set_target_properties(wignernj_fortran PROPERTIES
             Fortran_MODULE_DIRECTORY
                 ${CMAKE_CURRENT_BINARY_DIR}/fortran_modules
+            VERSION   ${PROJECT_VERSION}
+            SOVERSION ${PROJECT_VERSION_MAJOR}
         )
         # Propagate the .mod-file directory to consumers, both at build
         # time and after install, so downstream Fortran compilations
