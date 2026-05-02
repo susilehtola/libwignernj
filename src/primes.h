@@ -66,17 +66,40 @@
 #define MAX_PRIME_COUNT     2263    /* pi(20011) = 2263                     */
 #define MAX_FACTORIAL_ARG   20000   /* default-build limit: see note above  */
 
+/*
+ * Cross-DLL export/import annotation for the data tables below.
+ *
+ * On ELF and Mach-O the table symbols are public-by-default and `extern`
+ * alone is sufficient.  Windows DLLs, on the other hand, only expose
+ * symbols that are explicitly marked with __declspec(dllexport) -- and
+ * CMake's WINDOWS_EXPORT_ALL_SYMBOLS auto-exports functions, not data.
+ * Mark the tables with the appropriate decoration on Windows so that
+ * consumers (the test binaries in particular) can resolve g_nprimes,
+ * g_primes, and g_prime_index across the DLL boundary.  The
+ * WIGNERNJ_BUILDING_DLL macro is defined for the wignernj target only,
+ * so consumers see the import side of the alternation.
+ */
+#if defined(_WIN32)
+#  if defined(WIGNERNJ_BUILDING_DLL)
+#    define WIGNERNJ_DATA __declspec(dllexport)
+#  else
+#    define WIGNERNJ_DATA __declspec(dllimport)
+#  endif
+#else
+#  define WIGNERNJ_DATA
+#endif
+
 /* Number of primes in the table. */
-extern const int g_nprimes;
+extern WIGNERNJ_DATA const int g_nprimes;
 
 /* g_primes[i] = i-th prime (0-indexed: g_primes[0]=2, g_primes[1]=3, ...) */
-extern const int g_primes[MAX_PRIME_COUNT];
+extern WIGNERNJ_DATA const int g_primes[MAX_PRIME_COUNT];
 
 /*
  * g_prime_index[p] = index i such that g_primes[i] == p, or -1.
  * Valid for 0 <= p <= PRIME_SIEVE_LIMIT.
  */
-extern const short g_prime_index[PRIME_SIEVE_LIMIT + 1];
+extern WIGNERNJ_DATA const short g_prime_index[PRIME_SIEVE_LIMIT + 1];
 
 /*
  * Return v_p(n!) = sum_{k>=1} floor(n / p^k), the p-adic valuation of n!.

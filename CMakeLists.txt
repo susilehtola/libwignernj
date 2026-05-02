@@ -35,13 +35,17 @@ set_target_properties(wignernj PROPERTIES
     C_STANDARD_REQUIRED ON
     VERSION   ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
-    # Auto-generate the MSVC import library by exporting every symbol.
-    # On ELF/Mach-O the public-by-default visibility makes this a no-op;
-    # on Windows it is what saves us from sprinkling __declspec(dllexport)
-    # over every public function (or supplying a hand-written .def file)
-    # to make wignernj.lib appear next to wignernj.dll.
+    # Auto-generate the MSVC import library by exporting every function
+    # symbol.  On ELF/Mach-O the public-by-default visibility makes this
+    # a no-op; on Windows it is what saves us from sprinkling
+    # __declspec(dllexport) over every public function (or supplying a
+    # hand-written .def file) to make wignernj.lib appear next to
+    # wignernj.dll.  Note that data symbols (the prime tables) are *not*
+    # auto-exported and are decorated explicitly via the WIGNERNJ_DATA
+    # macro in src/primes.h, gated on WIGNERNJ_BUILDING_DLL below.
     WINDOWS_EXPORT_ALL_SYMBOLS ON
 )
+target_compile_definitions(wignernj PRIVATE WIGNERNJ_BUILDING_DLL)
 target_include_directories(wignernj
     PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:include>
