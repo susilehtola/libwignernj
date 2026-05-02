@@ -151,9 +151,18 @@ if(BUILD_FORTRAN)
             EXPORT  wignernjTargets
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         )
         install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/fortran_modules/
                 DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/wignernj/fortran)
+
+        # pkg-config file for the Fortran wrapper -- exposes the
+        # .mod-file directory via -I and depends transitively on the C
+        # library's .pc file via Requires: libwignernj.
+        configure_file(libwignernj_f03.pc.in libwignernj_f03.pc @ONLY)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libwignernj_f03.pc
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
         set(WIGNERNJ_HAS_FORTRAN ON)
     else()
         message(STATUS "No Fortran compiler found -- skipping Fortran interface")
@@ -193,10 +202,19 @@ install(TARGETS wignernj
     EXPORT  wignernjTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(FILES include/wigner.h   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES include/wigner.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
+# pkg-config file: libm only on Unix-like targets (MSVC bundles math
+# into the default C runtime, so an explicit -lm there would resolve
+# to a non-existent m.lib).
+if(WIN32)
+    set(WIGNERNJ_PC_LIBM)
+else()
+    set(WIGNERNJ_PC_LIBM "-lm")
+endif()
 configure_file(libwignernj.pc.in libwignernj.pc @ONLY)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libwignernj.pc
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)

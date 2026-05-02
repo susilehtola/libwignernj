@@ -4,9 +4,11 @@ prefix=@CMAKE_INSTALL_PREFIX@
 exec_prefix=${prefix}
 libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
 includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+moddir=${includedir}/wignernj/fortran
 
-Name: libwignernj
-Description: Exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization
+Name: libwignernj_f03
+Description: Fortran 90 bindings for libwignernj
 Version: @PROJECT_VERSION@
-Libs: -L${libdir} -lwignernj @WIGNERNJ_PC_LIBM@
-Cflags: -I${includedir}
+Requires: libwignernj
+Libs: -L${libdir} -lwignernj_f03
+Cflags: -I${moddir}
