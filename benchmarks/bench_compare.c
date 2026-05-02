@@ -119,9 +119,9 @@ int main(void)
     /* j values and iteration counts (chosen so that each timing runs
      * for at least a few milliseconds, which is enough to outrun
      * clock-resolution noise). */
-    int Js[]    = {2, 30, 60, 200, 1000, 2000, 4000, 8000};
-    int N_3j[]  = {500000, 50000, 10000,  500,   50,   10,    5,    2};
-    int N_6j[]  = {200000, 10000,  1000,  100,   10,    2,    1,    1};
+    int Js[]    = {10, 30, 60, 200, 1000, 2000, 4000, 8000};
+    int N_3j[]  = {200000, 50000, 10000,  500,   50,   10,    5,    2};
+    int N_6j[]  = {100000, 20000,  5000,  500,   50,   10,    1,    1};
 
     /* ── 3j sweep ─────────────────────────────────────────────────── */
     printf("=== 3j(j,j,j; m,-m,0)  --  ns/eval ===\n");
@@ -159,8 +159,8 @@ int main(void)
 
     /* ── 9j sweep ─────────────────────────────────────────────────── */
     printf("\n=== 9j{j,j,j; j,j,j; j,j,j}  --  ns/eval ===\n");
-    int Js9[] = {2, 6, 10, 20, 40, 80, 160};
-    int N_9j[] = {20000, 1000, 100, 10, 2, 1, 1};
+    int Js9[] = {6, 10, 20, 80, 160};
+    int N_9j[] = {1000, 100, 20, 1, 1};
     for (size_t k = 0; k < sizeof(Js9) / sizeof(Js9[0]); k++) {
         int TJ = Js9[k];
         int N  = N_9j[k];
