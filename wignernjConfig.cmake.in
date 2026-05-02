@@ -4,7 +4,7 @@
 # CMake package config for libwignernj.
 #
 # Components (optional):
-#   - "Fortran"  Fortran 90 interface (target wignernj::wignernj_fortran).
+#   - "Fortran"  Fortran 90 interface (target wignernj::wignernj_f03).
 #                Only present when the upstream build was configured with
 #                BUILD_FORTRAN=ON and a Fortran compiler was found.
 #
@@ -15,14 +15,14 @@
 #
 #   # Or, if Fortran bindings are needed:
 #   find_package(wignernj REQUIRED COMPONENTS Fortran)
-#   target_link_libraries(myprog PRIVATE wignernj::wignernj_fortran)
+#   target_link_libraries(myprog PRIVATE wignernj::wignernj_f03)
 @PACKAGE_INIT@
 
 include("${CMAKE_CURRENT_LIST_DIR}/wignernjTargets.cmake")
 
 # Whether the Fortran interface was built and exported.
 set(wignernj_Fortran_FOUND @WIGNERNJ_HAS_FORTRAN@)
-if(wignernj_Fortran_FOUND AND NOT TARGET wignernj::wignernj_fortran)
+if(wignernj_Fortran_FOUND AND NOT TARGET wignernj::wignernj_f03)
     # Mismatch between configure-time and install-time state -- treat as
     # missing rather than silently lying to the consumer.
     set(wignernj_Fortran_FOUND FALSE)

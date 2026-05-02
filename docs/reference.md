@@ -38,7 +38,7 @@ python -m pytest tests/python/
 | Option | Default | Description |
 |---|---|---|
 | `BUILD_SHARED_LIBS` | `ON` | Shared library (`.so` / `.dylib` / `.dll`) |
-| `BUILD_FORTRAN` | `ON` | Fortran 90 interface (`libwignernj_fortran`) |
+| `BUILD_FORTRAN` | `ON` | Fortran 90 interface (`libwignernj_f03`) |
 | `BUILD_TESTS` | `ON` | C and Fortran test suite |
 | `BUILD_CXX_TESTS` | `ON` | C++ header tests |
 | `BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface (requires libmpfr) |
@@ -57,7 +57,7 @@ pkg-config --cflags --libs libwignernj
 -lwignernj -lmpfr -lm
 
 # With Fortran interface
--lwignernj_fortran -lwignernj -lm
+-lwignernj_f03 -lwignernj -lm
 ```
 
 ---
@@ -463,7 +463,7 @@ Raises `ValueError` for non-half-integer arguments.
 
 ## Fortran API
 
-Build with `-DBUILD_FORTRAN=ON`.  Link with `-lwignernj_fortran -lwignernj -lm`.
+Build with `-DBUILD_FORTRAN=ON`.  Link with `-lwignernj_f03 -lwignernj -lm`.
 
 The `wigner` module provides two layers:
 

@@ -70,11 +70,11 @@ endif()
 
 # ── Fortran interface tests ───────────────────────────────────────────────────
 
-if(BUILD_FORTRAN AND TARGET wignernj_fortran)
+if(BUILD_FORTRAN AND TARGET wignernj_f03)
     add_executable(test_wigner_fortran
         fortran/test_wigner_fortran.f90
     )
-    target_link_libraries(test_wigner_fortran PRIVATE wignernj_fortran wignernj m)
+    target_link_libraries(test_wigner_fortran PRIVATE wignernj_f03 wignernj m)
     target_include_directories(test_wigner_fortran PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}/../fortran_modules
     )

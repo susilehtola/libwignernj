@@ -183,7 +183,7 @@ v = wgaunt_real(2.0d0, 1.0d0, 2.0d0, -1.0d0, 0.0d0, 0.0d0)
 Raw `bind(c)` interfaces using `2*j` integers are also available for all
 three precisions (the `long double` variants require gfortran or Cray Fortran).
 
-Link with `-lwignernj_fortran -lwignernj -lm`.
+Link with `-lwignernj_f03 -lwignernj -lm`.
 
 ## Limits
 

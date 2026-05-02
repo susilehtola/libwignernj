@@ -132,7 +132,7 @@ jobs:
   # wrapper), and Fortran 90 interfaces correctly so that a downstream CMake
   # project can locate them via find_package(wignernj REQUIRED [COMPONENTS
   # Fortran]) and link against the wignernj::wignernj / wignernj::
-  # wignernj_fortran imported targets.  Built as a separate, out-of-tree
+  # wignernj_f03 imported targets.  Built as a separate, out-of-tree
   # CMake project against the installed library.
   cmake-downstream:
     name: "Ubuntu / GCC / downstream find_package(wignernj)"

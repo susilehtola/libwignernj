@@ -13,7 +13,7 @@
 #   3. Linking a C++  consumer against wignernj::wignernj works
 #      (the wigner.hpp header is a header-only wrapper around the C lib).
 #   4. With -DWITH_FORTRAN=ON, find_package(wignernj REQUIRED COMPONENTS
-#      Fortran) imports wignernj::wignernj_fortran, propagates the Fortran
+#      Fortran) imports wignernj::wignernj_f03, propagates the Fortran
 #      .mod-file include path, and a Fortran consumer compiles and runs.
 
 cmake_minimum_required(VERSION 3.16)
@@ -27,9 +27,9 @@ if(WITH_FORTRAN)
         message(FATAL_ERROR
             "wignernj_Fortran_FOUND is FALSE despite REQUIRED COMPONENTS Fortran")
     endif()
-    if(NOT TARGET wignernj::wignernj_fortran)
+    if(NOT TARGET wignernj::wignernj_f03)
         message(FATAL_ERROR
-            "wignernj::wignernj_fortran target was not imported")
+            "wignernj::wignernj_f03 target was not imported")
     endif()
 else()
     project(wignernj_downstream_test LANGUAGES C CXX)
@@ -48,7 +48,7 @@ target_link_libraries(test_cpp PRIVATE wignernj::wignernj)
 # Fortran consumer (only when requested)
 if(WITH_FORTRAN)
     add_executable(test_fort test_fort.f90)
-    target_link_libraries(test_fort PRIVATE wignernj::wignernj_fortran)
+    target_link_libraries(test_fort PRIVATE wignernj::wignernj_f03)
 endif()
 
 # Run them through CTest so the CI surfaces failures as test failures.

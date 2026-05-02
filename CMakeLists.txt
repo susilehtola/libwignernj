@@ -83,18 +83,18 @@ if(BUILD_FORTRAN)
     check_language(Fortran)
     if(CMAKE_Fortran_COMPILER)
         enable_language(Fortran)
-        add_library(wignernj_fortran src/fortran/wigner_f90.F90)
-        target_link_libraries(wignernj_fortran PUBLIC wignernj)
-        set_target_properties(wignernj_fortran PROPERTIES
+        add_library(wignernj_f03 src/fortran/wigner_f90.F90)
+        target_link_libraries(wignernj_f03 PUBLIC wignernj)
+        set_target_properties(wignernj_f03 PROPERTIES
             Fortran_MODULE_DIRECTORY
                 ${CMAKE_CURRENT_BINARY_DIR}/fortran_modules
             VERSION   ${PROJECT_VERSION}
             SOVERSION ${PROJECT_VERSION_MAJOR}
             # Bake $ORIGIN into the installed library so that, when a
             # downstream binary's DT_RUNPATH points at some non-system
-            # prefix where libwignernj_fortran.so lives, the dynamic
-            # linker still finds its co-located libwignernj.so.0
-            # transitive dependency.  Linkers configured with
+            # prefix where libwignernj_f03.so lives, the dynamic linker
+            # still finds its co-located libwignernj.so.0 transitive
+            # dependency.  Linkers configured with
             # --no-copy-dt-needed-entries (the Ubuntu default) do not
             # propagate libwignernj.so.0 into the consuming binary's
             # NEEDED list, and DT_RUNPATH (unlike DT_RPATH) is *not*
@@ -105,11 +105,11 @@ if(BUILD_FORTRAN)
         # Propagate the .mod-file directory to consumers, both at build
         # time and after install, so downstream Fortran compilations
         # find `use wigner` automatically.
-        target_include_directories(wignernj_fortran INTERFACE
+        target_include_directories(wignernj_f03 INTERFACE
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/fortran_modules>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/wignernj/fortran>
         )
-        install(TARGETS wignernj_fortran
+        install(TARGETS wignernj_f03
             EXPORT  wignernjTargets
             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
