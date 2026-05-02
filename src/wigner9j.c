@@ -392,6 +392,20 @@ long double wigner9j_l(int tj11, int tj12, int tj13,
     return result;
 }
 
+#ifdef WIGNER_HAVE_QUADMATH
+__float128 wigner9j_q(int tj11, int tj12, int tj13,
+                      int tj21, int tj22, int tj23,
+                      int tj31, int tj32, int tj33)
+{
+    wigner_exact_t e;
+    __float128 result;
+    wigner9j_exact(tj11,tj12,tj13, tj21,tj22,tj23, tj31,tj32,tj33, &e);
+    result = wigner_exact_to_float128(&e);
+    wigner_exact_free(&e);
+    return result;
+}
+#endif
+
 #ifdef WIGNER_HAVE_MPFR
 void wigner9j_mpfr(mpfr_t rop,
                    int tj11, int tj12, int tj13,

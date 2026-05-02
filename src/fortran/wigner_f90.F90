@@ -27,6 +27,9 @@ module wigner
 #if defined(__GFORTRAN__) || defined(_CRAYFTN)
   use iso_c_binding, only: c_long_double
 #endif
+#ifdef WIGNERNJ_HAVE_QUADMATH
+  use iso_fortran_env, only: real128
+#endif
   use iso_fortran_env, only: error_unit
   implicit none
 
@@ -56,6 +59,14 @@ module wigner
     end function
 #endif
 
+#ifdef WIGNERNJ_HAVE_QUADMATH
+    function wigner3j_q(tj1,tj2,tj3,tm1,tm2,tm3) bind(c,name='wigner3j_q')
+      import c_int, real128
+      integer(c_int), value :: tj1, tj2, tj3, tm1, tm2, tm3
+      real(real128)         :: wigner3j_q
+    end function
+#endif
+
     ! --- 6j ---
     function wigner6j_f(tj1,tj2,tj3,tj4,tj5,tj6) bind(c,name='wigner6j_f')
       import c_int, c_float
@@ -74,6 +85,14 @@ module wigner
       import c_int, c_long_double
       integer(c_int), value :: tj1, tj2, tj3, tj4, tj5, tj6
       real(c_long_double)   :: wigner6j_l
+    end function
+#endif
+
+#ifdef WIGNERNJ_HAVE_QUADMATH
+    function wigner6j_q(tj1,tj2,tj3,tj4,tj5,tj6) bind(c,name='wigner6j_q')
+      import c_int, real128
+      integer(c_int), value :: tj1, tj2, tj3, tj4, tj5, tj6
+      real(real128)         :: wigner6j_q
     end function
 #endif
 
@@ -101,6 +120,15 @@ module wigner
     end function
 #endif
 
+#ifdef WIGNERNJ_HAVE_QUADMATH
+    function wigner9j_q(t11,t12,t13,t21,t22,t23,t31,t32,t33) &
+        bind(c,name='wigner9j_q')
+      import c_int, real128
+      integer(c_int), value :: t11,t12,t13,t21,t22,t23,t31,t32,t33
+      real(real128)         :: wigner9j_q
+    end function
+#endif
+
     ! --- Clebsch-Gordan ---
     function clebsch_gordan_f(tj1,tm1,tj2,tm2,tJ,tM) &
         bind(c,name='clebsch_gordan_f')
@@ -125,6 +153,15 @@ module wigner
     end function
 #endif
 
+#ifdef WIGNERNJ_HAVE_QUADMATH
+    function clebsch_gordan_q(tj1,tm1,tj2,tm2,tJ,tM) &
+        bind(c,name='clebsch_gordan_q')
+      import c_int, real128
+      integer(c_int), value :: tj1, tm1, tj2, tm2, tJ, tM
+      real(real128)         :: clebsch_gordan_q
+    end function
+#endif
+
     ! --- Racah W ---
     function racah_w_f(tj1,tj2,tJ,tj3,tj12,tj23) bind(c,name='racah_w_f')
       import c_int, c_float
@@ -143,6 +180,14 @@ module wigner
       import c_int, c_long_double
       integer(c_int), value :: tj1, tj2, tJ, tj3, tj12, tj23
       real(c_long_double)   :: racah_w_l
+    end function
+#endif
+
+#ifdef WIGNERNJ_HAVE_QUADMATH
+    function racah_w_q(tj1,tj2,tJ,tj3,tj12,tj23) bind(c,name='racah_w_q')
+      import c_int, real128
+      integer(c_int), value :: tj1, tj2, tJ, tj3, tj12, tj23
+      real(real128)         :: racah_w_q
     end function
 #endif
 
@@ -167,6 +212,14 @@ module wigner
     end function
 #endif
 
+#ifdef WIGNERNJ_HAVE_QUADMATH
+    function gaunt_q(tl1,tm1,tl2,tm2,tl3,tm3) bind(c,name='gaunt_q')
+      import c_int, real128
+      integer(c_int), value :: tl1, tm1, tl2, tm2, tl3, tm3
+      real(real128)         :: gaunt_q
+    end function
+#endif
+
     ! --- Real-spherical-harmonic Gaunt ---
     function gaunt_real_f(tl1,tm1,tl2,tm2,tl3,tm3) bind(c,name='gaunt_real_f')
       import c_int, c_float
@@ -185,6 +238,14 @@ module wigner
       import c_int, c_long_double
       integer(c_int), value :: tl1, tm1, tl2, tm2, tl3, tm3
       real(c_long_double)   :: gaunt_real_l
+    end function
+#endif
+
+#ifdef WIGNERNJ_HAVE_QUADMATH
+    function gaunt_real_q(tl1,tm1,tl2,tm2,tl3,tm3) bind(c,name='gaunt_real_q')
+      import c_int, real128
+      integer(c_int), value :: tl1, tm1, tl2, tm2, tl3, tm3
+      real(real128)         :: gaunt_real_q
     end function
 #endif
 
@@ -291,5 +352,113 @@ contains
     end if
     val = gaunt_real(to_tj(l1), to_tj(m1), to_tj(l2), to_tj(m2), to_tj(l3), to_tj(m3))
   end function wgaunt_real
+
+#ifdef WIGNERNJ_HAVE_QUADMATH
+  ! -------------------------------------------------------------------------
+  ! Convenience wrappers at quadruple precision.  Arguments are
+  ! real(real128); validation reuses the double-precision is_half_int by
+  ! comparing the round-trip through nint(2*j).  On error, write to stderr
+  ! and return 0.
+  ! -------------------------------------------------------------------------
+
+  pure function is_half_int_q(v) result(ok)
+    real(real128), intent(in) :: v
+    logical :: ok
+    integer(c_int) :: tv
+    tv = nint(2.0_real128 * v)
+    ok = abs(2.0_real128 * v - tv) <= 1.0e-30_real128
+  end function is_half_int_q
+
+  pure function to_tj_q(v) result(tv)
+    real(real128), intent(in) :: v
+    integer(c_int) :: tv
+    tv = nint(2.0_real128 * v)
+  end function to_tj_q
+
+  function w3jq(j1,j2,j3,m1,m2,m3) result(val)
+    real(real128), intent(in) :: j1, j2, j3, m1, m2, m3
+    real(real128) :: val
+    if (.not. (is_half_int_q(j1) .and. is_half_int_q(j2) .and. is_half_int_q(j3) .and. &
+               is_half_int_q(m1) .and. is_half_int_q(m2) .and. is_half_int_q(m3))) then
+      write(error_unit,'(A)') 'wigner(Fortran): w3jq: argument is not a half-integer'
+      val = 0.0_real128; return
+    end if
+    val = wigner3j_q(to_tj_q(j1), to_tj_q(j2), to_tj_q(j3), &
+                     to_tj_q(m1), to_tj_q(m2), to_tj_q(m3))
+  end function w3jq
+
+  function w6jq(j1,j2,j3,j4,j5,j6) result(val)
+    real(real128), intent(in) :: j1, j2, j3, j4, j5, j6
+    real(real128) :: val
+    if (.not. (is_half_int_q(j1) .and. is_half_int_q(j2) .and. is_half_int_q(j3) .and. &
+               is_half_int_q(j4) .and. is_half_int_q(j5) .and. is_half_int_q(j6))) then
+      write(error_unit,'(A)') 'wigner(Fortran): w6jq: argument is not a half-integer'
+      val = 0.0_real128; return
+    end if
+    val = wigner6j_q(to_tj_q(j1), to_tj_q(j2), to_tj_q(j3), &
+                     to_tj_q(j4), to_tj_q(j5), to_tj_q(j6))
+  end function w6jq
+
+  function w9jq(j11,j12,j13,j21,j22,j23,j31,j32,j33) result(val)
+    real(real128), intent(in) :: j11,j12,j13,j21,j22,j23,j31,j32,j33
+    real(real128) :: val
+    if (.not. (is_half_int_q(j11) .and. is_half_int_q(j12) .and. is_half_int_q(j13) .and. &
+               is_half_int_q(j21) .and. is_half_int_q(j22) .and. is_half_int_q(j23) .and. &
+               is_half_int_q(j31) .and. is_half_int_q(j32) .and. is_half_int_q(j33))) then
+      write(error_unit,'(A)') 'wigner(Fortran): w9jq: argument is not a half-integer'
+      val = 0.0_real128; return
+    end if
+    val = wigner9j_q(to_tj_q(j11),to_tj_q(j12),to_tj_q(j13), &
+                     to_tj_q(j21),to_tj_q(j22),to_tj_q(j23), &
+                     to_tj_q(j31),to_tj_q(j32),to_tj_q(j33))
+  end function w9jq
+
+  function wcgq(j1,m1,j2,m2,J,M) result(val)
+    real(real128), intent(in) :: j1, m1, j2, m2, J, M
+    real(real128) :: val
+    if (.not. (is_half_int_q(j1) .and. is_half_int_q(m1) .and. is_half_int_q(j2) .and. &
+               is_half_int_q(m2) .and. is_half_int_q(J)  .and. is_half_int_q(M))) then
+      write(error_unit,'(A)') 'wigner(Fortran): wcgq: argument is not a half-integer'
+      val = 0.0_real128; return
+    end if
+    val = clebsch_gordan_q(to_tj_q(j1), to_tj_q(m1), to_tj_q(j2), to_tj_q(m2), &
+                           to_tj_q(J),  to_tj_q(M))
+  end function wcgq
+
+  function wracahwq(j1,j2,J,j3,j12,j23) result(val)
+    real(real128), intent(in) :: j1, j2, J, j3, j12, j23
+    real(real128) :: val
+    if (.not. (is_half_int_q(j1) .and. is_half_int_q(j2) .and. is_half_int_q(J)   .and. &
+               is_half_int_q(j3) .and. is_half_int_q(j12) .and. is_half_int_q(j23))) then
+      write(error_unit,'(A)') 'wigner(Fortran): wracahwq: argument is not a half-integer'
+      val = 0.0_real128; return
+    end if
+    val = racah_w_q(to_tj_q(j1), to_tj_q(j2), to_tj_q(J), &
+                    to_tj_q(j3), to_tj_q(j12), to_tj_q(j23))
+  end function wracahwq
+
+  function wgauntq(l1,m1,l2,m2,l3,m3) result(val)
+    real(real128), intent(in) :: l1, m1, l2, m2, l3, m3
+    real(real128) :: val
+    if (.not. (is_half_int_q(l1) .and. is_half_int_q(m1) .and. is_half_int_q(l2) .and. &
+               is_half_int_q(m2) .and. is_half_int_q(l3) .and. is_half_int_q(m3))) then
+      write(error_unit,'(A)') 'wigner(Fortran): wgauntq: argument is not a half-integer'
+      val = 0.0_real128; return
+    end if
+    val = gaunt_q(to_tj_q(l1), to_tj_q(m1), to_tj_q(l2), to_tj_q(m2), to_tj_q(l3), to_tj_q(m3))
+  end function wgauntq
+
+  function wgaunt_realq(l1,m1,l2,m2,l3,m3) result(val)
+    real(real128), intent(in) :: l1, m1, l2, m2, l3, m3
+    real(real128) :: val
+    if (.not. (is_half_int_q(l1) .and. is_half_int_q(m1) .and. is_half_int_q(l2) .and. &
+               is_half_int_q(m2) .and. is_half_int_q(l3) .and. is_half_int_q(m3))) then
+      write(error_unit,'(A)') 'wigner(Fortran): wgaunt_realq: argument is not a half-integer'
+      val = 0.0_real128; return
+    end if
+    val = gaunt_real_q(to_tj_q(l1), to_tj_q(m1), to_tj_q(l2), to_tj_q(m2), &
+                       to_tj_q(l3), to_tj_q(m3))
+  end function wgaunt_realq
+#endif
 
 end module wigner

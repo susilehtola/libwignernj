@@ -7,6 +7,7 @@ option(BUILD_SHARED_LIBS  "Build shared library"         ON)
 option(BUILD_FORTRAN      "Build Fortran interface"      ON)
 option(BUILD_PYTHON       "Build Python extension"       OFF)
 option(BUILD_MPFR         "Build MPFR arbitrary-precision interface" OFF)
+option(BUILD_QUADMATH     "Build libquadmath / __float128 interface"  OFF)
 option(BUILD_TESTS        "Build test suite"             ON)
 option(BUILD_CXX_TESTS    "Build C++ header tests"      ON)
 
@@ -85,6 +86,76 @@ if(NOT WIN32)
     target_link_libraries(wignernj PRIVATE m)
 endif()
 
+# libquadmath / __float128 interface (optional)
+#
+# __float128 is a GCC/Clang/ICC extension on Linux/macOS; not provided
+# by MSVC.  The runtime functions (sqrtq, ldexpq, ...) and the header
+# <quadmath.h> live in the libquadmath package shipped with GCC.
+# Clang supports __float128 as a builtin and links libquadmath at link
+# time, but its driver does *not* add GCC's internal include directory
+# to the search path, so <quadmath.h> is unreachable by default on
+# Clang/Linux.  We probe in two stages:
+#
+#   1. Try a direct compile-and-link with <quadmath.h> + libquadmath.
+#   2. If that fails, ask `gcc -print-file-name=include` for the
+#      directory containing quadmath.h and retry with that on the
+#      include path.  If the second probe succeeds, propagate the
+#      include directory to consumers via target_include_directories.
+#
+# Apple Clang and MSVC have no __float128 at all and fall through to
+# the FATAL_ERROR.
+if(BUILD_QUADMATH)
+    include(CheckCSourceCompiles)
+    set(_qm_test
+        "#include <quadmath.h>\nint main(void){__float128 x=sqrtq(2.0Q);return (int)x;}\n")
+    set(_qm_saved_libs "${CMAKE_REQUIRED_LIBRARIES}")
+    set(CMAKE_REQUIRED_LIBRARIES quadmath m)
+    check_c_source_compiles("${_qm_test}" WIGNERNJ_QUADMATH_DIRECT)
+    set(CMAKE_REQUIRED_LIBRARIES "${_qm_saved_libs}")
+
+    set(WIGNERNJ_QUADMATH_INCLUDE "")
+    if(NOT WIGNERNJ_QUADMATH_DIRECT)
+        # Fall back to gcc's include directory (where libquadmath-devel /
+        # libgcc-N-dev installs quadmath.h).
+        find_program(WIGNERNJ_GCC_FOR_QUADMATH
+            NAMES gcc gcc-15 gcc-14 gcc-13 gcc-12 gcc-11)
+        if(WIGNERNJ_GCC_FOR_QUADMATH)
+            execute_process(
+                COMMAND ${WIGNERNJ_GCC_FOR_QUADMATH} -print-file-name=include
+                OUTPUT_VARIABLE _qm_gcc_inc
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+            if(_qm_gcc_inc AND EXISTS "${_qm_gcc_inc}/quadmath.h")
+                set(_qm_saved_inc "${CMAKE_REQUIRED_INCLUDES}")
+                set(_qm_saved_libs "${CMAKE_REQUIRED_LIBRARIES}")
+                set(CMAKE_REQUIRED_INCLUDES  ${_qm_gcc_inc})
+                set(CMAKE_REQUIRED_LIBRARIES quadmath m)
+                check_c_source_compiles("${_qm_test}" WIGNERNJ_QUADMATH_GCC_INC)
+                set(CMAKE_REQUIRED_INCLUDES  "${_qm_saved_inc}")
+                set(CMAKE_REQUIRED_LIBRARIES "${_qm_saved_libs}")
+                if(WIGNERNJ_QUADMATH_GCC_INC)
+                    set(WIGNERNJ_QUADMATH_INCLUDE "${_qm_gcc_inc}")
+                endif()
+            endif()
+        endif()
+    endif()
+
+    if(NOT WIGNERNJ_QUADMATH_DIRECT AND NOT WIGNERNJ_QUADMATH_GCC_INC)
+        message(FATAL_ERROR
+            "BUILD_QUADMATH=ON, but neither <quadmath.h> nor the gcc-shipped "
+            "fallback path was usable.  __float128 / libquadmath are "
+            "available only on GCC, Clang (with libquadmath-devel / "
+            "libgcc-N-dev installed), and Intel compilers on Linux/macOS.  "
+            "Disable BUILD_QUADMATH on unsupported toolchains.")
+    endif()
+
+    target_compile_definitions(wignernj PUBLIC WIGNER_HAVE_QUADMATH)
+    target_link_libraries     (wignernj PUBLIC quadmath)
+    if(WIGNERNJ_QUADMATH_INCLUDE)
+        target_include_directories(wignernj PUBLIC ${WIGNERNJ_QUADMATH_INCLUDE})
+    endif()
+    install(FILES include/wigner_quadmath.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+endif()
+
 # MPFR arbitrary-precision interface (optional)
 #
 # mpfr.h does `#include <gmp.h>`, but on multi-prefix packagings (notably
@@ -122,6 +193,14 @@ if(BUILD_FORTRAN)
         enable_language(Fortran)
         add_library(wignernj_f03 src/fortran/wigner_f90.F90)
         target_link_libraries(wignernj_f03 PUBLIC wignernj)
+        # Forward the quadmath gate to the Fortran preprocessor so the
+        # corresponding interface block and convenience wrappers compile
+        # in.  iso_fortran_env::real128 is also gated on this define
+        # because, on toolchains where __float128 is unavailable, real128
+        # may be -1 (no kind), which would render the module unparseable.
+        if(BUILD_QUADMATH)
+            target_compile_definitions(wignernj_f03 PRIVATE WIGNERNJ_HAVE_QUADMATH)
+        endif()
         set_target_properties(wignernj_f03 PROPERTIES
             Fortran_MODULE_DIRECTORY
                 ${CMAKE_CURRENT_BINARY_DIR}/fortran_modules

@@ -471,6 +471,18 @@ long double gaunt_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
     return result;
 }
 
+#ifdef WIGNER_HAVE_QUADMATH
+__float128 gaunt_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
+{
+    wigner_exact_t e;
+    __float128 result;
+    gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
+    result = wigner_exact_to_float128(&e) / sqrtq(M_PIq);
+    wigner_exact_free(&e);
+    return result;
+}
+#endif
+
 #ifdef WIGNER_HAVE_MPFR
 #include "wigner_mpfr.h"
 void gaunt_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
@@ -524,6 +536,18 @@ long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
     wigner_exact_free(&e);
     return result;
 }
+
+#ifdef WIGNER_HAVE_QUADMATH
+__float128 gaunt_real_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
+{
+    wigner_exact_t e;
+    __float128 result;
+    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
+    result = wigner_exact_to_float128(&e) / sqrtq(M_PIq);
+    wigner_exact_free(&e);
+    return result;
+}
+#endif
 
 #ifdef WIGNER_HAVE_MPFR
 void gaunt_real_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,

@@ -83,6 +83,17 @@ long double clebsch_gordan_l(int tj1, int tm1, int tj2, int tm2, int tJ, int tM)
     return r;
 }
 
+#ifdef WIGNER_HAVE_QUADMATH
+__float128 clebsch_gordan_q(int tj1, int tm1, int tj2, int tm2, int tJ, int tM)
+{
+    wigner_exact_t e; __float128 r;
+    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &e);
+    r = wigner_exact_to_float128(&e);
+    wigner_exact_free(&e);
+    return r;
+}
+#endif
+
 #ifdef WIGNER_HAVE_MPFR
 #include <mpfr.h>
 void clebsch_gordan_mpfr(mpfr_t rop, int tj1, int tm1, int tj2, int tm2,
