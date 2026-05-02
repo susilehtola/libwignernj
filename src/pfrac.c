@@ -15,22 +15,34 @@ static void pfrac_fatal(const char *msg)
 void pfrac_init(pfrac_t *f)
 {
     f->exp = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
+    f->max_idx = 0;
 }
 
 void pfrac_free(pfrac_t *f)
 {
     free(f->exp);
     f->exp = NULL;
+    f->max_idx = 0;
 }
 
 void pfrac_zero(pfrac_t *f)
 {
-    memset(f->exp, 0, (size_t)g_nprimes * sizeof(int));
+    /* Zero only [0, max_idx); the invariant guarantees the rest is zero. */
+    if (f->max_idx > 0)
+        memset(f->exp, 0, (size_t)f->max_idx * sizeof(int));
+    f->max_idx = 0;
 }
 
 void pfrac_copy(pfrac_t *dst, const pfrac_t *src)
 {
-    memcpy(dst->exp, src->exp, (size_t)g_nprimes * sizeof(int));
+    /* If dst was wider than src, zero the excess so the invariant holds. */
+    if (dst->max_idx > src->max_idx) {
+        memset(dst->exp + src->max_idx, 0,
+               (size_t)(dst->max_idx - src->max_idx) * sizeof(int));
+    }
+    if (src->max_idx > 0)
+        memcpy(dst->exp, src->exp, (size_t)src->max_idx * sizeof(int));
+    dst->max_idx = src->max_idx;
 }
 
 void pfrac_mul_factorial(pfrac_t *f, int n)
@@ -46,6 +58,7 @@ void pfrac_mul_factorial(pfrac_t *f, int n)
     }
     for (i = 0; i < g_nprimes && g_primes[i] <= n; i++)
         f->exp[i] += legendre_valuation(n, i);
+    if (i > f->max_idx) f->max_idx = i;
 }
 
 void pfrac_div_factorial(pfrac_t *f, int n)
@@ -61,11 +74,13 @@ void pfrac_div_factorial(pfrac_t *f, int n)
     }
     for (i = 0; i < g_nprimes && g_primes[i] <= n; i++)
         f->exp[i] -= legendre_valuation(n, i);
+    if (i > f->max_idx) f->max_idx = i;
 }
 
 void pfrac_mul_int(pfrac_t *f, int k)
 {
     int pk, i;
+    int last = -1;
     if (k <= 1) return;
     if (k > PRIME_SIEVE_LIMIT) {
         fprintf(stderr,
@@ -78,6 +93,7 @@ void pfrac_mul_int(pfrac_t *f, int k)
         pk = g_primes[i];
         while (k % pk == 0) {
             f->exp[i]++;
+            last = i;
             k /= pk;
         }
         if (k == 1) break;
@@ -85,6 +101,7 @@ void pfrac_mul_int(pfrac_t *f, int k)
     /* Unreachable when k <= PRIME_SIEVE_LIMIT, but kept as a defensive check. */
     if (k != 1)
         pfrac_fatal("pfrac_mul_int: residual factor after full factorization (internal error)");
+    if (last + 1 > f->max_idx) f->max_idx = last + 1;
 }
 
 void pfrac_to_sqrt_rational(const pfrac_t *f,
@@ -92,7 +109,7 @@ void pfrac_to_sqrt_rational(const pfrac_t *f,
                              bigint_t *sqrt_num, bigint_t *sqrt_den)
 {
     int i, e, ae, half;
-    for (i = 0; i < g_nprimes; i++) {
+    for (i = 0; i < f->max_idx; i++) {
         e = f->exp[i];
         if (e == 0) continue;
         ae   = (e > 0) ? e : -e;
@@ -113,7 +130,7 @@ void pfrac_to_sqrt_rational_ws(const pfrac_t *f,
                                 bigint_ws_t *ws)
 {
     int i, e, ae, half;
-    for (i = 0; i < g_nprimes; i++) {
+    for (i = 0; i < f->max_idx; i++) {
         e = f->exp[i];
         if (e == 0) continue;
         ae   = (e > 0) ? e : -e;

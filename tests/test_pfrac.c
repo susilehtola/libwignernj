@@ -61,7 +61,7 @@ int main(void)
 
     /* pfrac_copy */
     pfrac_zero(&f);
-    f.exp[i2] = 5; f.exp[i3] = -3;
+    f.exp[i2] = 5; f.exp[i3] = -3; f.max_idx = i3 + 1;
     pfrac_copy(&g, &f);
     TEST_ASSERT(g.exp[i2] == 5);
     TEST_ASSERT(g.exp[i3] == -3);
@@ -73,7 +73,7 @@ int main(void)
 
     /* sqrt(2^4) = 4 : even positive exponent → integer part only */
     pfrac_zero(&f);
-    f.exp[i2] = 4;
+    f.exp[i2] = 4; f.max_idx = i2 + 1;
     bigint_set_u64(&in, 1); bigint_set_u64(&id, 1);
     bigint_set_u64(&sn, 1); bigint_set_u64(&sd, 1);
     pfrac_to_sqrt_rational(&f, &in, &id, &sn, &sd);
@@ -84,7 +84,7 @@ int main(void)
 
     /* sqrt(2^3) = 2*sqrt(2) : odd positive exponent */
     pfrac_zero(&f);
-    f.exp[i2] = 3;
+    f.exp[i2] = 3; f.max_idx = i2 + 1;
     bigint_set_u64(&in, 1); bigint_set_u64(&id, 1);
     bigint_set_u64(&sn, 1); bigint_set_u64(&sd, 1);
     pfrac_to_sqrt_rational(&f, &in, &id, &sn, &sd);
@@ -95,7 +95,7 @@ int main(void)
 
     /* sqrt(1/4) = 1/2 : even negative exponent */
     pfrac_zero(&f);
-    f.exp[i2] = -2;
+    f.exp[i2] = -2; f.max_idx = i2 + 1;
     bigint_set_u64(&in, 1); bigint_set_u64(&id, 1);
     bigint_set_u64(&sn, 1); bigint_set_u64(&sd, 1);
     pfrac_to_sqrt_rational(&f, &in, &id, &sn, &sd);
@@ -106,7 +106,7 @@ int main(void)
 
     /* sqrt(1/3) = 1/sqrt(3) : odd negative exponent → squarefree denominator */
     pfrac_zero(&f);
-    f.exp[i3] = -1;
+    f.exp[i3] = -1; f.max_idx = i3 + 1;
     bigint_set_u64(&in, 1); bigint_set_u64(&id, 1);
     bigint_set_u64(&sn, 1); bigint_set_u64(&sd, 1);
     pfrac_to_sqrt_rational(&f, &in, &id, &sn, &sd);
@@ -118,7 +118,7 @@ int main(void)
     /* sqrt(12) = 2*sqrt(3) : two primes, one even one odd */
     pfrac_zero(&f);
     f.exp[i2] = 2;
-    f.exp[i3] = 1;
+    f.exp[i3] = 1; f.max_idx = i3 + 1;
     bigint_set_u64(&in, 1); bigint_set_u64(&id, 1);
     bigint_set_u64(&sn, 1); bigint_set_u64(&sd, 1);
     pfrac_to_sqrt_rational(&f, &in, &id, &sn, &sd);
@@ -137,7 +137,7 @@ int main(void)
      * → int_den gets 2^2=4, sqrt_den gets 2; sqrt_num gets 3 */
     pfrac_zero(&f);
     f.exp[i2] = -5;
-    f.exp[i3] =  1;
+    f.exp[i3] =  1; f.max_idx = i3 + 1;
     bigint_set_u64(&in, 1); bigint_set_u64(&id, 1);
     bigint_set_u64(&sn, 1); bigint_set_u64(&sd, 1);
     pfrac_to_sqrt_rational(&f, &in, &id, &sn, &sd);

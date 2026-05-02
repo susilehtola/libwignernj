@@ -116,6 +116,7 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
     add_delta_sqrt(&outer, tj4, tj5, tj3);
 
     /* ── Pass 1: find LCM exponents ── */
+    int lcm_max_idx = 0;
     lcm_exp = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
     pfrac_init(&term);
 
@@ -136,10 +137,11 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
         pfrac_mul_factorial(&term, s + 1);
 
         /* term.exp[pi] is the net exponent; for LCM we want -min(term.exp[pi]) */
-        for (pi = 0; pi < g_nprimes; pi++) {
+        for (pi = 0; pi < term.max_idx; pi++) {
             int neg = -term.exp[pi]; /* positive = denominator contribution */
             if (neg > lcm_exp[pi]) lcm_exp[pi] = neg;
         }
+        if (term.max_idx > lcm_max_idx) lcm_max_idx = term.max_idx;
     }
 
     /* ── Pass 2: accumulate sum (all bigints pre-sized to mw) ── */
@@ -160,7 +162,7 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
 
         /* scaled = prod p_i^(lcm_exp[i] + term.exp[i])  [all non-negative] */
         bigint_set_u64(&scaled, 1);
-        for (pi = 0; pi < g_nprimes; pi++) {
+        for (pi = 0; pi < lcm_max_idx; pi++) {
             int e = lcm_exp[pi] + term.exp[pi];
             if (e > 0)
                 bigint_mul_prime_pow_ws(&scaled, (uint64_t)g_primes[pi], e, &ws);
@@ -192,7 +194,7 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
                                &out->sqrt_num, &out->sqrt_den, &ws);
 
     /* LCM denominator → int_den */
-    for (pi = 0; pi < g_nprimes; pi++) {
+    for (pi = 0; pi < lcm_max_idx; pi++) {
         if (lcm_exp[pi] > 0)
             bigint_mul_prime_pow_ws(&out->int_den,
                                     (uint64_t)g_primes[pi], lcm_exp[pi], &ws);

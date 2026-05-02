@@ -136,6 +136,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     build_outer_sqrt_3j(&outer, tj1, tj2, tj3, tm1, tm2, tm3);
 
     /* ── Pass 1: find LCM exponents (max denom exponent per prime) ── */
+    int lcm_max_idx = 0;
     lcm_exp = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
 
     pfrac_init(&term);
@@ -152,10 +153,11 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
         pfrac_mul_factorial(&term, (tj3 - tj2 + tm1) / 2 + s);
         pfrac_mul_factorial(&term, (tj3 - tj1 - tm2) / 2 + s);
 
-        for (pi = 0; pi < g_nprimes; pi++) {
+        for (pi = 0; pi < term.max_idx; pi++) {
             if (term.exp[pi] > lcm_exp[pi])
                 lcm_exp[pi] = term.exp[pi];
         }
+        if (term.max_idx > lcm_max_idx) lcm_max_idx = term.max_idx;
     }
 
     /* ── Pass 2: accumulate scaled integer Racah sum (pre-sized bigints) ── */
@@ -173,9 +175,12 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
         pfrac_mul_factorial(&term, (tj3 - tj2 + tm1) / 2 + s);
         pfrac_mul_factorial(&term, (tj3 - tj1 - tm2) / 2 + s);
 
-        /* scaled_term = LCM / term_denom = prod p_i^(lcm_exp[i] - term.exp[i]) */
+        /* scaled_term = LCM / term_denom = prod p_i^(lcm_exp[i] - term.exp[i]).
+         * lcm_exp[i] is zero for i >= lcm_max_idx; term.exp[i] is zero for
+         * i >= term.max_idx; so iterating to lcm_max_idx covers every nonzero
+         * difference (term.max_idx <= lcm_max_idx by construction). */
         bigint_set_u64(&scaled, 1);
-        for (pi = 0; pi < g_nprimes; pi++) {
+        for (pi = 0; pi < lcm_max_idx; pi++) {
             int diff = lcm_exp[pi] - term.exp[pi];
             if (diff > 0)
                 bigint_mul_prime_pow_ws(&scaled, (uint64_t)g_primes[pi], diff, &ws);
@@ -210,7 +215,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
                                &out->sqrt_num, &out->sqrt_den, &ws);
 
     /* LCM denominator: prod p_i^lcm_exp[i] → absorbed into int_den */
-    for (pi = 0; pi < g_nprimes; pi++) {
+    for (pi = 0; pi < lcm_max_idx; pi++) {
         if (lcm_exp[pi] > 0)
             bigint_mul_prime_pow_ws(&out->int_den,
                                     (uint64_t)g_primes[pi], lcm_exp[pi], &ws);

@@ -82,15 +82,17 @@ static void gaunt_racah_bounds(int tj1, int tj2, int tj3, int tm1, int tm2,
 
 /*
  * Racah integer sum for 3j(j1,j2,j3; m1,m2,m3), no outer sqrt factor.
- * Fills sum_out (LCM-scaled magnitude), sum_sign_out, and lcm_exp[g_nprimes].
- * lcm_exp must be zeroed by the caller.
+ * Fills sum_out (LCM-scaled magnitude), sum_sign_out, lcm_exp[0..*lcm_max_io)
+ * and the new *lcm_max_io upper bound.  lcm_exp must be zeroed by the caller.
  */
 static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
                                 int tm1, int tm2,
-                                bigint_t *sum_out, int *sum_sign_out, int *lcm_exp,
+                                bigint_t *sum_out, int *sum_sign_out,
+                                int *lcm_exp, int *lcm_max_io,
                                 bigint_ws_t *ws, size_t mw)
 {
     int s, s_min, s_max, pi;
+    int lcm_max = 0;
     pfrac_t term;
     bigint_t sum_pos, sum_neg, scaled;
 
@@ -99,6 +101,7 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
     if (s_min > s_max) {
         bigint_set_zero(sum_out);
         *sum_sign_out = 1;
+        *lcm_max_io = 0;
         return;
     }
 
@@ -116,9 +119,10 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
         pfrac_mul_factorial(&term, (tj2 + tm2) / 2 - s);
         pfrac_mul_factorial(&term, (tj3 - tj2 + tm1) / 2 + s);
         pfrac_mul_factorial(&term, (tj3 - tj1 - tm2) / 2 + s);
-        for (pi = 0; pi < g_nprimes; pi++) {
+        for (pi = 0; pi < term.max_idx; pi++) {
             if (term.exp[pi] > lcm_exp[pi]) lcm_exp[pi] = term.exp[pi];
         }
+        if (term.max_idx > lcm_max) lcm_max = term.max_idx;
     }
 
     /* Pass 2: accumulate scaled terms */
@@ -131,7 +135,7 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
         pfrac_mul_factorial(&term, (tj3 - tj2 + tm1) / 2 + s);
         pfrac_mul_factorial(&term, (tj3 - tj1 - tm2) / 2 + s);
         bigint_set_u64(&scaled, 1);
-        for (pi = 0; pi < g_nprimes; pi++) {
+        for (pi = 0; pi < lcm_max; pi++) {
             int diff = lcm_exp[pi] - term.exp[pi];
             if (diff > 0)
                 bigint_mul_prime_pow_ws(&scaled, (uint64_t)g_primes[pi], diff, ws);
@@ -141,6 +145,7 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
     }
 
     *sum_sign_out = bigint_sub_signed(sum_out, &sum_pos, &sum_neg);
+    *lcm_max_io = lcm_max;
 
     pfrac_free(&term);
     bigint_free(&sum_pos);
@@ -227,22 +232,26 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     pfrac_mul_factorial(&outer, (tl3 - tm3) / 2);
 
     /* (2l1+1)(2l2+1)(2l3+1) / 4 : integer factors folded in via prime factorization.
-     * g_primes[0] = 2, so subtracting 2 from exp[0] divides by 4 = 2². */
+     * g_primes[0] = 2, so subtracting 2 from exp[0] divides by 4 = 2².
+     * Bump max_idx so the manual write to exp[0] is visible to
+     * pfrac_to_sqrt_rational's max_idx-bounded sweep. */
     pfrac_mul_int(&outer, tl1 + 1);
     pfrac_mul_int(&outer, tl2 + 1);
     pfrac_mul_int(&outer, tl3 + 1);
     outer.exp[0] -= 2;
+    if (outer.max_idx < 1) outer.max_idx = 1;
 
     /* Racah integer sums for both 3j symbols */
+    int lcm0_max = 0, lcmm_max = 0;
     lcm0 = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
     lcmm = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
     bigint_init(&sum0); bigint_reserve(&sum0, mw);
     bigint_init(&summ); bigint_reserve(&summ, mw);
 
-    gaunt_3j_racah_sum(tl1, tl2, tl3, 0, 0, &sum0, &ss0, lcm0, &ws, mw);
+    gaunt_3j_racah_sum(tl1, tl2, tl3, 0, 0, &sum0, &ss0, lcm0, &lcm0_max, &ws, mw);
     if (bigint_is_zero(&sum0)) { out->is_zero = 1; goto cleanup; }
 
-    gaunt_3j_racah_sum(tl1, tl2, tl3, tm1, tm2, &summ, &ssm, lcmm, &ws, mw);
+    gaunt_3j_racah_sum(tl1, tl2, tl3, tm1, tm2, &summ, &ssm, lcmm, &lcmm_max, &ws, mw);
     if (bigint_is_zero(&summ)) { out->is_zero = 1; goto cleanup; }
 
     /* Product of the two Racah sums */
@@ -258,8 +267,10 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     pfrac_to_sqrt_rational_ws(&outer, &out->int_num, &out->int_den,
                               &out->sqrt_num, &out->sqrt_den, &ws);
 
-    /* Combined LCM denominator → int_den */
-    for (pi = 0; pi < g_nprimes; pi++) {
+    /* Combined LCM denominator → int_den.  The two lcm arrays are
+     * disjoint in active range up to max(lcm0_max, lcmm_max). */
+    int lcm_union_max = (lcm0_max > lcmm_max) ? lcm0_max : lcmm_max;
+    for (pi = 0; pi < lcm_union_max; pi++) {
         int e = lcm0[pi] + lcmm[pi];
         if (e > 0)
             bigint_mul_prime_pow_ws(&out->int_den,

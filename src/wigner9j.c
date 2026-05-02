@@ -81,13 +81,19 @@ static void add_delta_sqrt(pfrac_t *f, int ta, int tb, int tc)
 /* Inner Racah sum for one of the three 6j symbols.  Caller-owned scratch
  * bigints (sum_pos, sum_neg, scaled) are reused across all calls of one 9j
  * evaluation, eliminating per-call bigint allocations. */
+/* lcm_max_idx is in/out: caller passes the previous call's value (or 0 on
+ * first use); function zeros lcm_exp[0..*lcm_max_idx_io) and overwrites it
+ * with the new bound on return.  This avoids the 2.2 KB memset on every
+ * inner-6j call. */
 static void racah_6j_sum(int tj1, int tj2, int tj3,
                           int tj4, int tj5, int tj6,
                           bigint_t *sum_out, int *sum_sign_out, int *lcm_exp,
+                          int *lcm_max_idx_io,
                           bigint_t *sum_pos, bigint_t *sum_neg,
                           bigint_t *scaled, bigint_ws_t *ws)
 {
     int s, s_min, s_max, pi;
+    int lcm_max_idx = 0;
     pfrac_t term;
 
     {
@@ -107,11 +113,16 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
         if (c < s_max) s_max = c;
     }
 
-    memset(lcm_exp, 0, (size_t)g_nprimes * sizeof(int));
+    /* Clear only the [0, prev_max) range that the previous call could have
+     * dirtied; the suffix beyond that bound is still zeroed from xcalloc or
+     * from an earlier zero-fill. */
+    if (*lcm_max_idx_io > 0)
+        memset(lcm_exp, 0, (size_t)(*lcm_max_idx_io) * sizeof(int));
 
     if (s_min > s_max) {
         bigint_set_zero(sum_out);
         *sum_sign_out = 1;
+        *lcm_max_idx_io = 0;
         return;
     }
 
@@ -130,10 +141,11 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
         pfrac_div_factorial(&term, (tj2+tj3+tj5+tj6)/2 - s);
         pfrac_div_factorial(&term, (tj1+tj3+tj4+tj6)/2 - s);
         pfrac_mul_factorial(&term, s + 1);
-        for (pi = 0; pi < g_nprimes; pi++) {
+        for (pi = 0; pi < term.max_idx; pi++) {
             int neg = -term.exp[pi];
             if (neg > lcm_exp[pi]) lcm_exp[pi] = neg;
         }
+        if (term.max_idx > lcm_max_idx) lcm_max_idx = term.max_idx;
     }
 
     /* Pass 2: accumulate */
@@ -148,7 +160,7 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
         pfrac_div_factorial(&term, (tj1+tj3+tj4+tj6)/2 - s);
         pfrac_mul_factorial(&term, s + 1);
         bigint_set_u64(scaled, 1);
-        for (pi = 0; pi < g_nprimes; pi++) {
+        for (pi = 0; pi < lcm_max_idx; pi++) {
             int e = lcm_exp[pi] + term.exp[pi];
             if (e > 0) bigint_mul_prime_pow_ws(scaled, (uint64_t)g_primes[pi], e, ws);
         }
@@ -157,6 +169,7 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
     }
 
     *sum_sign_out = bigint_sub_signed(sum_out, sum_pos, sum_neg);
+    *lcm_max_idx_io = lcm_max_idx;
 
     pfrac_free(&term);
 }
@@ -219,9 +232,11 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     add_delta_sqrt(&outer, tj22, tj12, tj32);
 
     global_lcm = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
-    lcm1 = (int *)xmalloc((size_t)g_nprimes * sizeof(int));
-    lcm2 = (int *)xmalloc((size_t)g_nprimes * sizeof(int));
-    lcm3 = (int *)xmalloc((size_t)g_nprimes * sizeof(int));
+    lcm1 = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
+    lcm2 = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
+    lcm3 = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
+    int lcm1_max = 0, lcm2_max = 0, lcm3_max = 0;
+    int global_lcm_max = 0;
 
     pfrac_init(&kdep);
     bigint_init(&s1); bigint_reserve(&s1, mw);
@@ -250,18 +265,25 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
         add_delta_sqrt(&kdep, tj21, tj32, tk); add_delta_sqrt(&kdep, tj21, tj32, tk);
         add_delta_sqrt(&kdep, tj12, tj23, tk); add_delta_sqrt(&kdep, tj12, tj23, tk);
 
-        racah_6j_sum(tj11,tj21,tj31, tj32,tj33,tk,  &tmp,&ss1,lcm1,
+        racah_6j_sum(tj11,tj21,tj31, tj32,tj33,tk,  &tmp,&ss1,lcm1, &lcm1_max,
                      &inner_pos, &inner_neg, &inner_scaled, &ws);
-        racah_6j_sum(tj11,tj12,tj13, tj23,tj33,tk,  &tmp,&ss2,lcm2,
+        racah_6j_sum(tj11,tj12,tj13, tj23,tj33,tk,  &tmp,&ss2,lcm2, &lcm2_max,
                      &inner_pos, &inner_neg, &inner_scaled, &ws);
-        racah_6j_sum(tj22,tj21,tj23, tk,tj12,tj32,  &tmp,&ss3,lcm3,
+        racah_6j_sum(tj22,tj21,tj23, tk,tj12,tj32,  &tmp,&ss3,lcm3, &lcm3_max,
                      &inner_pos, &inner_neg, &inner_scaled, &ws);
 
-        for (pi = 0; pi < g_nprimes; pi++) {
+        /* Iterate over the union of contributing prime indices: kdep,
+         * lcm1, lcm2, lcm3.  Anything beyond this bound is zero. */
+        int union_max = kdep.max_idx;
+        if (lcm1_max > union_max) union_max = lcm1_max;
+        if (lcm2_max > union_max) union_max = lcm2_max;
+        if (lcm3_max > union_max) union_max = lcm3_max;
+        for (pi = 0; pi < union_max; pi++) {
             /* kdep.exp[pi] is the sqrt-argument exponent; divide by 2 for value */
             int net = kdep.exp[pi] / 2 - lcm1[pi] - lcm2[pi] - lcm3[pi];
             if (-net > global_lcm[pi]) global_lcm[pi] = -net;
         }
+        if (union_max > global_lcm_max) global_lcm_max = union_max;
     }
 
     /* ── Pass 2: accumulate ───────────────────────────────────────────────── */
@@ -271,19 +293,25 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
         add_delta_sqrt(&kdep, tj21, tj32, tk); add_delta_sqrt(&kdep, tj21, tj32, tk);
         add_delta_sqrt(&kdep, tj12, tj23, tk); add_delta_sqrt(&kdep, tj12, tj23, tk);
 
-        racah_6j_sum(tj11,tj21,tj31, tj32,tj33,tk,  &s1,&ss1,lcm1,
+        racah_6j_sum(tj11,tj21,tj31, tj32,tj33,tk,  &s1,&ss1,lcm1, &lcm1_max,
                      &inner_pos, &inner_neg, &inner_scaled, &ws);
-        racah_6j_sum(tj11,tj12,tj13, tj23,tj33,tk,  &s2,&ss2,lcm2,
+        racah_6j_sum(tj11,tj12,tj13, tj23,tj33,tk,  &s2,&ss2,lcm2, &lcm2_max,
                      &inner_pos, &inner_neg, &inner_scaled, &ws);
-        racah_6j_sum(tj22,tj21,tj23, tk,tj12,tj32,  &s3,&ss3,lcm3,
+        racah_6j_sum(tj22,tj21,tj23, tk,tj12,tj32,  &s3,&ss3,lcm3, &lcm3_max,
                      &inner_pos, &inner_neg, &inner_scaled, &ws);
 
         if (bigint_is_zero(&s1) || bigint_is_zero(&s2) || bigint_is_zero(&s3))
             continue;
 
-        /* scale[pi] = global_lcm[pi] + net[pi] >= 0 by construction */
+        /* scale[pi] = global_lcm[pi] + net[pi] >= 0 by construction.
+         * Bound iteration by the union max of all contributing arrays. */
         bigint_set_u64(&scaled, (uint64_t)(tk + 1)); /* factor (2k+1) */
-        for (pi = 0; pi < g_nprimes; pi++) {
+        int union_max = global_lcm_max;
+        if (kdep.max_idx > union_max) union_max = kdep.max_idx;
+        if (lcm1_max > union_max) union_max = lcm1_max;
+        if (lcm2_max > union_max) union_max = lcm2_max;
+        if (lcm3_max > union_max) union_max = lcm3_max;
+        for (pi = 0; pi < union_max; pi++) {
             int e = global_lcm[pi] + kdep.exp[pi] / 2 - lcm1[pi] - lcm2[pi] - lcm3[pi];
             if (e > 0) bigint_mul_prime_pow_ws(&scaled, (uint64_t)g_primes[pi], e, &ws);
         }
@@ -306,7 +334,7 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     pfrac_to_sqrt_rational_ws(&outer,
                               &out->int_num, &out->int_den,
                               &out->sqrt_num, &out->sqrt_den, &ws);
-    for (pi = 0; pi < g_nprimes; pi++) {
+    for (pi = 0; pi < global_lcm_max; pi++) {
         if (global_lcm[pi] > 0)
             bigint_mul_prime_pow_ws(&out->int_den,
                                     (uint64_t)g_primes[pi], global_lcm[pi], &ws);

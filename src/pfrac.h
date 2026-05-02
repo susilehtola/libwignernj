@@ -19,9 +19,18 @@
  *     In both cases the same struct is used; the interpretation is the caller's.
  *
  * exp[] is sized to g_nprimes and zero-initialised at allocation.
+ *
+ * max_idx is an upper bound on the largest prime index that has been
+ * touched by any pfrac_mul_factorial / pfrac_div_factorial / pfrac_mul_int
+ * / pfrac_copy operation since the last pfrac_zero.  All entries with
+ * i >= max_idx are guaranteed to be zero, so loops over the pfrac may
+ * iterate to max_idx instead of g_nprimes.  For angular momenta well below
+ * MAX_FACTORIAL_ARG this is a substantial reduction (max_idx ~ pi(j) for
+ * moderate j, vs g_nprimes ~ 2263 for the full table).
  */
 typedef struct {
-    int *exp;   /* exp[i] = exponent of g_primes[i]; len = g_nprimes */
+    int *exp;     /* exp[i] = exponent of g_primes[i]; len = g_nprimes */
+    int  max_idx; /* exp[i] == 0 for all i >= max_idx (invariant) */
 } pfrac_t;
 
 void pfrac_init(pfrac_t *f);
