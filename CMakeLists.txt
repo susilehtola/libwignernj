@@ -35,6 +35,12 @@ set_target_properties(wignernj PROPERTIES
     C_STANDARD_REQUIRED ON
     VERSION   ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
+    # Auto-generate the MSVC import library by exporting every symbol.
+    # On ELF/Mach-O the public-by-default visibility makes this a no-op;
+    # on Windows it is what saves us from sprinkling __declspec(dllexport)
+    # over every public function (or supplying a hand-written .def file)
+    # to make wignernj.lib appear next to wignernj.dll.
+    WINDOWS_EXPORT_ALL_SYMBOLS ON
 )
 target_include_directories(wignernj
     PUBLIC  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -94,6 +100,7 @@ if(BUILD_FORTRAN)
                 ${CMAKE_CURRENT_BINARY_DIR}/fortran_modules
             VERSION   ${PROJECT_VERSION}
             SOVERSION ${PROJECT_VERSION_MAJOR}
+            WINDOWS_EXPORT_ALL_SYMBOLS ON
             # Bake $ORIGIN into the installed library so that, when a
             # downstream binary's DT_RUNPATH points at some non-system
             # prefix where libwignernj_f03.so lives, the dynamic linker
