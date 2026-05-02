@@ -24,6 +24,7 @@ ctest --test-dir build
 cmake -B build \
     -DBUILD_FORTRAN=ON \
     -DBUILD_CXX_TESTS=ON \
+    -DBUILD_QUADMATH=ON \
     -DBUILD_MPFR=ON \
     -DBUILD_PYTHON=ON
 cmake --build build
@@ -41,6 +42,7 @@ python -m pytest tests/python/
 | `BUILD_FORTRAN` | `ON` | Fortran 90 interface (`libwignernj_f03`) |
 | `BUILD_TESTS` | `ON` | C and Fortran test suite |
 | `BUILD_CXX_TESTS` | `ON` | C++ header tests |
+| `BUILD_QUADMATH` | `OFF` | libquadmath / IEEE 754 binary128 (`__float128`) interface (requires GCC, Clang, or Intel ICC/ICX on Linux/macOS) |
 | `BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface (requires libmpfr) |
 | `BUILD_PYTHON` | `OFF` | CPython extension module |
 
@@ -52,6 +54,9 @@ pkg-config --cflags --libs libwignernj
 
 # Manual
 -lwignernj -lm
+
+# With libquadmath interface
+-lwignernj -lquadmath -lm
 
 # With MPFR interface
 -lwignernj -lmpfr -lm
@@ -345,6 +350,49 @@ float  f = wigner::symbol3j<float>(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
 | `wigner::gaunt<T>(...)` | `(tl1,tm1, tl2,tm2, tl3,tm3)` |
 
 `T` is `float`, `double`, or `long double`.
+
+---
+
+## libquadmath API
+
+Build with `-DBUILD_QUADMATH=ON` (requires GCC, Clang, or Intel
+ICC/ICX with `__float128` support; not available on Apple Clang or
+MSVC).  Include `wigner_quadmath.h` in addition to `wigner.h`.  Link
+with `-lwignernj -lquadmath -lm`.
+
+```c
+#include "wigner.h"
+#include "wigner_quadmath.h"
+
+__float128 v = wigner6j_q(4, 4, 4, 4, 4, 4);
+```
+
+### Function signatures
+
+```c
+__float128 wigner3j_q(int tj1, int tj2, int tj3,
+                      int tm1, int tm2, int tm3);
+__float128 wigner6j_q(int tj1, int tj2, int tj3,
+                      int tj4, int tj5, int tj6);
+__float128 wigner9j_q(int tj11, int tj12, int tj13,
+                      int tj21, int tj22, int tj23,
+                      int tj31, int tj32, int tj33);
+__float128 clebsch_gordan_q(int tj1, int tm1, int tj2, int tm2,
+                            int tJ,  int tM);
+__float128 racah_w_q(int tj1, int tj2, int tJ,
+                     int tj3, int tj12, int tj23);
+__float128 gaunt_q     (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
+__float128 gaunt_real_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
+```
+
+The Fortran `wigner` module exposes the same routines (and real-valued
+convenience wrappers `w3jq`, `w6jq`, `w9jq`, `wcgq`, `wracahwq`,
+`wgauntq`, `wgaunt_realq`) returning `real(real128)`.
+
+Results are accurate to within 2 ulp at quad precision; the conversion
+path Horner-evaluates the top three 64-bit words of the bigint in
+`__float128` arithmetic, feeding 192 input bits into a 113-bit
+mantissa.
 
 ---
 

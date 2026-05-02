@@ -42,6 +42,7 @@ CMake options (all `ON` by default except `BUILD_PYTHON`):
 | `BUILD_TESTS` | `ON` | C/Fortran test suite |
 | `BUILD_CXX_TESTS` | `ON` | C++ header tests |
 | `BUILD_PYTHON` | `OFF` | Python extension |
+| `BUILD_QUADMATH` | `OFF` | libquadmath / IEEE 754 binary128 (`__float128`) interface |
 | `BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface |
 
 A separate preprocessor switch `-DBIGINT_FORCE_PORTABLE` (passed via
@@ -86,10 +87,33 @@ double      gaunt_real(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 ```
 
 Each function is available in three precisions: `double` (no suffix), `float`
-(`_f`), and `long double` (`_l`).  Functions return 0 for symbols that vanish
-by selection rules; selection-rule violations are not errors.
+(`_f`), and `long double` (`_l`).  When the library is built with
+`-DBUILD_QUADMATH=ON`, an additional `_q` variant returning `__float128`
+is exposed in `wigner_quadmath.h` (see below).  Functions return 0 for
+symbols that vanish by selection rules; selection-rule violations are not
+errors.
 
 Linking: `pkg-config --libs libwignernj` or `-lwignernj -lm`.
+
+## libquadmath API
+
+Build with `-DBUILD_QUADMATH=ON` (requires a compiler with `__float128`
+support: GCC, Clang, or Intel ICC/ICX on Linux/macOS; not Apple Clang or
+MSVC).  Include `wigner_quadmath.h` in addition to `wigner.h`.  Each public
+symbol gains a `_q` variant returning `__float128` (IEEE 754 binary128,
+113-bit mantissa):
+
+```c
+#include "wigner.h"
+#include "wigner_quadmath.h"
+
+__float128 v = wigner6j_q(4, 4, 4, 4, 4, 4);
+```
+
+The Fortran module also exposes the corresponding `wigner3j_q`,
+`wigner6j_q`, ..., `gaunt_real_q` `bind(c)` interfaces and the real-valued
+convenience wrappers `w3jq`, `w6jq`, `w9jq`, `wcgq`, `wracahwq`, `wgauntq`,
+`wgaunt_realq` that take `real(real128)` arguments.
 
 ## MPFR API
 
@@ -181,7 +205,9 @@ v = wgaunt_real(2.0d0, 1.0d0, 2.0d0, -1.0d0, 0.0d0, 0.0d0)
 ```
 
 Raw `bind(c)` interfaces using `2*j` integers are also available for all
-three precisions (the `long double` variants require gfortran or Cray Fortran).
+three precisions (the `long double` variants require gfortran or Cray
+Fortran), plus the `_q` (`real(real128)`) variants when the library is
+built with `BUILD_QUADMATH=ON`.
 
 Link with `-lwignernj_f03 -lwignernj -lm`.
 
