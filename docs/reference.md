@@ -557,13 +557,23 @@ that has a prime factor larger than 20011 would be silently mis-factored.
 The first such `n` is 20021 (which is prime).  `MAX_FACTORIAL_ARG = 20000`
 is set conservatively below this boundary.
 
+The prime list (`g_primes`) and its inverse-lookup index (`g_prime_index`)
+are hard-coded into the compiled library (~9 kB and ~40 kB respectively,
+totalling ~49 kB) rather than built at run time.  This is a deliberate
+design choice: it means the library has **no caller-side initialization
+step**, is safely usable from concurrent threads with no initialization
+race, and lets the tables live in read-only program data.  The default
+sieve limit was chosen on a rule of thumb that ~50 kB is a reasonable
+upper bound for compile-time constant tables, while still admitting
+angular momenta well beyond what most application domains require.
+
 The binding factorial argument in each coefficient is the triangle-coefficient
-denominator `(j1+j2+j3+1)!`.  The resulting hard limits on the sum of angular
-momenta are:
+denominator `(j1+j2+j3+1)!`.  The resulting default-build limits on the sum of
+angular momenta are:
 
 | Symbol | Binding factorial | Limit on sum | Equal-j limit |
 |---|---|---|---|
-| 3j, 6j, CG, Racah W, Gaunt | `(j1+j2+j3+1)!` | j1+j2+j3 ≤ 19999 | **j ≤ 6666** |
+| 3j, 6j, CG, Racah W, complex Gaunt, real Gaunt | `(j1+j2+j3+1)!` | j1+j2+j3 ≤ 19999 | **j ≤ 6666** |
 | 9j | `(4j+1)!` (k-dependent Δ at k = k_max) | 4j ≤ 19999 | **j ≤ 4999** |
 
 These limits apply to the sum of the three largest angular momenta appearing
@@ -572,13 +582,22 @@ larger individual `j` values as long as no triangle sum exceeds 19999.
 
 Exceeding these limits causes the library to print a diagnostic to stderr
 and call `abort()`.  The check is unconditional (not gated on `NDEBUG`).
+The ceiling is **not architectural**: it is determined by the size of the
+compile-time prime table (`PRIME_SIEVE_LIMIT` in `src/primes.h`) and can
+be raised by regenerating the table with `tools/gen_prime_table.py` for a
+larger sieve limit and rebuilding the library.
 
 ### Performance scaling
 
 The Racah summation has O(j) terms for 3j and 6j; the 9j outer loop over the
-intermediate quantum number k adds another factor of O(j), giving O(j²) total.
-Intermediate bigints grow proportional to j/ln 2 bits (the LCM denominator
-grows as the primorial).
+intermediate quantum number k adds another factor of O(j), so the *number* of
+sum terms is O(j) for 3j/6j and O(j²) for 9j.  Intermediate bigints grow
+proportional to j/ln 2 bits (the LCM denominator grows as the primorial), so
+each elementary bigint operation costs O(j).  The resulting end-to-end cost
+per symbol is
+
+- **3j, 6j, CG, Racah W, complex / real Gaunt:** O(j²)
+- **9j:** O(j⁴) (each k step contains three multiplications of size-O(j²) bigints)
 
 Approximate wall-clock times on a modern single core:
 

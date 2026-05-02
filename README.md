@@ -187,14 +187,24 @@ Link with `-lwignernj_fortran -lwignernj -lm`.
 
 ## Limits
 
-The prime table covers factorials up to 20000!, which translates to:
+The prime list and its inverse-lookup index are hard-coded into the compiled
+library (≈49 kB of read-only data), which is what lets the library work with
+**no caller-side initialization step**.  The default sieve limit was chosen
+on a rule of thumb that ~50 kB is a reasonable upper bound for compile-time
+constant tables; the resulting prime table covers factorials up to 20000!,
+which translates to:
 
-- 3j / 6j / CG / Racah W / Gaunt: j1+j2+j3 ≤ 19999 (equal-j: **j ≤ 6666**)
+- 3j / 6j / CG / Racah W / complex Gaunt / real Gaunt: j1+j2+j3 ≤ 19999 (equal-j: **j ≤ 6666**)
 - 9j: equal-j **j ≤ 4999** (k-dependent triangle denominators reach (4j+1)!)
 
-Exceeding these limits prints a diagnostic to stderr and aborts.  The 9j is also
-O(j²) in computation time; evaluations with j > a few hundred can be slow.
-See [docs/reference.md](docs/reference.md#limitations) for details.
+Exceeding these limits prints a diagnostic to stderr and aborts.  The ceiling is
+**not architectural**: it is set by the size of the compile-time prime table
+(`PRIME_SIEVE_LIMIT` in `src/primes.h`) and can be raised by regenerating the
+table with `tools/gen_prime_table.py` and rebuilding, at the cost of a
+proportionally larger compiled-in table.
+
+The 9j is also O(j⁴) in computation time; evaluations with j > a few hundred
+can be slow.  See [docs/reference.md](docs/reference.md#limitations) for details.
 
 ## Documentation
 
