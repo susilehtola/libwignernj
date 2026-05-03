@@ -180,6 +180,75 @@ long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 void wigner_warmup(void);
 int  wigner_thread_local_scratch_available(void);
 
+/* ── Optional factorial-decomposition cache ─────────────────────────────────
+ *
+ * Every public symbol evaluation factors several N! into prime exponents
+ * via Legendre's formula.  By default these decompositions are cached
+ * lazily in a per-thread table indexed by N, so each N is decomposed
+ * only once across the lifetime of the calling thread.  Subsequent
+ * calls that reference the same N are served from the cache, replacing
+ * the per-call divide loop with a vector lookup-and-add.  This is the
+ * dominant optimisation at small to moderate j, where the bigint
+ * arithmetic does not yet dominate the wall-clock.
+ *
+ * Memory cost: one int per prime <= N per cached row, which sums to
+ * about 80 MB at the absolute default-build ceiling
+ * (wigner_max_factorial_arg() = 20000) and is much smaller for
+ * realistic inputs.
+ *
+ * `wigner_warmup_factorial_cache(N_max)` pre-populates the cache for
+ * factorial arguments 2..N_max so subsequent symbol evaluations whose
+ * factorials stay within that bound are guaranteed allocation-free.
+ * Pass 0 to populate up to the absolute prime-table ceiling.  No-op
+ * on toolchains without thread-local storage.
+ *
+ * The wigner*_max_factorial helpers below return the largest factorial
+ * argument that the corresponding symbol would reference for the given
+ * inputs.  Use them to size the warmup precisely:
+ *
+ *   int N = wigner3j_max_factorial(tj1, tj2, tj3, tm1, tm2, tm3);
+ *   wigner_warmup_factorial_cache(N);
+ *
+ * To cover an entire workload, take the maximum across calls or pass
+ * the absolute ceiling via wigner_max_factorial_arg(). */
+void wigner_warmup_factorial_cache(int N_max);
+int  wigner_max_factorial_arg(void);
+
+/* Release every per-thread cache held by the calling thread (the
+ * scratch buffers used by the per-symbol Racah pipelines and the
+ * factorial-decomposition cache used by the prime-factorisation
+ * helpers).  After this call, the next symbol evaluation in the
+ * calling thread re-enters the lazy-init path: scratch buffers are
+ * re-allocated on first use, and the factorial cache is rebuilt as
+ * each new N is encountered.
+ *
+ * Useful for applications that want to reclaim memory after a long-
+ * running thread is done computing symbols, or before forking a worker.
+ * Calling this is purely a memory-management hint; correctness is
+ * unaffected.  Each thread can call it independently; threads other
+ * than the caller are not affected.  No-op on toolchains without
+ * thread-local storage (there is no persistent state to release). */
+void wigner_thread_cleanup(void);
+
+int wigner3j_max_factorial      (int tj1, int tj2, int tj3,
+                                 int tm1, int tm2, int tm3);
+int wigner6j_max_factorial      (int tj1, int tj2, int tj3,
+                                 int tj4, int tj5, int tj6);
+int wigner9j_max_factorial      (int tj11, int tj12, int tj13,
+                                 int tj21, int tj22, int tj23,
+                                 int tj31, int tj32, int tj33);
+int clebsch_gordan_max_factorial(int tj1, int tm1, int tj2, int tm2,
+                                 int tJ,  int tM);
+int racah_w_max_factorial       (int tj1, int tj2, int tJ,
+                                 int tj3, int tj12, int tj23);
+int fano_x_max_factorial        (int tj1, int tj2, int tj12,
+                                 int tj3, int tj4, int tj34,
+                                 int tj13, int tj24, int tJ);
+int gaunt_max_factorial         (int tl1, int tm1, int tl2, int tm2,
+                                 int tl3, int tm3);
+int gaunt_real_max_factorial    (int tl1, int tm1, int tl2, int tm2,
+                                 int tl3, int tm3);
+
 #ifdef __cplusplus
 }
 #endif

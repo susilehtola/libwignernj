@@ -381,6 +381,25 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
 
 /* ── public API ──────────────────────────────────────────────────────────── */
 
+int wigner9j_max_factorial(int tj11, int tj12, int tj13,
+                           int tj21, int tj22, int tj23,
+                           int tj31, int tj32, int tj33)
+{
+    /* The k-loop reaches tk = tk_max = min(tj11+tj33, tj12+tj23,
+     * tj21+tj32).  At that tk the inner racah_6j_sum factorials touch
+     * (s+1)! with s_max bounded by the sum of all 9 outer quantum
+     * numbers plus 2*tk_max divided by 2 (a generous upper bound that
+     * covers every triangle-denominator and every sum-of-4 inside any
+     * of the three inner 6j's). */
+    int tkmax_a = tj11 + tj33;
+    int tkmax_b = tj12 + tj23;
+    int tkmax_c = tj21 + tj32;
+    int tk_max = (tkmax_a < tkmax_b) ? tkmax_a : tkmax_b;
+    if (tkmax_c < tk_max) tk_max = tkmax_c;
+    return (tj11 + tj12 + tj13 + tj21 + tj22 + tj23
+            + tj31 + tj32 + tj33 + 2 * tk_max) / 2 + 1;
+}
+
 float wigner9j_f(int tj11, int tj12, int tj13,
                  int tj21, int tj22, int tj23,
                  int tj31, int tj32, int tj33)

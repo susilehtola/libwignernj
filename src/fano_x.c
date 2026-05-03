@@ -80,6 +80,17 @@ static void fano_x_exact(int tj1, int tj2, int tj12,
 
 /* ── public API ──────────────────────────────────────────────────────────── */
 
+int fano_x_max_factorial(int tj1, int tj2, int tj12,
+                         int tj3, int tj4, int tj34,
+                         int tj13, int tj24, int tJ)
+{
+    /* X = sqrt[...] * 9j; the sqrt prefactor is folded in via
+     * bigint_mul_prime_pow without touching the factorial cache. */
+    return wigner9j_max_factorial(tj1,  tj2,  tj12,
+                                  tj3,  tj4,  tj34,
+                                  tj13, tj24, tJ);
+}
+
 float fano_x_f(int tj1, int tj2, int tj12,
                int tj3, int tj4, int tj34,
                int tj13, int tj24, int tJ)

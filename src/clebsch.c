@@ -59,6 +59,16 @@ static void clebsch_gordan_exact(int tj1, int tm1, int tj2, int tm2,
     }
 }
 
+int clebsch_gordan_max_factorial(int tj1, int tm1, int tj2, int tm2,
+                                  int tJ,  int tM)
+{
+    /* CG = (-1)^(...) * sqrt(2J+1) * 3j(j1, j2, J; m1, m2, -M).  The
+     * sqrt(2J+1) factor is folded in via bigint_mul_prime_pow without
+     * touching the factorial cache, so the bound is exactly
+     * wigner3j_max_factorial of the underlying 3j. */
+    return wigner3j_max_factorial(tj1, tj2, tJ, tm1, tm2, -tM);
+}
+
 float clebsch_gordan_f(int tj1, int tm1, int tj2, int tm2, int tJ, int tM)
 {
     wigner_scratch_t *s = wigner_scratch_acquire();

@@ -214,6 +214,22 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
 
 /* ── public API ──────────────────────────────────────────────────────────── */
 
+int wigner6j_max_factorial(int tj1, int tj2, int tj3,
+                           int tj4, int tj5, int tj6)
+{
+    /* (s+1)! with s_max = max sum-of-4 across the three combinations
+     * the Racah sum's denominator factorials reference dominates the
+     * factorial-argument upper bound.  Triangle-Δ denominators are
+     * sums-of-3 and are bounded by these. */
+    int a = (tj1 + tj2 + tj4 + tj5) / 2;
+    int b = (tj2 + tj3 + tj5 + tj6) / 2;
+    int c = (tj1 + tj3 + tj4 + tj6) / 2;
+    int s = a;
+    if (b > s) s = b;
+    if (c > s) s = c;
+    return s + 1;
+}
+
 float wigner6j_f(int tj1, int tj2, int tj3, int tj4, int tj5, int tj6)
 {
     wigner_scratch_t *s = wigner_scratch_acquire();

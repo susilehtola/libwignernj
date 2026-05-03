@@ -241,6 +241,16 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
 
 /* ── public API ──────────────────────────────────────────────────────────── */
 
+int wigner3j_max_factorial(int tj1, int tj2, int tj3,
+                           int tm1, int tm2, int tm3)
+{
+    /* The largest factorial referenced in wigner3j_exact is the Δ
+     * denominator (j1+j2+j3+1)!.  All m-dependent and Racah-sum
+     * factorials have arguments <= (j1+j2+j3)/2. */
+    (void)tm1; (void)tm2; (void)tm3;
+    return (tj1 + tj2 + tj3) / 2 + 1;
+}
+
 /* The public wrappers compute through the cached wigner_exact_t held in
  * the thread's scratch.  wigner3j_exact resets it (preserving bigint
  * capacities) before each call, so on every call after the first the

@@ -460,6 +460,25 @@ static void gaunt_real_exact(int tl1, int tm1, int tl2, int tm2,
 
 /* ── public API ──────────────────────────────────────────────────────────── */
 
+int gaunt_max_factorial(int tl1, int tm1, int tl2, int tm2,
+                        int tl3, int tm3)
+{
+    /* The combined outer pfrac and the inner 3j Racah sums all touch
+     * factorials whose argument is bounded by (l1+l2+l3+1)! (the
+     * triangle-Δ denominator).  m-dependent factorials and the inner
+     * Racah sums are <= (l1+l2+l3)/2. */
+    (void)tm1; (void)tm2; (void)tm3;
+    return (tl1 + tl2 + tl3) / 2 + 1;
+}
+
+int gaunt_real_max_factorial(int tl1, int tm1, int tl2, int tm2,
+                             int tl3, int tm3)
+{
+    /* gaunt_real_exact dispatches to one complex-Gaunt evaluation at
+     * (sign-adjusted) m's; same factorial bound. */
+    return gaunt_max_factorial(tl1, tm1, tl2, tm2, tl3, tm3);
+}
+
 float gaunt_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
     wigner_scratch_t *s = wigner_scratch_acquire();
