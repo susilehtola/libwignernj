@@ -99,6 +99,36 @@ program test_wigner_fortran
   val = wgaunt(1.0d0, 1.0d0, 1.0d0, 0.0d0, 1.0d0, 0.0d0)
   call check_abs(val, 0.0d0, 1.0d-15, 'wgaunt m-sum zero', npass, nfail)
 
+  ! ── Real-spherical-harmonic Gaunt ───────────────────────────────────────────
+
+  ! G^R(0,0,0,0,0,0) = G(0,0,0,0,0,0) = 1/(2*sqrt(pi))
+  val = wgaunt_real(0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0)
+  exp_val = 0.5d0 / sqrt(pi)
+  call check_near(val, exp_val, 2.0d-14, 'wgaunt_real(0,0,0,0,0,0)', npass, nfail)
+
+  ! Real Gaunt agrees with complex Gaunt at all-m=0
+  val = wgaunt_real(1.0d0, 0.0d0, 1.0d0, 0.0d0, 2.0d0, 0.0d0)
+  exp_val = wgaunt(1.0d0, 0.0d0, 1.0d0, 0.0d0, 2.0d0, 0.0d0)
+  call check_near(val, exp_val, 2.0d-14, 'wgaunt_real m=0 = wgaunt', npass, nfail)
+
+  ! ── Fano X ─────────────────────────────────────────────────────────────────
+
+  ! X(j1,j2,j12;j3,j4,j34;j13,j24,J)
+  !   = sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] * {9j}
+  ! At all-equal-j=1, the four (2j12+1) factors are 3 each, so
+  ! norm = sqrt(3^4) = 9; at all-equal-j=2 the norm is 5^2 = 25.
+  val     = wfanox(1.0d0,1.0d0,1.0d0, 1.0d0,1.0d0,1.0d0, 1.0d0,1.0d0,1.0d0)
+  exp_val = 9.0d0 * w9j(1.0d0,1.0d0,1.0d0, 1.0d0,1.0d0,1.0d0, 1.0d0,1.0d0,1.0d0)
+  call check_near(val, exp_val, 2.0d-14, 'wfanox = 9 * 9j (all-j=1)', npass, nfail)
+
+  val     = wfanox(2.0d0,2.0d0,2.0d0, 2.0d0,2.0d0,2.0d0, 2.0d0,2.0d0,2.0d0)
+  exp_val = 25.0d0 * w9j(2.0d0,2.0d0,2.0d0, 2.0d0,2.0d0,2.0d0, 2.0d0,2.0d0,2.0d0)
+  call check_near(val, exp_val, 2.0d-14, 'wfanox = 25 * 9j (all-j=2)', npass, nfail)
+
+  ! Selection-rule zero (one triangle violated) → X = 0
+  val = wfanox(1.0d0,1.0d0,1.0d0, 1.0d0,1.0d0,1.0d0, 1.0d0,1.0d0,3.0d0)
+  call check_abs(val, 0.0d0, 1.0d-15, 'wfanox triangle zero', npass, nfail)
+
   ! ── Summary ────────────────────────────────────────────────────────────────
 
   total = npass + nfail
