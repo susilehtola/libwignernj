@@ -1,0 +1,83 @@
+/* SPDX-License-Identifier: BSD-3-Clause
+ * Copyright (c) 2026 Susi Lehtola
+ *
+ * Thread-safe scratch reused across every public-API call.
+ *
+ * Background: each public entry point (wigner3j, wigner6j, ...) used to
+ * call bigint_init/reserve/free, pfrac_init/free, and a couple of
+ * xcalloc-backed LCM-exponent arrays per call.  Across all symbol
+ * families this added up to ~18-19 allocations per call, none of which
+ * scaled with the angular-momentum input.  At small j (j <~ 10) this
+ * allocation overhead dominated the wall-clock cost.
+ *
+ * Design: every public entry point fetches a wigner_scratch_t via
+ * wigner_scratch_acquire(), uses it, and returns it via
+ * wigner_scratch_relinquish().  Two implementations of this acquire /
+ * relinquish pair coexist:
+ *
+ *   - When the compiler provides thread-local storage (essentially
+ *     every modern toolchain: GCC, Clang, MSVC, Intel, plus any
+ *     C11-conforming compiler), the scratch is cached in a TLS slot.
+ *     acquire returns the calling thread's cached scratch (lazy-
+ *     allocated on first call, kept resident afterwards) and
+ *     relinquish is a no-op.  Allocations after the first call are
+ *     zero.  This is the fast path.
+ *
+ *   - When TLS is unavailable, acquire xcalloc's a fresh scratch and
+ *     relinquish frees it.  This regresses to the historical per-call
+ *     allocation cost, but is thread-safe by construction (each call
+ *     owns its own scratch with no shared mutable state).
+ *
+ * Both code paths are selected entirely at compile time -- the call
+ * sites in wigner3j.c et al. are identical.
+ *
+ * No public API change: wigner3j(), wigner6j(), etc. signatures and
+ * behavior are unchanged.
+ *
+ * The xcalloc'd lcm_exp[] arrays are sized once to g_nprimes ints
+ * each; lcm_max_dirty[] tracks how much of each array the previous
+ * caller wrote, so subsequent callers only memset the dirty prefix.
+ */
+#ifndef WIGNERNJ_SCRATCH_H
+#define WIGNERNJ_SCRATCH_H
+
+#include "bigint.h"
+#include "pfrac.h"
+#include "wigner_exact.h"
+
+/* Slot counts sized for the most demanding caller in each category
+ * (wigner9j for bigints and lcm_exp; gaunt for pfracs). */
+#define WIGNER_SCRATCH_BIGINTS  10
+#define WIGNER_SCRATCH_PFRACS    3
+#define WIGNER_SCRATCH_LCMEXP    4
+
+typedef struct {
+    bigint_ws_t      ws;
+    bigint_t         bigints[WIGNER_SCRATCH_BIGINTS];
+    pfrac_t          pfracs [WIGNER_SCRATCH_PFRACS];
+    int             *lcm_exp[WIGNER_SCRATCH_LCMEXP];
+    int              lcm_max_dirty[WIGNER_SCRATCH_LCMEXP];
+    /* Cached wigner_exact_t reused across calls.  Lifecycle: init'd
+     * once at scratch creation, the public wrappers reset it before
+     * each call, and it is destroyed when the scratch is released. */
+    wigner_exact_t   exact;
+} wigner_scratch_t;
+
+/* Acquire a scratch for the duration of one public-API call.  Always
+ * returns a valid pointer.  Pair every acquire with one relinquish. */
+wigner_scratch_t *wigner_scratch_acquire(void);
+void              wigner_scratch_relinquish(wigner_scratch_t *s);
+
+/* Helpers: zero only the dirty prefix of lcm_exp[idx], and update the
+ * dirty bound when a new caller writes further than the last one. */
+void wigner_scratch_lcm_clear(wigner_scratch_t *s, int idx);
+void wigner_scratch_lcm_dirty(wigner_scratch_t *s, int idx, int new_max);
+
+/* Test-only.  In the TLS-cached build, drops the calling thread's
+ * cached scratch so the next acquire goes through the lazy-init path
+ * again -- needed by test_oom for malloc-failure injection.  In the
+ * no-TLS fallback every acquire already reallocates, so this is a
+ * no-op. */
+void wigner_scratch_release(void);
+
+#endif /* WIGNERNJ_SCRATCH_H */

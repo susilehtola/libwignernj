@@ -39,8 +39,8 @@
 #include "wigner_exact.h"
 #include "pfrac.h"
 #include "primes.h"
+#include "scratch.h"
 #include "wigner.h"
-#include "xalloc.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -89,12 +89,13 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
                                 int tm1, int tm2,
                                 bigint_t *sum_out, int *sum_sign_out,
                                 int *lcm_exp, int *lcm_max_io,
+                                bigint_t *sum_pos, bigint_t *sum_neg,
+                                bigint_t *scaled, pfrac_t *term,
                                 bigint_ws_t *ws, size_t mw)
 {
     int s, s_min, s_max, pi;
     int lcm_max = 0;
-    pfrac_t term;
-    bigint_t sum_pos, sum_neg, scaled;
+    (void)mw;
 
     gaunt_racah_bounds(tj1, tj2, tj3, tm1, tm2, &s_min, &s_max);
 
@@ -105,52 +106,45 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
         return;
     }
 
-    pfrac_init(&term);
-    bigint_init(&sum_pos); bigint_reserve(&sum_pos, mw);
-    bigint_init(&sum_neg); bigint_reserve(&sum_neg, mw);
-    bigint_init(&scaled);  bigint_reserve(&scaled,  mw);
+    bigint_set_zero(sum_pos);
+    bigint_set_zero(sum_neg);
 
     /* Pass 1: LCM exponents */
     for (s = s_min; s <= s_max; s++) {
-        pfrac_zero(&term);
-        pfrac_mul_factorial(&term, s);
-        pfrac_mul_factorial(&term, (tj1 + tj2 - tj3) / 2 - s);
-        pfrac_mul_factorial(&term, (tj1 - tm1) / 2 - s);
-        pfrac_mul_factorial(&term, (tj2 + tm2) / 2 - s);
-        pfrac_mul_factorial(&term, (tj3 - tj2 + tm1) / 2 + s);
-        pfrac_mul_factorial(&term, (tj3 - tj1 - tm2) / 2 + s);
-        for (pi = 0; pi < term.max_idx; pi++) {
-            if (term.exp[pi] > lcm_exp[pi]) lcm_exp[pi] = term.exp[pi];
+        pfrac_zero(term);
+        pfrac_mul_factorial(term, s);
+        pfrac_mul_factorial(term, (tj1 + tj2 - tj3) / 2 - s);
+        pfrac_mul_factorial(term, (tj1 - tm1) / 2 - s);
+        pfrac_mul_factorial(term, (tj2 + tm2) / 2 - s);
+        pfrac_mul_factorial(term, (tj3 - tj2 + tm1) / 2 + s);
+        pfrac_mul_factorial(term, (tj3 - tj1 - tm2) / 2 + s);
+        for (pi = 0; pi < term->max_idx; pi++) {
+            if (term->exp[pi] > lcm_exp[pi]) lcm_exp[pi] = term->exp[pi];
         }
-        if (term.max_idx > lcm_max) lcm_max = term.max_idx;
+        if (term->max_idx > lcm_max) lcm_max = term->max_idx;
     }
 
     /* Pass 2: accumulate scaled terms */
     for (s = s_min; s <= s_max; s++) {
-        pfrac_zero(&term);
-        pfrac_mul_factorial(&term, s);
-        pfrac_mul_factorial(&term, (tj1 + tj2 - tj3) / 2 - s);
-        pfrac_mul_factorial(&term, (tj1 - tm1) / 2 - s);
-        pfrac_mul_factorial(&term, (tj2 + tm2) / 2 - s);
-        pfrac_mul_factorial(&term, (tj3 - tj2 + tm1) / 2 + s);
-        pfrac_mul_factorial(&term, (tj3 - tj1 - tm2) / 2 + s);
-        bigint_set_u64(&scaled, 1);
+        pfrac_zero(term);
+        pfrac_mul_factorial(term, s);
+        pfrac_mul_factorial(term, (tj1 + tj2 - tj3) / 2 - s);
+        pfrac_mul_factorial(term, (tj1 - tm1) / 2 - s);
+        pfrac_mul_factorial(term, (tj2 + tm2) / 2 - s);
+        pfrac_mul_factorial(term, (tj3 - tj2 + tm1) / 2 + s);
+        pfrac_mul_factorial(term, (tj3 - tj1 - tm2) / 2 + s);
+        bigint_set_u64(scaled, 1);
         for (pi = 0; pi < lcm_max; pi++) {
-            int diff = lcm_exp[pi] - term.exp[pi];
+            int diff = lcm_exp[pi] - term->exp[pi];
             if (diff > 0)
-                bigint_mul_prime_pow_ws(&scaled, (uint64_t)g_primes[pi], diff, ws);
+                bigint_mul_prime_pow_ws(scaled, (uint64_t)g_primes[pi], diff, ws);
         }
-        if ((s & 1) == 0) bigint_add(&sum_pos, &sum_pos, &scaled);
-        else              bigint_add(&sum_neg, &sum_neg, &scaled);
+        if ((s & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
+        else              bigint_add(sum_neg, sum_neg, scaled);
     }
 
-    *sum_sign_out = bigint_sub_signed(sum_out, &sum_pos, &sum_neg);
+    *sum_sign_out = bigint_sub_signed(sum_out, sum_pos, sum_neg);
     *lcm_max_io = lcm_max;
-
-    pfrac_free(&term);
-    bigint_free(&sum_pos);
-    bigint_free(&sum_neg);
-    bigint_free(&scaled);
 }
 
 /* ── exact Gaunt (without the 1/sqrt(π) factor) ─────────────────────────── */
@@ -166,14 +160,16 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
                          wigner_exact_t *out)
 {
     int pi;
-    pfrac_t outer;
-    bigint_t sum0, summ;
+    wigner_scratch_t *scratch;
+    bigint_ws_t *ws;
+    pfrac_t  *outer, *term;
+    int      *lcm0, *lcmm;
+    bigint_t *sum0, *summ, *sum_pos, *sum_neg, *scaled;
     int ss0, ssm;
-    int *lcm0, *lcmm;
-    bigint_ws_t ws;
     size_t mw, mw_prod;
+    int lcm0_max, lcmm_max;
 
-    wigner_exact_init(out);
+    wigner_exact_reset(out);
 
     if (!gaunt_selection_rules(tl1, tm1, tl2, tm2, tl3, tm3)) {
         out->is_zero = 1;
@@ -189,8 +185,31 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     mw      = bigint_words_for_factorial((tl1 + tl2 + tl3) / 2 + 5);
     mw_prod = 2 * mw;
 
-    bigint_ws_init(&ws);
-    bigint_ws_reserve(&ws, mw_prod);
+    /* Acquire the thread's cached scratch.  Gaunt uses 5 bigints
+     * (sum0, summ + sum_pos/sum_neg/scaled inside the inner Racah
+     * sum), 2 pfracs (outer and term), and 2 lcm arrays (lcm0, lcmm). */
+    scratch  = wigner_scratch_acquire();
+    ws       = &scratch->ws;
+    outer    = &scratch->pfracs[0];
+    term     = &scratch->pfracs[1];
+    lcm0     =  scratch->lcm_exp[0];
+    lcmm     =  scratch->lcm_exp[1];
+    sum0     = &scratch->bigints[0];
+    summ     = &scratch->bigints[1];
+    sum_pos  = &scratch->bigints[2];
+    sum_neg  = &scratch->bigints[3];
+    scaled   = &scratch->bigints[4];
+
+    bigint_ws_reserve(ws, mw_prod);
+    pfrac_zero(outer);
+    pfrac_zero(term);
+    wigner_scratch_lcm_clear(scratch, 0);
+    wigner_scratch_lcm_clear(scratch, 1);
+    bigint_set_zero(sum0);    bigint_reserve(sum0,    mw);
+    bigint_set_zero(summ);    bigint_reserve(summ,    mw);
+    bigint_set_zero(sum_pos); bigint_reserve(sum_pos, mw);
+    bigint_set_zero(sum_neg); bigint_reserve(sum_neg, mw);
+    bigint_set_zero(scaled);  bigint_reserve(scaled,  mw);
 
     /*
      * Combined outer pfrac (argument under the outer sqrt, without π):
@@ -205,85 +224,85 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
      *
      *   normalization: (2l1+1)(2l2+1)(2l3+1)/4
      */
-    pfrac_init(&outer);
 
     /* Δ(l1,l2,l3) — first copy */
-    pfrac_mul_factorial(&outer, (tl1 + tl2 - tl3) / 2);
-    pfrac_mul_factorial(&outer, (tl1 - tl2 + tl3) / 2);
-    pfrac_mul_factorial(&outer, (-tl1 + tl2 + tl3) / 2);
-    pfrac_div_factorial(&outer, (tl1 + tl2 + tl3) / 2 + 1);
+    pfrac_mul_factorial(outer, (tl1 + tl2 - tl3) / 2);
+    pfrac_mul_factorial(outer, (tl1 - tl2 + tl3) / 2);
+    pfrac_mul_factorial(outer, (-tl1 + tl2 + tl3) / 2);
+    pfrac_div_factorial(outer, (tl1 + tl2 + tl3) / 2 + 1);
     /* Δ(l1,l2,l3) — second copy (makes [Δ]² rational) */
-    pfrac_mul_factorial(&outer, (tl1 + tl2 - tl3) / 2);
-    pfrac_mul_factorial(&outer, (tl1 - tl2 + tl3) / 2);
-    pfrac_mul_factorial(&outer, (-tl1 + tl2 + tl3) / 2);
-    pfrac_div_factorial(&outer, (tl1 + tl2 + tl3) / 2 + 1);
+    pfrac_mul_factorial(outer, (tl1 + tl2 - tl3) / 2);
+    pfrac_mul_factorial(outer, (tl1 - tl2 + tl3) / 2);
+    pfrac_mul_factorial(outer, (-tl1 + tl2 + tl3) / 2);
+    pfrac_div_factorial(outer, (tl1 + tl2 + tl3) / 2 + 1);
 
     /* (l1!)²(l2!)²(l3!)² from the m=0 3j */
-    pfrac_mul_factorial(&outer, tl1 / 2); pfrac_mul_factorial(&outer, tl1 / 2);
-    pfrac_mul_factorial(&outer, tl2 / 2); pfrac_mul_factorial(&outer, tl2 / 2);
-    pfrac_mul_factorial(&outer, tl3 / 2); pfrac_mul_factorial(&outer, tl3 / 2);
+    pfrac_mul_factorial(outer, tl1 / 2); pfrac_mul_factorial(outer, tl1 / 2);
+    pfrac_mul_factorial(outer, tl2 / 2); pfrac_mul_factorial(outer, tl2 / 2);
+    pfrac_mul_factorial(outer, tl3 / 2); pfrac_mul_factorial(outer, tl3 / 2);
 
     /* (l1+m1)!(l1-m1)!(l2+m2)!(l2-m2)!(l3+m3)!(l3-m3)! from the general-m 3j */
-    pfrac_mul_factorial(&outer, (tl1 + tm1) / 2);
-    pfrac_mul_factorial(&outer, (tl1 - tm1) / 2);
-    pfrac_mul_factorial(&outer, (tl2 + tm2) / 2);
-    pfrac_mul_factorial(&outer, (tl2 - tm2) / 2);
-    pfrac_mul_factorial(&outer, (tl3 + tm3) / 2);
-    pfrac_mul_factorial(&outer, (tl3 - tm3) / 2);
+    pfrac_mul_factorial(outer, (tl1 + tm1) / 2);
+    pfrac_mul_factorial(outer, (tl1 - tm1) / 2);
+    pfrac_mul_factorial(outer, (tl2 + tm2) / 2);
+    pfrac_mul_factorial(outer, (tl2 - tm2) / 2);
+    pfrac_mul_factorial(outer, (tl3 + tm3) / 2);
+    pfrac_mul_factorial(outer, (tl3 - tm3) / 2);
 
     /* (2l1+1)(2l2+1)(2l3+1) / 4 : integer factors folded in via prime factorization.
      * g_primes[0] = 2, so subtracting 2 from exp[0] divides by 4 = 2².
      * Bump max_idx so the manual write to exp[0] is visible to
      * pfrac_to_sqrt_rational's max_idx-bounded sweep. */
-    pfrac_mul_int(&outer, tl1 + 1);
-    pfrac_mul_int(&outer, tl2 + 1);
-    pfrac_mul_int(&outer, tl3 + 1);
-    outer.exp[0] -= 2;
-    if (outer.max_idx < 1) outer.max_idx = 1;
+    pfrac_mul_int(outer, tl1 + 1);
+    pfrac_mul_int(outer, tl2 + 1);
+    pfrac_mul_int(outer, tl3 + 1);
+    outer->exp[0] -= 2;
+    if (outer->max_idx < 1) outer->max_idx = 1;
 
     /* Racah integer sums for both 3j symbols */
-    int lcm0_max = 0, lcmm_max = 0;
-    lcm0 = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
-    lcmm = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
-    bigint_init(&sum0); bigint_reserve(&sum0, mw);
-    bigint_init(&summ); bigint_reserve(&summ, mw);
+    lcm0_max = 0;
+    lcmm_max = 0;
 
-    gaunt_3j_racah_sum(tl1, tl2, tl3, 0, 0, &sum0, &ss0, lcm0, &lcm0_max, &ws, mw);
-    if (bigint_is_zero(&sum0)) { out->is_zero = 1; goto cleanup; }
+    gaunt_3j_racah_sum(tl1, tl2, tl3, 0, 0, sum0, &ss0, lcm0, &lcm0_max,
+                       sum_pos, sum_neg, scaled, term, ws, mw);
+    if (bigint_is_zero(sum0)) { out->is_zero = 1; goto cleanup; }
 
-    gaunt_3j_racah_sum(tl1, tl2, tl3, tm1, tm2, &summ, &ssm, lcmm, &lcmm_max, &ws, mw);
-    if (bigint_is_zero(&summ)) { out->is_zero = 1; goto cleanup; }
+    gaunt_3j_racah_sum(tl1, tl2, tl3, tm1, tm2, summ, &ssm, lcmm, &lcmm_max,
+                       sum_pos, sum_neg, scaled, term, ws, mw);
+    if (bigint_is_zero(summ)) { out->is_zero = 1; goto cleanup; }
 
     /* Product of the two Racah sums */
     bigint_reserve(&out->sum, mw_prod);
-    bigint_mul_ws(&out->sum, &sum0, &summ, &ws);
+    bigint_mul_ws(&out->sum, sum0, summ, ws);
     out->sum_sign = ss0 * ssm;
 
     /* Convert outer pfrac */
-    bigint_set_u64(&out->int_num,  1); bigint_reserve(&out->int_num,  mw_prod);
-    bigint_set_u64(&out->int_den,  1); bigint_reserve(&out->int_den,  mw_prod);
-    bigint_set_u64(&out->sqrt_num, 1); bigint_reserve(&out->sqrt_num, mw_prod);
-    bigint_set_u64(&out->sqrt_den, 1); bigint_reserve(&out->sqrt_den, mw_prod);
-    pfrac_to_sqrt_rational_ws(&outer, &out->int_num, &out->int_den,
-                              &out->sqrt_num, &out->sqrt_den, &ws);
+    bigint_reserve(&out->int_num,  mw_prod);
+    bigint_reserve(&out->int_den,  mw_prod);
+    bigint_reserve(&out->sqrt_num, mw_prod);
+    bigint_reserve(&out->sqrt_den, mw_prod);
+    bigint_set_u64(&out->int_num,  1);
+    bigint_set_u64(&out->int_den,  1);
+    bigint_set_u64(&out->sqrt_num, 1);
+    bigint_set_u64(&out->sqrt_den, 1);
+    pfrac_to_sqrt_rational_ws(outer, &out->int_num, &out->int_den,
+                              &out->sqrt_num, &out->sqrt_den, ws);
 
-    /* Combined LCM denominator → int_den.  The two lcm arrays are
-     * disjoint in active range up to max(lcm0_max, lcmm_max). */
-    int lcm_union_max = (lcm0_max > lcmm_max) ? lcm0_max : lcmm_max;
-    for (pi = 0; pi < lcm_union_max; pi++) {
-        int e = lcm0[pi] + lcmm[pi];
-        if (e > 0)
-            bigint_mul_prime_pow_ws(&out->int_den,
-                                    (uint64_t)g_primes[pi], e, &ws);
+    /* Combined LCM denominator → int_den. */
+    {
+        int lcm_union_max = (lcm0_max > lcmm_max) ? lcm0_max : lcmm_max;
+        for (pi = 0; pi < lcm_union_max; pi++) {
+            int e = lcm0[pi] + lcmm[pi];
+            if (e > 0)
+                bigint_mul_prime_pow_ws(&out->int_den,
+                                        (uint64_t)g_primes[pi], e, ws);
+        }
     }
 
 cleanup:
-    bigint_ws_free(&ws);
-    free(lcm0);
-    free(lcmm);
-    pfrac_free(&outer);
-    bigint_free(&sum0);
-    bigint_free(&summ);
+    wigner_scratch_lcm_dirty(scratch, 0, lcm0_max);
+    wigner_scratch_lcm_dirty(scratch, 1, lcmm_max);
+    wigner_scratch_relinquish(scratch);
 }
 
 /* ── Real-spherical-harmonic Gaunt coefficient ──────────────────────────────
@@ -346,7 +365,7 @@ static int real_gaunt_T_tau(int sigma, int s, int a, int *has_i)
 static void gaunt_real_exact(int tl1, int tm1, int tl2, int tm2,
                               int tl3, int tm3, wigner_exact_t *out)
 {
-    wigner_exact_init(out);
+    wigner_exact_reset(out);
 
     /* ℓ and m must be integer-valued, i.e., tl, tm even. */
     if ((tl1 | tl2 | tl3 | tm1 | tm2 | tm3) & 1) {
@@ -443,42 +462,42 @@ static void gaunt_real_exact(int tl1, int tm1, int tl2, int tm2,
 
 float gaunt_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_exact_t e;
+    wigner_scratch_t *s = wigner_scratch_acquire();
     float result;
-    gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
-    result = wigner_exact_to_float(&e) / sqrtf((float)M_PI);
-    wigner_exact_free(&e);
+    gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
+    result = wigner_exact_to_float(&s->exact) / sqrtf((float)M_PI);
+    wigner_scratch_relinquish(s);
     return result;
 }
 
 double gaunt(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_exact_t e;
+    wigner_scratch_t *s = wigner_scratch_acquire();
     double result;
-    gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
-    result = wigner_exact_to_double(&e) / sqrt(M_PI);
-    wigner_exact_free(&e);
+    gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
+    result = wigner_exact_to_double(&s->exact) / sqrt(M_PI);
+    wigner_scratch_relinquish(s);
     return result;
 }
 
 long double gaunt_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_exact_t e;
+    wigner_scratch_t *s = wigner_scratch_acquire();
     long double result;
-    gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
-    result = wigner_exact_to_long_double(&e) / sqrtl(acosl(-1.0L));
-    wigner_exact_free(&e);
+    gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
+    result = wigner_exact_to_long_double(&s->exact) / sqrtl(acosl(-1.0L));
+    wigner_scratch_relinquish(s);
     return result;
 }
 
 #ifdef WIGNER_HAVE_QUADMATH
 __float128 gaunt_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_exact_t e;
+    wigner_scratch_t *s = wigner_scratch_acquire();
     __float128 result;
-    gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
-    result = wigner_exact_to_float128(&e) / sqrtq(M_PIq);
-    wigner_exact_free(&e);
+    gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
+    result = wigner_exact_to_float128(&s->exact) / sqrtq(M_PIq);
+    wigner_scratch_relinquish(s);
     return result;
 }
 #endif
@@ -488,12 +507,12 @@ __float128 gaunt_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 void gaunt_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
                              int tl3, int tm3, mpfr_rnd_t rnd)
 {
-    wigner_exact_t e;
+    wigner_scratch_t *s = wigner_scratch_acquire();
     mpfr_t pi;
 
-    gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
-    wigner_exact_to_mpfr(rop, &e, rnd);
-    wigner_exact_free(&e);
+    gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
+    wigner_exact_to_mpfr(rop, &s->exact, rnd);
+    wigner_scratch_relinquish(s);
 
     if (!mpfr_zero_p(rop)) {
         mpfr_init2(pi, mpfr_get_prec(rop));
@@ -509,42 +528,42 @@ void gaunt_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
 
 float gaunt_real_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_exact_t e;
+    wigner_scratch_t *s = wigner_scratch_acquire();
     float result;
-    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
-    result = wigner_exact_to_float(&e) / sqrtf((float)M_PI);
-    wigner_exact_free(&e);
+    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
+    result = wigner_exact_to_float(&s->exact) / sqrtf((float)M_PI);
+    wigner_scratch_relinquish(s);
     return result;
 }
 
 double gaunt_real(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_exact_t e;
+    wigner_scratch_t *s = wigner_scratch_acquire();
     double result;
-    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
-    result = wigner_exact_to_double(&e) / sqrt(M_PI);
-    wigner_exact_free(&e);
+    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
+    result = wigner_exact_to_double(&s->exact) / sqrt(M_PI);
+    wigner_scratch_relinquish(s);
     return result;
 }
 
 long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_exact_t e;
+    wigner_scratch_t *s = wigner_scratch_acquire();
     long double result;
-    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
-    result = wigner_exact_to_long_double(&e) / sqrtl(acosl(-1.0L));
-    wigner_exact_free(&e);
+    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
+    result = wigner_exact_to_long_double(&s->exact) / sqrtl(acosl(-1.0L));
+    wigner_scratch_relinquish(s);
     return result;
 }
 
 #ifdef WIGNER_HAVE_QUADMATH
 __float128 gaunt_real_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_exact_t e;
+    wigner_scratch_t *s = wigner_scratch_acquire();
     __float128 result;
-    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
-    result = wigner_exact_to_float128(&e) / sqrtq(M_PIq);
-    wigner_exact_free(&e);
+    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
+    result = wigner_exact_to_float128(&s->exact) / sqrtq(M_PIq);
+    wigner_scratch_relinquish(s);
     return result;
 }
 #endif
@@ -553,12 +572,12 @@ __float128 gaunt_real_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 void gaunt_real_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
                                   int tl3, int tm3, mpfr_rnd_t rnd)
 {
-    wigner_exact_t e;
+    wigner_scratch_t *s = wigner_scratch_acquire();
     mpfr_t pi;
 
-    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &e);
-    wigner_exact_to_mpfr(rop, &e, rnd);
-    wigner_exact_free(&e);
+    gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
+    wigner_exact_to_mpfr(rop, &s->exact, rnd);
+    wigner_scratch_relinquish(s);
 
     if (!mpfr_zero_p(rop)) {
         mpfr_init2(pi, mpfr_get_prec(rop));

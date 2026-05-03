@@ -140,6 +140,46 @@ float       gaunt_real_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 double      gaunt_real  (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 
+/* ── Optional warmup and scratch introspection ──────────────────────────────
+ *
+ * libwignernj caches a per-thread scratch buffer that is lazy-allocated on
+ * the first call from a given thread and reused for every subsequent call.
+ * After the first call, no further allocations happen unless the angular
+ * momenta exceed what the cached buffer was last sized for; in that case
+ * the buffer grows in place.  The lazy growth is invisible to the caller.
+ *
+ * The cache requires thread-local storage and is therefore only active on
+ * toolchains that provide one of `__thread` (GCC/Clang/Intel),
+ * `__declspec(thread)` (MSVC), or C11 `_Thread_local`.  On a toolchain
+ * that exposes none of these, libwignernj falls back to allocating a
+ * fresh scratch on every public-API call and freeing it on return.  That
+ * fallback is thread-safe by construction (each call owns its own
+ * scratch) but pays the historical per-call allocation cost.
+ *
+ * `wigner_warmup` is an optional convenience that pre-allocates the
+ * calling thread's cached scratch for the absolute default-build maximum
+ * (j1+j2+j3 ≤ 19999 for 3j/6j/CG/Racah W/Gaunt; equal-j ≤ 4999 for 9j and
+ * Fano X).  After it returns, every subsequent symbol evaluation in this
+ * thread is guaranteed allocation-free, provided the cache is available.
+ * Useful in benchmarks where the first-call lazy-init cost would
+ * otherwise be observed, in hot loops where allocation overhead matters,
+ * or in applications that prefer predictable up-front memory usage to
+ * lazy growth.
+ *
+ * Memory cost: ~6 MB per thread at the absolute ceiling.  The function is
+ * thread-safe and only touches the calling thread's scratch.  Calling it
+ * is purely an optimisation; correctness is unchanged whether or not it
+ * is called, and it is harmless to call it more than once.
+ *
+ * On a toolchain without thread-local storage, `wigner_warmup` is a
+ * no-op: there is no persistent scratch to pre-grow, so the call returns
+ * immediately and subsequent symbol evaluations continue to allocate
+ * per-call.  Use `wigner_thread_local_scratch_available()` to detect at
+ * runtime whether the cache is in effect; it returns 1 when the per-
+ * thread cache is active and 0 when each call allocates fresh. */
+void wigner_warmup(void);
+int  wigner_thread_local_scratch_available(void);
+
 #ifdef __cplusplus
 }
 #endif

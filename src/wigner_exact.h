@@ -33,6 +33,9 @@ typedef struct {
 } wigner_exact_t;
 
 void wigner_exact_init(wigner_exact_t *e);
+/* Reset an already-initialised wigner_exact_t to a fresh-result state
+ * without freeing its bigint buffers (used by the scratch cache). */
+void wigner_exact_reset(wigner_exact_t *e);
 void wigner3j_exact(int tj1, int tj2, int tj3, int tm1, int tm2, int tm3,
                     wigner_exact_t *out);
 void wigner6j_exact(int tj1, int tj2, int tj3, int tj4, int tj5, int tj6,
