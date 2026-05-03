@@ -36,6 +36,7 @@ jobs:
             fortran: ON
             mpfr: ON
             quadmath: ON
+            flint: OFF
             shared: ON
 
           - name: "Ubuntu / GCC / static"
@@ -45,6 +46,7 @@ jobs:
             fortran: ON
             mpfr: ON
             quadmath: ON
+            flint: OFF
             shared: OFF
 
           - name: "Ubuntu / Clang"
@@ -54,6 +56,7 @@ jobs:
             fortran: ON
             mpfr: ON
             quadmath: ON
+            flint: OFF
             shared: ON
 
           - name: "macOS / Clang"
@@ -65,6 +68,7 @@ jobs:
             # macOS clang ships without libquadmath; __float128 is not
             # available on the homebrew-installed clang either.
             quadmath: OFF
+            flint: OFF
             shared: ON
 
           # Confirm the library builds without optional features.
@@ -75,6 +79,21 @@ jobs:
             fortran: OFF
             mpfr: OFF
             quadmath: OFF
+            flint: OFF
+            shared: ON
+
+          # FLINT bigint backend: replaces the schoolbook bigint
+          # implementation with a thin wrapper around FLINT's fmpz_t.
+          # Bit-identical floating-point output is verified against
+          # the schoolbook by re-running the entire test suite.
+          - name: "Ubuntu / GCC / FLINT backend"
+            os: ubuntu-latest
+            cc: gcc
+            cxx: g++
+            fortran: ON
+            mpfr: ON
+            quadmath: ON
+            flint: ON
             shared: ON
 
     steps:
@@ -85,6 +104,9 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y gfortran libmpfr-dev libquadmath0
+          if [ "${{ matrix.flint }}" = "ON" ]; then
+            sudo apt-get install -y libflint-dev
+          fi
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
@@ -104,6 +126,7 @@ jobs:
             -DBUILD_FORTRAN=${{ matrix.fortran }} \
             -DBUILD_MPFR=${{ matrix.mpfr }} \
             -DBUILD_QUADMATH=${{ matrix.quadmath }} \
+            -DBUILD_FLINT=${{ matrix.flint }} \
             -DBUILD_CXX_TESTS=ON \
             -DBUILD_TESTS=ON
 

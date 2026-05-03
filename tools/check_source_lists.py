@@ -28,18 +28,40 @@ PYTHON_ENTRY_POINT = "src/python/wignermodule.c"
 
 
 def parse_cmake_lib_sources(text: str) -> list[str]:
-    """Extract the LIB_SOURCES list from CMakeLists.txt."""
+    """Extract the LIB_SOURCES list from CMakeLists.txt.
+
+    The bigint backend is selected at CMake-configure time via
+    ${BIGINT_SOURCE}; the Python extension always uses the default
+    schoolbook backend (src/bigint.c), so we resolve the variable to
+    that branch of the if(BUILD_FLINT) block here before diffing.
+    """
     m = re.search(r"set\(LIB_SOURCES\b(.*?)\)", text, re.DOTALL)
     if not m:
         sys.exit("error: could not find set(LIB_SOURCES ...) in CMakeLists.txt")
     body = m.group(1)
     # One token per line, ignore comments and blank lines.
-    return [
+    sources = [
         tok
         for line in body.splitlines()
         for tok in [line.split("#", 1)[0].strip()]
         if tok
     ]
+    # Resolve the BIGINT_SOURCE variable to its default (schoolbook) branch.
+    bigint_default = parse_cmake_bigint_default(text)
+    return [bigint_default if s == "${BIGINT_SOURCE}" else s for s in sources]
+
+
+def parse_cmake_bigint_default(text: str) -> str:
+    """Extract the schoolbook (else-branch) source from
+    if(BUILD_FLINT) ... else() set(BIGINT_SOURCE <default>) endif()."""
+    m = re.search(
+        r"if\(BUILD_FLINT\).*?else\(\)\s*set\(BIGINT_SOURCE\s+(\S+)\s*\)\s*endif\(\)",
+        text,
+        re.DOTALL,
+    )
+    if not m:
+        sys.exit("error: could not find BUILD_FLINT/BIGINT_SOURCE block in CMakeLists.txt")
+    return m.group(1)
 
 
 def parse_setup_py_sources(text: str) -> list[str]:

@@ -13,9 +13,14 @@ endif()
 
 # ── C unit tests ──────────────────────────────────────────────────────────────
 
-foreach(test_name
+# tests/test_bigint.c probes schoolbook-internal layout
+# (uint64_t-word arrays, round/sticky bit extraction); it is skipped
+# when the FLINT backend is active because its bigint_t has a
+# different shape and the rounding path goes through MPFR rather
+# than through the bit extractor.  Every other test exercises only
+# the public C API and runs with both backends.
+set(C_UNIT_TESTS
     test_primes
-    test_bigint
     test_pfrac
     test_3j
     test_6j
@@ -25,6 +30,10 @@ foreach(test_name
     test_precisions
     test_symmetry
 )
+if(NOT BUILD_FLINT)
+    list(APPEND C_UNIT_TESTS test_bigint)
+endif()
+foreach(test_name ${C_UNIT_TESTS})
     add_executable(${test_name} ${test_name}.c)
     target_link_libraries(${test_name} PRIVATE wignernj ${LIBM_LINK})
     target_include_directories(${test_name} PRIVATE

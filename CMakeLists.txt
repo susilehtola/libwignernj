@@ -8,6 +8,7 @@ option(BUILD_FORTRAN      "Build Fortran interface"      ON)
 option(BUILD_PYTHON       "Build Python extension"       OFF)
 option(BUILD_MPFR         "Build MPFR arbitrary-precision interface" OFF)
 option(BUILD_QUADMATH     "Build libquadmath / __float128 interface"  OFF)
+option(BUILD_FLINT        "Use FLINT/GMP/MPFR for the bigint backend"  OFF)
 option(BUILD_TESTS        "Build test suite"             ON)
 option(BUILD_CXX_TESTS    "Build C++ header tests"      ON)
 
@@ -28,11 +29,18 @@ endif()
 
 include(GNUInstallDirs)
 
-# Core C library
+# Core C library.  The bigint backend is selected at configure time:
+# the schoolbook src/bigint.c is the default; the FLINT backend
+# (src/bigint_flint.c) replaces it when BUILD_FLINT=ON.
+if(BUILD_FLINT)
+    set(BIGINT_SOURCE src/bigint_flint.c)
+else()
+    set(BIGINT_SOURCE src/bigint.c)
+endif()
 set(LIB_SOURCES
     src/xalloc.c
     src/primes.c
-    src/bigint.c
+    ${BIGINT_SOURCE}
     src/pfrac.c
     src/wigner_exact.c
     src/wigner3j.c
@@ -185,6 +193,31 @@ if(BUILD_MPFR)
     install(FILES include/wigner_mpfr.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
+# FLINT bigint backend (optional)
+#
+# FLINT pulls in GMP and MPFR transitively, so when BUILD_FLINT=ON we
+# unconditionally link all three.  Floating-point conversions in the
+# FLINT path go through MPFR (correct round-to-nearest-even at every
+# IEEE 754 binary precision), and the binary128 conversion extracts
+# the 113-bit mantissa via mpfr_get_z_2exp (so no MPFR --enable-float128
+# build option is required).  Detection uses find_library/find_path
+# directly:  FLINT does not ship a pkg-config file on every distribution
+# (notably Ubuntu's libflint-dev), so the explicit search is more robust
+# than pkg_check_modules.
+if(BUILD_FLINT)
+    find_library(FLINT_LIB NAMES flint REQUIRED)
+    find_path   (FLINT_INC flint/fmpz.h REQUIRED)
+    find_library(MPFR_LIB  NAMES mpfr REQUIRED)
+    find_path   (MPFR_INC  mpfr.h REQUIRED)
+    find_library(GMP_LIB   NAMES gmp REQUIRED)
+    find_path   (GMP_INC   gmp.h REQUIRED)
+    target_include_directories(wignernj PRIVATE
+        ${FLINT_INC} ${MPFR_INC} ${GMP_INC})
+    target_link_libraries(wignernj PRIVATE
+        ${FLINT_LIB} ${MPFR_LIB} ${GMP_LIB})
+    target_compile_definitions(wignernj PRIVATE WIGNERNJ_USE_FLINT)
+endif()
+
 # Fortran interface (optional, only if compiler found)
 set(WIGNERNJ_HAS_FORTRAN OFF)
 if(BUILD_FORTRAN)
@@ -250,6 +283,25 @@ if(BUILD_FORTRAN)
 endif()
 
 # Python extension (optional)
+#
+# The Python extension recompiles the C sources directly into the
+# extension module rather than linking against libwignernj, so the
+# resulting `_wigner.so` is a self-contained shared object.  The
+# pip-installable wheel built from setup.py is the canonical Python
+# distribution path and uses the in-tree schoolbook bigint with no
+# system-library dependencies.
+#
+# The CMake-driven Python build (BUILD_PYTHON=ON) honours the
+# BUILD_FLINT switch and propagates the FLINT bigint backend
+# (together with its FLINT/MPFR/GMP runtime dependencies) into
+# `_wigner.so`.  This is purely an internal speedup: the Python API
+# is unchanged, but the underlying bigint multiplication uses
+# FLINT's sub-quadratic algorithms, which is observable as a faster
+# wall-clock at very large angular momenta.  BUILD_QUADMATH and
+# BUILD_MPFR are not propagated because the Python wrapper does not
+# expose `__float128` or `mpfr_t` return types -- exposing those
+# would require additional CPython glue (e.g. a string return or a
+# gmpy2 bridge) and is left for a future release.
 if(BUILD_PYTHON)
     find_package(Python3 COMPONENTS Interpreter Development)
     if(Python3_FOUND)
@@ -258,6 +310,13 @@ if(BUILD_PYTHON)
             ${LIB_SOURCES}
         )
         target_include_directories(_wigner PRIVATE src include)
+        if(BUILD_FLINT)
+            target_compile_definitions(_wigner PRIVATE WIGNERNJ_USE_FLINT)
+            target_include_directories(_wigner PRIVATE
+                ${FLINT_INC} ${MPFR_INC} ${GMP_INC})
+            target_link_libraries(_wigner PRIVATE
+                ${FLINT_LIB} ${MPFR_LIB} ${GMP_LIB})
+        endif()
         set_target_properties(_wigner PROPERTIES
             C_STANDARD 99
             C_STANDARD_REQUIRED ON

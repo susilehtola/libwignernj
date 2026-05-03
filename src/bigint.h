@@ -7,25 +7,47 @@
 #include <stddef.h>
 
 /*
- * Arbitrary-precision non-negative integer stored as a little-endian array
- * of uint64_t words.  Sign is tracked externally by callers (wigner_exact_t).
+ * Arbitrary-precision non-negative integer.  Sign is tracked externally
+ * by callers (wigner_exact_t).  Two interchangeable backends are
+ * provided:
  *
- * "Little-endian" here refers to the *logical* word ordering --
- * words[0] holds the least-significant base-2^64 digit, words[size-1]
- * the most-significant.  This is independent of the host CPU's byte
- * order: each uint64_t is stored in native byte order, all arithmetic
- * is done at value level (no byte-level casts or union tricks), and
- * the only memcpy()/memset() operations act on whole uint64_t arrays.
- * The library therefore behaves identically on little- and big-endian
- * machines.
+ * - The default schoolbook backend (src/bigint.c) stores the value as
+ *   a little-endian array of uint64_t base-2^64 words and uses
+ *   schoolbook multiplication.  ``Little-endian'' here refers to the
+ *   logical word ordering---words[0] holds the least-significant
+ *   digit, words[size-1] the most-significant---and is independent of
+ *   the host CPU's byte order, so the library behaves identically on
+ *   little- and big-endian machines.  Invariant: words[size-1] != 0
+ *   unless size == 0 (representing zero).
  *
- * Invariant: words[size-1] != 0 unless size == 0 (representing zero).
+ * - The optional FLINT backend (src/bigint_flint.c, selected by the
+ *   CMake option BUILD_FLINT) stores the value as a single fmpz_t and
+ *   delegates every arithmetic operation to FLINT/GMP.  This trades a
+ *   runtime dependency for sub-quadratic multiplication
+ *   (Karatsuba/Toom-Cook/Schönhage--Strassen via FLINT) at very large
+ *   angular momenta.  The two backends produce bit-identical
+ *   floating-point output, verified in CI.
+ *
+ * The struct definition switches at compile time on
+ * WIGNERNJ_USE_FLINT, which is set by the build system.  No public C
+ * API consumer should depend on the layout of bigint_t.
  */
+#ifdef WIGNERNJ_USE_FLINT
+/* fmpz.h conditionally exposes fmpz_get_mpz (and other mpz/mpfr
+ * conversion helpers) only when <gmp.h> has already been included,
+ * so we pull GMP in first. */
+#include <gmp.h>
+#include <flint/fmpz.h>
+typedef struct {
+    fmpz_t v;
+} bigint_t;
+#else
 typedef struct {
     uint64_t *words;   /* logical little-endian base-2^64 digits */
     size_t    size;    /* number of significant words            */
     size_t    cap;     /* allocated capacity                     */
 } bigint_t;
+#endif
 
 /* Lifecycle */
 void bigint_init(bigint_t *a);
