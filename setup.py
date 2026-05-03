@@ -16,6 +16,7 @@ sources = [
     "src/wigner9j.c",
     "src/clebsch.c",
     "src/racah.c",
+    "src/fano_x.c",
     "src/gaunt.c",
 ]
 

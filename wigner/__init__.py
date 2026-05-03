@@ -35,7 +35,7 @@ Example::
     wigner.gaunt_real(2, 1, 2, -1, 0, 0)       # real-Y Gaunt
 
 Functions exposed: ``wigner3j``, ``wigner6j``, ``wigner9j``,
-``clebsch_gordan``, ``racah_w``, ``gaunt``, ``gaunt_real``.
+``clebsch_gordan``, ``racah_w``, ``fano_x``, ``gaunt``, ``gaunt_real``.
 """
 __version__ = "0.2.0"
 
@@ -45,9 +45,10 @@ from ._wigner import (
     wigner9j,
     clebsch_gordan,
     racah_w,
+    fano_x,
     gaunt,
     gaunt_real,
 )
 
 __all__ = ["wigner3j", "wigner6j", "wigner9j",
-           "clebsch_gordan", "racah_w", "gaunt", "gaunt_real"]
+           "clebsch_gordan", "racah_w", "fano_x", "gaunt", "gaunt_real"]

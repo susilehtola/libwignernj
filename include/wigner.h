@@ -91,6 +91,25 @@ float       racah_w_f(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23);
 double      racah_w  (int tj1, int tj2, int tJ, int tj3, int tj12, int tj23);
 long double racah_w_l(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23);
 
+/* ── Fano X-coefficient ──────────────────────────────────────────────────── */
+/* X(j1 j2 j12; j3 j4 j34; j13 j24 J)                                        */
+/*   = sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)]                                */
+/*     * { j1   j2   j12 }                                                   */
+/*       { j3   j4   j34 }                                                   */
+/*       { j13  j24  J   }                                                   */
+/* This is a normalisation variant of the 9j symbol (Fano 1953;             */
+/* Edmonds 1957 §6.4) used in the analysis of polarisation correlations.   */
+
+float       fano_x_f(int tj1, int tj2, int tj12,
+                     int tj3, int tj4, int tj34,
+                     int tj13, int tj24, int tJ);
+double      fano_x  (int tj1, int tj2, int tj12,
+                     int tj3, int tj4, int tj34,
+                     int tj13, int tj24, int tJ);
+long double fano_x_l(int tj1, int tj2, int tj12,
+                     int tj3, int tj4, int tj34,
+                     int tj13, int tj24, int tJ);
+
 /* ── Gaunt coefficient ───────────────────────────────────────────────────── */
 /* G(l1,m1,l2,m2,l3,m3)                                                      */
 /*   = integral Y_{l1}^{m1} Y_{l2}^{m2} Y_{l3}^{m3} dΩ                     */

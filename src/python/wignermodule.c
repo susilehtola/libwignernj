@@ -2,7 +2,7 @@
  * Copyright (c) 2026 Susi Lehtola
  *
  * CPython extension module for libwignernj.
- * Exposes wigner3j, wigner6j, wigner9j, clebsch_gordan, racah_w, gaunt.
+ * Exposes wigner3j, wigner6j, wigner9j, clebsch_gordan, racah_w, fano_x, gaunt.
  *
  * Each function accepts integer, float (half-integer), or fractions.Fraction
  * arguments.  An optional keyword argument precision={'float','double',
@@ -226,6 +226,36 @@ static PyObject *py_racah_w(PyObject *self, PyObject *args, PyObject *kwargs)
     return make_result(racah_w_l(tj1,tj2,tJ,tj3,tj12,tj23), prec);
 }
 
+/* ── fano_x ────────────────────────────────────────────────────────────── */
+
+static const char fano_x_doc[] =
+    "fano_x(j1, j2, j12, j3, j4, j34, j13, j24, J, precision='double')"
+    " -> float\n\n"
+    "Fano X-coefficient X(j1 j2 j12; j3 j4 j34; j13 j24 J).\n"
+    "Equals sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] times the corresponding\n"
+    "9j symbol.";
+
+static PyObject *py_fano_x(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    static char *kwlist[] = {"j1","j2","j12","j3","j4","j34",
+                              "j13","j24","J","precision",NULL};
+    PyObject *o[9], *prec_obj=NULL;
+    int t[9]; int i;
+    Precision prec;
+    const char *names[9] = {"j1","j2","j12","j3","j4","j34","j13","j24","J"};
+    (void)self;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOOOOOOOO|O", kwlist,
+                                     &o[0],&o[1],&o[2],&o[3],&o[4],
+                                     &o[5],&o[6],&o[7],&o[8],&prec_obj))
+        return NULL;
+    for (i = 0; i < 9; i++)
+        if (parse_half_int(o[i], &t[i], names[i])) return NULL;
+    prec = parse_precision(prec_obj);
+    if ((int)prec < 0) return NULL;
+    return make_result(
+        fano_x_l(t[0],t[1],t[2],t[3],t[4],t[5],t[6],t[7],t[8]), prec);
+}
+
 /* ── gaunt ─────────────────────────────────────────────────────────────── */
 
 static const char gaunt_doc[] =
@@ -290,6 +320,7 @@ static PyMethodDef wigner_methods[] = {
     {"wigner9j",       (PyCFunction)py_wigner9j,       METH_VARARGS|METH_KEYWORDS, wigner9j_doc},
     {"clebsch_gordan", (PyCFunction)py_clebsch_gordan, METH_VARARGS|METH_KEYWORDS, clebsch_gordan_doc},
     {"racah_w",        (PyCFunction)py_racah_w,        METH_VARARGS|METH_KEYWORDS, racah_w_doc},
+    {"fano_x",         (PyCFunction)py_fano_x,         METH_VARARGS|METH_KEYWORDS, fano_x_doc},
     {"gaunt",          (PyCFunction)py_gaunt,          METH_VARARGS|METH_KEYWORDS, gaunt_doc},
     {"gaunt_real",     (PyCFunction)py_gaunt_real,     METH_VARARGS|METH_KEYWORDS, gaunt_real_doc},
     {NULL, NULL, 0, NULL}

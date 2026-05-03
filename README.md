@@ -79,6 +79,12 @@ double      clebsch_gordan  (int tj1, int tm1, int tj2, int tm2, int tJ, int tM)
 /* Racah W-coefficient:  W(j1 j2 J j3; j12 j23) */
 double      racah_w  (int tj1, int tj2, int tJ, int tj3, int tj12, int tj23);
 
+/* Fano X-coefficient:  X(j1 j2 j12; j3 j4 j34; j13 j24 J)
+ *   = sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] * {9j} */
+double      fano_x   (int tj1, int tj2, int tj12,
+                      int tj3, int tj4, int tj34,
+                      int tj13, int tj24, int tJ);
+
 /* Gaunt coefficient:  integral Y_{l1}^{m1} Y_{l2}^{m2} Y_{l3}^{m3} dΩ */
 double      gaunt  (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 

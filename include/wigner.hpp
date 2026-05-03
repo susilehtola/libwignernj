@@ -43,6 +43,7 @@ template<typename T> T symbol6j(int,int,int,int,int,int);
 template<typename T> T symbol9j(int,int,int,int,int,int,int,int,int);
 template<typename T> T cg      (int,int,int,int,int,int);
 template<typename T> T racahw  (int,int,int,int,int,int);
+template<typename T> T fanox   (int,int,int,int,int,int,int,int,int);
 template<typename T> T gaunt   (int,int,int,int,int,int);
 template<typename T> T gauntreal(int,int,int,int,int,int);
 
@@ -95,6 +96,16 @@ racahw<double>(int a,int b,int c,int d,int e,int f)
 template<> inline long double
 racahw<long double>(int a,int b,int c,int d,int e,int f)
 { return racah_w_l(a,b,c,d,e,f); }
+
+template<> inline float
+fanox<float>(int a,int b,int c,int d,int e,int f,int g,int h,int i)
+{ return fano_x_f(a,b,c,d,e,f,g,h,i); }
+template<> inline double
+fanox<double>(int a,int b,int c,int d,int e,int f,int g,int h,int i)
+{ return fano_x(a,b,c,d,e,f,g,h,i); }
+template<> inline long double
+fanox<long double>(int a,int b,int c,int d,int e,int f,int g,int h,int i)
+{ return fano_x_l(a,b,c,d,e,f,g,h,i); }
 
 template<> inline float
 gaunt<float>(int a,int b,int c,int d,int e,int f)
@@ -179,6 +190,18 @@ inline T racahw(double j1, double j2, double J, double j3,
     return racahw<T>(detail::to_two_j(j1,"j1"),   detail::to_two_j(j2,"j2"),
                      detail::to_two_j(J,"J"),     detail::to_two_j(j3,"j3"),
                      detail::to_two_j(j12,"j12"), detail::to_two_j(j23,"j23"));
+}
+
+template<typename T = double>
+inline T fanox(double j1, double j2, double j12,
+               double j3, double j4, double j34,
+               double j13, double j24, double J)
+{
+    return fanox<T>(detail::to_two_j(j1,"j1"),   detail::to_two_j(j2,"j2"),
+                    detail::to_two_j(j12,"j12"), detail::to_two_j(j3,"j3"),
+                    detail::to_two_j(j4,"j4"),   detail::to_two_j(j34,"j34"),
+                    detail::to_two_j(j13,"j13"), detail::to_two_j(j24,"j24"),
+                    detail::to_two_j(J,"J"));
 }
 
 template<typename T = double>
