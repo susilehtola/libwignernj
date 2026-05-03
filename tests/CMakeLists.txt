@@ -55,6 +55,32 @@ if(NOT WIN32)
     add_test(NAME test_oom COMMAND test_oom)
 endif()
 
+# ── Warmup / zero-allocation verification ─────────────────────────────────────
+# Wraps glibc malloc/calloc/realloc via dlsym(RTLD_NEXT, ...) and asserts
+# that wigner_warmup() makes every subsequent symbol evaluation
+# allocation-free.  Built only on Linux (glibc + dlsym semantics required).
+#
+# Skipped under:
+#   - BUILD_FLINT: FLINT's internal fmpz/mpz arithmetic allocates from
+#     glibc on its own; those allocations are outside the libwignernj
+#     scratch cache and would cause spurious failures.
+#   - sanitizer builds: AddressSanitizer intercepts malloc itself, and
+#     our dlsym(RTLD_NEXT, "malloc") overlay conflicts with that
+#     interception (the test aborts in __asan_init).
+string(REGEX MATCH "fsanitize" _wigner_sanitizer_flags
+       "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}}")
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
+   AND NOT BUILD_FLINT
+   AND NOT _wigner_sanitizer_flags)
+    add_executable(test_warmup test_warmup.c)
+    target_link_libraries(test_warmup PRIVATE wignernj ${LIBM_LINK} dl)
+    target_include_directories(test_warmup PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    add_test(NAME test_warmup COMMAND test_warmup)
+endif()
+
 # ── C++ header tests ──────────────────────────────────────────────────────────
 
 if(BUILD_CXX_TESTS)

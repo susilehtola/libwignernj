@@ -10,6 +10,7 @@ sources = [
     "src/primes.c",
     "src/bigint.c",
     "src/pfrac.c",
+    "src/scratch.c",
     "src/wigner_exact.c",
     "src/wigner3j.c",
     "src/wigner6j.c",

@@ -13,6 +13,7 @@
  */
 #include "wigner_exact.h"
 #include "primes.h"
+#include "scratch.h"
 #include "wigner.h"
 
 /*
@@ -25,12 +26,14 @@ static void clebsch_gordan_exact(int tj1, int tm1, int tj2, int tm2,
                                   wigner_exact_t *out)
 {
     int phase;
-    wigner_exact_init(out);
+    /* m conservation -- short-circuit before wigner3j_exact (which would
+     * also reset out, but only after a selection-rule check that doesn't
+     * cover the CG-specific m1+m2 = M constraint).  Reset here so that
+     * out is in a known-zero state when we set is_zero=1 below. */
+    if (tm1 + tm2 != tM) { wigner_exact_reset(out); out->is_zero = 1; return; }
 
-    /* m conservation */
-    if (tm1 + tm2 != tM) { out->is_zero = 1; return; }
-
-    /* Compute the underlying 3j symbol exactly */
+    /* Compute the underlying 3j symbol exactly.  wigner3j_exact resets
+     * out itself, so no init is needed here. */
     wigner3j_exact(tj1, tj2, tJ, tm1, tm2, -tM, out);
     if (out->is_zero) return;
 
@@ -58,38 +61,42 @@ static void clebsch_gordan_exact(int tj1, int tm1, int tj2, int tm2,
 
 float clebsch_gordan_f(int tj1, int tm1, int tj2, int tm2, int tJ, int tM)
 {
-    wigner_exact_t e; float r;
-    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &e);
-    r = wigner_exact_to_float(&e);
-    wigner_exact_free(&e);
+    wigner_scratch_t *s = wigner_scratch_acquire();
+    float r;
+    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &s->exact);
+    r = wigner_exact_to_float(&s->exact);
+    wigner_scratch_relinquish(s);
     return r;
 }
 
 double clebsch_gordan(int tj1, int tm1, int tj2, int tm2, int tJ, int tM)
 {
-    wigner_exact_t e; double r;
-    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &e);
-    r = wigner_exact_to_double(&e);
-    wigner_exact_free(&e);
+    wigner_scratch_t *s = wigner_scratch_acquire();
+    double r;
+    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &s->exact);
+    r = wigner_exact_to_double(&s->exact);
+    wigner_scratch_relinquish(s);
     return r;
 }
 
 long double clebsch_gordan_l(int tj1, int tm1, int tj2, int tm2, int tJ, int tM)
 {
-    wigner_exact_t e; long double r;
-    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &e);
-    r = wigner_exact_to_long_double(&e);
-    wigner_exact_free(&e);
+    wigner_scratch_t *s = wigner_scratch_acquire();
+    long double r;
+    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &s->exact);
+    r = wigner_exact_to_long_double(&s->exact);
+    wigner_scratch_relinquish(s);
     return r;
 }
 
 #ifdef WIGNER_HAVE_QUADMATH
 __float128 clebsch_gordan_q(int tj1, int tm1, int tj2, int tm2, int tJ, int tM)
 {
-    wigner_exact_t e; __float128 r;
-    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &e);
-    r = wigner_exact_to_float128(&e);
-    wigner_exact_free(&e);
+    wigner_scratch_t *s = wigner_scratch_acquire();
+    __float128 r;
+    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &s->exact);
+    r = wigner_exact_to_float128(&s->exact);
+    wigner_scratch_relinquish(s);
     return r;
 }
 #endif
@@ -99,9 +106,9 @@ __float128 clebsch_gordan_q(int tj1, int tm1, int tj2, int tm2, int tJ, int tM)
 void clebsch_gordan_mpfr(mpfr_t rop, int tj1, int tm1, int tj2, int tm2,
                                      int tJ, int tM, mpfr_rnd_t rnd)
 {
-    wigner_exact_t e;
-    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &e);
-    wigner_exact_to_mpfr(rop, &e, rnd);
-    wigner_exact_free(&e);
+    wigner_scratch_t *s = wigner_scratch_acquire();
+    clebsch_gordan_exact(tj1, tm1, tj2, tm2, tJ, tM, &s->exact);
+    wigner_exact_to_mpfr(rop, &s->exact, rnd);
+    wigner_scratch_relinquish(s);
 }
 #endif

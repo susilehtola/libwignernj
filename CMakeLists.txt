@@ -42,6 +42,7 @@ set(LIB_SOURCES
     src/primes.c
     ${BIGINT_SOURCE}
     src/pfrac.c
+    src/scratch.c
     src/wigner_exact.c
     src/wigner3j.c
     src/wigner6j.c

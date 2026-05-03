@@ -15,6 +15,24 @@ void wigner_exact_init(wigner_exact_t *e)
     e->is_zero  = 0;
 }
 
+/*
+ * Reset an already-initialized wigner_exact_t to its "freshly built"
+ * state without freeing or reallocating its bigint buffers.  Used by
+ * the cached-scratch path where the same wigner_exact_t is reused
+ * across many public-API calls.
+ */
+void wigner_exact_reset(wigner_exact_t *e)
+{
+    bigint_set_zero(&e->sum);
+    bigint_set_zero(&e->int_num);
+    bigint_set_zero(&e->int_den);
+    bigint_set_zero(&e->sqrt_num);
+    bigint_set_zero(&e->sqrt_den);
+    e->sum_sign = 1;
+    e->sign     = 1;
+    e->is_zero  = 0;
+}
+
 void wigner_exact_free(wigner_exact_t *e)
 {
     if (e->is_zero) return;

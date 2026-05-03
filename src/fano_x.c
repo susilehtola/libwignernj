@@ -24,6 +24,7 @@
  */
 #include "wigner_exact.h"
 #include "primes.h"
+#include "scratch.h"
 #include "wigner.h"
 
 /*
@@ -83,10 +84,11 @@ float fano_x_f(int tj1, int tj2, int tj12,
                int tj3, int tj4, int tj34,
                int tj13, int tj24, int tJ)
 {
-    wigner_exact_t e; float r;
-    fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &e);
-    r = wigner_exact_to_float(&e);
-    wigner_exact_free(&e);
+    wigner_scratch_t *s = wigner_scratch_acquire();
+    float r;
+    fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &s->exact);
+    r = wigner_exact_to_float(&s->exact);
+    wigner_scratch_relinquish(s);
     return r;
 }
 
@@ -94,10 +96,11 @@ double fano_x(int tj1, int tj2, int tj12,
               int tj3, int tj4, int tj34,
               int tj13, int tj24, int tJ)
 {
-    wigner_exact_t e; double r;
-    fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &e);
-    r = wigner_exact_to_double(&e);
-    wigner_exact_free(&e);
+    wigner_scratch_t *s = wigner_scratch_acquire();
+    double r;
+    fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &s->exact);
+    r = wigner_exact_to_double(&s->exact);
+    wigner_scratch_relinquish(s);
     return r;
 }
 
@@ -105,10 +108,11 @@ long double fano_x_l(int tj1, int tj2, int tj12,
                      int tj3, int tj4, int tj34,
                      int tj13, int tj24, int tJ)
 {
-    wigner_exact_t e; long double r;
-    fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &e);
-    r = wigner_exact_to_long_double(&e);
-    wigner_exact_free(&e);
+    wigner_scratch_t *s = wigner_scratch_acquire();
+    long double r;
+    fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &s->exact);
+    r = wigner_exact_to_long_double(&s->exact);
+    wigner_scratch_relinquish(s);
     return r;
 }
 
@@ -117,10 +121,11 @@ __float128 fano_x_q(int tj1, int tj2, int tj12,
                     int tj3, int tj4, int tj34,
                     int tj13, int tj24, int tJ)
 {
-    wigner_exact_t e; __float128 r;
-    fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &e);
-    r = wigner_exact_to_float128(&e);
-    wigner_exact_free(&e);
+    wigner_scratch_t *s = wigner_scratch_acquire();
+    __float128 r;
+    fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &s->exact);
+    r = wigner_exact_to_float128(&s->exact);
+    wigner_scratch_relinquish(s);
     return r;
 }
 #endif
@@ -133,9 +138,9 @@ void fano_x_mpfr(mpfr_t rop,
                  int tj13, int tj24, int tJ,
                  mpfr_rnd_t rnd)
 {
-    wigner_exact_t e;
-    fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &e);
-    wigner_exact_to_mpfr(rop, &e, rnd);
-    wigner_exact_free(&e);
+    wigner_scratch_t *s = wigner_scratch_acquire();
+    fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &s->exact);
+    wigner_exact_to_mpfr(rop, &s->exact, rnd);
+    wigner_scratch_relinquish(s);
 }
 #endif
