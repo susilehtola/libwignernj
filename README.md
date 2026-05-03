@@ -44,6 +44,7 @@ CMake options (all `ON` by default except `BUILD_PYTHON`):
 | `BUILD_PYTHON` | `OFF` | Python extension |
 | `BUILD_QUADMATH` | `OFF` | libquadmath / IEEE 754 binary128 (`__float128`) interface |
 | `BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface |
+| `BUILD_FLINT` | `OFF` | Use FLINT/GMP/MPFR for the bigint backend (instead of the in-tree schoolbook) — sub-quadratic multiplication at large *j* |
 
 A separate preprocessor switch `-DBIGINT_FORCE_PORTABLE` (passed via
 `CMAKE_C_FLAGS`) forces the multiword-integer back-end onto its pure-C99

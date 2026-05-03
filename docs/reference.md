@@ -44,6 +44,7 @@ python -m pytest tests/python/
 | `BUILD_CXX_TESTS` | `ON` | C++ header tests |
 | `BUILD_QUADMATH` | `OFF` | libquadmath / IEEE 754 binary128 (`__float128`) interface (requires GCC, Clang, or Intel ICC/ICX on Linux/macOS) |
 | `BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface (requires libmpfr) |
+| `BUILD_FLINT` | `OFF` | FLINT/GMP/MPFR bigint backend (sub-quadratic multiplication; replaces the in-tree schoolbook bigint, requires libflint, libgmp, and libmpfr) |
 | `BUILD_PYTHON` | `OFF` | CPython extension module |
 
 ### Linking

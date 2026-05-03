@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Optional FLINT bigint backend (`-DBUILD_FLINT=ON`) that replaces
+  the in-tree schoolbook multiword integer with a thin wrapper
+  around FLINT's `fmpz_t`. The asymptotic motivation is
+  sub-quadratic multiplication (Karatsuba / Toom-Cook /
+  Schönhage--Strassen via FLINT/GMP), which closes most of the
+  large-`j` performance gap to `WIGXJPF`. Floating-point
+  conversions are routed through MPFR (correct round-to-nearest-
+  even at every IEEE 754 binary precision); the binary128
+  conversion uses `mpfr_get_float128` (MPFR ≥ 4.1.0 with
+  `--enable-float128`). Bit-identical output against the
+  schoolbook is verified in CI via a dedicated `Ubuntu / GCC /
+  FLINT backend` matrix cell. The default build is unchanged and
+  remains dependency-free.
 - Fano X-coefficient (`fano_x`, `fano_x_f`, `fano_x_l`, `fano_x_q`,
   `fano_x_mpfr`), implemented as a thin wrapper over the 9j exact
   pipeline that folds the four `sqrt(2j+1)` factors into the existing
