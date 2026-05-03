@@ -130,6 +130,42 @@ static void test_gaunt_64bit(void)
     mpfr_clear(v);
 }
 
+static void test_gaunt_real_64bit(void)
+{
+    mpfr_t v;
+    mpfr_init2(v, 64);
+
+    /* All-m=0: real Gaunt equals complex Gaunt. */
+    gaunt_real_mpfr(v, 2,0, 2,0, 4,0, MPFR_RNDN);
+    TEST_NEAR(mpfr_to_d(v), gaunt_real(2,0, 2,0, 4,0), 1e-13);
+
+    /* Generic non-zero real-Gaunt case. */
+    gaunt_real_mpfr(v, 4,2, 4,-2, 4,0, MPFR_RNDN);
+    TEST_NEAR(mpfr_to_d(v), gaunt_real(4,2, 4,-2, 4,0), 1e-13);
+
+    mpfr_clear(v);
+}
+
+static void test_fano_x_64bit(void)
+{
+    mpfr_t v;
+    mpfr_init2(v, 64);
+
+    /* X(j1,j2,j12;j3,j4,j34;j13,j24,J)
+     *   = sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] * 9j */
+    fano_x_mpfr(v, 2,2,2, 2,2,2, 2,2,2, MPFR_RNDN);
+    TEST_NEAR(mpfr_to_d(v), fano_x(2,2,2, 2,2,2, 2,2,2), 1e-13);
+
+    fano_x_mpfr(v, 4,4,4, 4,4,4, 4,4,4, MPFR_RNDN);
+    TEST_NEAR(mpfr_to_d(v), fano_x(4,4,4, 4,4,4, 4,4,4), 1e-13);
+
+    /* Selection-rule zero (one triangle violated) */
+    fano_x_mpfr(v, 2,2,2, 2,2,2, 2,2,5, MPFR_RNDN);
+    TEST_ASSERT(mpfr_zero_p(v));
+
+    mpfr_clear(v);
+}
+
 /* ── 2. High-precision accuracy ─────────────────────────────────────────── */
 
 /*
@@ -250,6 +286,8 @@ int main(void)
     test_cg_64bit();
     test_racah_64bit();
     test_gaunt_64bit();
+    test_gaunt_real_64bit();
+    test_fano_x_64bit();
     test_high_precision_3j();
     test_high_precision_3j_2();
     test_high_precision_6j();

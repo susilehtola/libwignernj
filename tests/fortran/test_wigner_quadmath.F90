@@ -69,6 +69,52 @@ program test_wigner_quadmath
                  'w9jq agrees with w9j (double)', npass, nfail)
   end block
 
+  ! Racah W: W(j1,j2,J,j3;j12,j23) = (-1)^(j1+j2+J+j3) * 6j{j1,j2,j12;j3,J,j23}
+  ! W(1,1,0,1;0,1) phase = (-1)^3 = -1
+  block
+    real(real128) :: vq, vw
+    vq = wracahwq(1.0_real128, 1.0_real128, 0.0_real128, &
+                  1.0_real128, 0.0_real128, 1.0_real128)
+    vw = -w6jq(1.0_real128, 1.0_real128, 0.0_real128, &
+               1.0_real128, 0.0_real128, 1.0_real128)
+    call check_q(vq, vw, q_tol, 'wracahwq vs -w6jq', npass, nfail)
+  end block
+
+  ! Fano X = sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] * 9j.
+  ! At all-equal-j=2 the norm is 5^2 = 25.
+  block
+    real(real128) :: vq, vw
+    vq = wfanoxq(2.0_real128, 2.0_real128, 2.0_real128, &
+                 2.0_real128, 2.0_real128, 2.0_real128, &
+                 2.0_real128, 2.0_real128, 2.0_real128)
+    vw = 25.0_real128 * w9jq(2.0_real128, 2.0_real128, 2.0_real128, &
+                             2.0_real128, 2.0_real128, 2.0_real128, &
+                             2.0_real128, 2.0_real128, 2.0_real128)
+    call check_q(vq, vw, q_tol, 'wfanoxq = 25 * w9jq', npass, nfail)
+  end block
+
+  ! Gaunt: complex-spherical-harmonic Gaunt at l=0,m=0 → 1/(2*sqrt(pi))
+  block
+    real(real128) :: vq, expected
+    real(real128), parameter :: piq = 3.14159265358979323846264338327950288_real128
+    vq = wgauntq(0.0_real128, 0.0_real128, 0.0_real128, &
+                 0.0_real128, 0.0_real128, 0.0_real128)
+    expected = 0.5_real128 / sqrt(piq)
+    call check_q(vq, expected, q_tol*8, 'wgauntq(0,0,0,0,0,0)', npass, nfail)
+  end block
+
+  ! Real-spherical-harmonic Gaunt: at all-m=0 it equals the complex Gaunt.
+  block
+    real(real128) :: vqr, vqc
+    vqr = wgaunt_realq(1.0_real128, 0.0_real128, &
+                       1.0_real128, 0.0_real128, &
+                       2.0_real128, 0.0_real128)
+    vqc = wgauntq(1.0_real128, 0.0_real128, &
+                  1.0_real128, 0.0_real128, &
+                  2.0_real128, 0.0_real128)
+    call check_q(vqr, vqc, q_tol*8, 'wgaunt_realq m=0 = wgauntq', npass, nfail)
+  end block
+
   total = npass + nfail
   print '(I0,"/",I0," passed")', npass, total
   if (nfail > 0) then

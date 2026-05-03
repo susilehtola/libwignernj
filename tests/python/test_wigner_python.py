@@ -10,7 +10,8 @@ import pytest
 
 try:
     from wigner import (wigner3j, wigner6j, wigner9j,
-                        clebsch_gordan, racah_w, gaunt, gaunt_real)
+                        clebsch_gordan, racah_w, fano_x,
+                        gaunt, gaunt_real)
 except ImportError:
     pytest.skip("wigner extension not installed", allow_module_level=True)
 
@@ -184,6 +185,34 @@ class TestRacahW:
         w6 = wigner6j(j1, j2, j12, j3, J, j23)
         phase = (-1)**int(j1 + j2 + J + j3)
         assert near(w, phase * w6)
+
+# ── Fano X ────────────────────────────────────────────────────────────────────
+
+class TestFanoX:
+    def test_vs_9j(self):
+        # X(j1,j2,j12;j3,j4,j34;j13,j24,J)
+        #   = sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] * {9j}.
+        # all-equal-j=2 → norm = 5^2 = 25
+        j = 2
+        x = fano_x(j, j, j, j, j, j, j, j, j)
+        w = wigner9j(j, j, j, j, j, j, j, j, j)
+        assert near(x, 25.0 * w)
+
+    def test_vs_9j_half_integer(self):
+        # all-equal-j=1/2 → norm = 2^2 = 4
+        x = fano_x(0.5, 0.5, 1.0, 0.5, 0.5, 0.0, 1.0, 1.0, 1.0)
+        w = wigner9j(0.5, 0.5, 1.0, 0.5, 0.5, 0.0, 1.0, 1.0, 1.0)
+        norm = math.sqrt(3.0 * 1.0 * 3.0 * 3.0)  # (2*1+1)(2*0+1)(2*1+1)(2*1+1)
+        assert near(x, norm * w)
+
+    def test_triangle_zero(self):
+        # one triangle violated → X = 0
+        assert near_abs(fano_x(1, 1, 1, 1, 1, 1, 1, 1, 3), 0.0)
+
+    def test_precision_keyword(self):
+        v = fano_x(2, 2, 2, 2, 2, 2, 2, 2, 2, precision='float')
+        assert isinstance(v, float)
+
 
 # ── Gaunt ─────────────────────────────────────────────────────────────────────
 

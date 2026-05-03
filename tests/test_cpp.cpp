@@ -104,6 +104,42 @@ int main(void)
         CHECK_NEAR(g, norm * w0 * w0, 2e-15);
     }
 
+    /* ── gauntreal ────────────────────────────────────────────────────── */
+    {
+        /* Real Gaunt at all-m=0 equals complex Gaunt. */
+        double gr = wigner::gauntreal<double>(2,0, 2,0, 4,0);
+        double gc = wigner::gaunt<double>     (2,0, 2,0, 4,0);
+        CHECK_NEAR(gr, gc, 2e-15);
+        CHECK_NEAR(wigner::gauntreal<float>(2,0,2,0,4,0),
+                   (float)gc, 2e-6f);
+        CHECK_NEAR(wigner::gauntreal<long double>(2,0,2,0,4,0),
+                   (long double)gc, LD_TOL);
+        /* Real-valued overload */
+        CHECK_NEAR(wigner::gauntreal(1.0, 0.0, 1.0, 0.0, 2.0, 0.0),
+                   gc, 2e-15);
+    }
+
+    /* ── fanox ────────────────────────────────────────────────────────── */
+    {
+        /* X = sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] * 9j.
+         * At all-equal-tj=4 the four factors are 5 each, so norm=25. */
+        double w9 = wigner::symbol9j<double>(4,4,4, 4,4,4, 4,4,4);
+        CHECK_NEAR(wigner::fanox<double>(4,4,4, 4,4,4, 4,4,4),
+                   25.0 * w9, 2e-13);
+        CHECK_NEAR(wigner::fanox<float>(4,4,4, 4,4,4, 4,4,4),
+                   (float)(25.0 * w9), 2e-5f);
+        long double w9_ld = wigner::symbol9j<long double>(4,4,4, 4,4,4, 4,4,4);
+        CHECK_NEAR(wigner::fanox<long double>(4,4,4, 4,4,4, 4,4,4),
+                   25.0L * w9_ld, LD_TOL * 50);
+        /* Real-valued overload */
+        CHECK_NEAR(wigner::fanox(2.0, 2.0, 2.0,
+                                 2.0, 2.0, 2.0,
+                                 2.0, 2.0, 2.0),
+                   25.0 * w9, 2e-13);
+        /* Selection-rule zero */
+        CHECK_ABS(wigner::fanox<double>(2,2,2, 2,2,2, 2,2,5), 0.0, 1e-15);
+    }
+
     /* ── selection-rule zeros ─────────────────────────────────────────── */
     CHECK_ABS(wigner::symbol3j<double>(2,2,2, 2,0,0), 0.0, 1e-15);
     CHECK_ABS(wigner::symbol6j<double>(0,0,2, 0,0,2), 0.0, 1e-15);
