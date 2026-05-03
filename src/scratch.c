@@ -3,35 +3,10 @@
 #include "scratch.h"
 #include "primes.h"
 #include "wigner.h"
+#include "wignernj_tls.h"
 #include "xalloc.h"
 #include <stdlib.h>
 #include <string.h>
-
-/* ── thread-local-storage detection ──────────────────────────────────────────
- *
- * Pick the best TLS keyword the toolchain offers.  In order of preference:
- *   - GCC / Clang / Intel: __thread (works pre-C11 too).
- *   - MSVC: __declspec(thread).
- *   - C11 conforming compiler with threads support: _Thread_local.
- *
- * If none is available we fall back to allocating a fresh scratch on every
- * acquire and freeing it on relinquish.  That regresses to the historical
- * per-call allocation cost but is thread-safe by construction.
- */
-#if defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) \
- || defined(__INTEL_LLVM_COMPILER)
-#  define WIGNERNJ_TLS __thread
-#  define WIGNERNJ_HAVE_TLS 1
-#elif defined(_MSC_VER)
-#  define WIGNERNJ_TLS __declspec(thread)
-#  define WIGNERNJ_HAVE_TLS 1
-#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L \
-   && !defined(__STDC_NO_THREADS__)
-#  define WIGNERNJ_TLS _Thread_local
-#  define WIGNERNJ_HAVE_TLS 1
-#else
-#  define WIGNERNJ_HAVE_TLS 0
-#endif
 
 /* ── shared helpers ──────────────────────────────────────────────────────── */
 
@@ -186,4 +161,19 @@ int wigner_thread_local_scratch_available(void)
 #else
     return 0;
 #endif
+}
+
+/* Forward declaration -- implemented in src/pfrac.c.  Not exposed in
+ * any internal header because it is a pure cleanup hook. */
+extern void wigner_factorial_cache_release(void);
+
+void wigner_thread_cleanup(void)
+{
+    /* Release every per-thread cache held by the calling thread:
+     * the per-symbol scratch (bigint workspace, exact-output bigints,
+     * pfrac scratch, lcm-exponent arrays) and the factorial-decomposition
+     * cache (per-N prime-exponent rows + the pointer table).  No-op
+     * on no-TLS toolchains. */
+    wigner_scratch_release();
+    wigner_factorial_cache_release();
 }

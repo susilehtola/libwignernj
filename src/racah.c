@@ -11,6 +11,13 @@
  */
 #include "wigner.h"
 
+int racah_w_max_factorial(int tj1, int tj2, int tJ,
+                          int tj3, int tj12, int tj23)
+{
+    /* W = phase * 6j{j1, j2, j12; j3, J, j23}. */
+    return wigner6j_max_factorial(tj1, tj2, tj12, tj3, tJ, tj23);
+}
+
 float racah_w_f(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23)
 {
     int phase = ((((tj1 + tj2 + tJ + tj3) / 2) & 1) == 0) ? 1 : -1;

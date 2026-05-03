@@ -63,8 +63,28 @@ int main(void)
         return 0;
     }
 
-    /* Warm up the cached scratch to the absolute prime-table ceiling. */
+    /* Warm up both the cached scratch and the factorial-decomposition
+     * cache.  We size the latter precisely from the call mix below
+     * via the per-symbol max_factorial helpers, taking the maximum so
+     * that every factorial reached by the test is pre-populated. */
     wigner_warmup();
+    {
+        int N = 0, n;
+        n = wigner3j_max_factorial(2,    2,    2,    0, 0, 0);    if (n > N) N = n;
+        n = wigner3j_max_factorial(200,  200,  200,  2, 2,-4);    if (n > N) N = n;
+        n = wigner3j_max_factorial(13332,13332,13332,2, 2,-4);    if (n > N) N = n;
+        n = wigner6j_max_factorial(2,   2,   2,   2,   2,   2);   if (n > N) N = n;
+        n = wigner6j_max_factorial(200, 200, 200, 200, 200, 200); if (n > N) N = n;
+        n = wigner9j_max_factorial(2, 2, 2, 2, 2, 2, 2, 2, 2);    if (n > N) N = n;
+        n = wigner9j_max_factorial(20,20,20,20,20,20,20,20,20);   if (n > N) N = n;
+        n = clebsch_gordan_max_factorial(2, 1, 2, -1, 0, 0);      if (n > N) N = n;
+        n = racah_w_max_factorial       (2, 2, 2, 2, 2, 2);       if (n > N) N = n;
+        n = fano_x_max_factorial        (2, 2, 2, 2, 2, 2,
+                                         2, 2, 2);                if (n > N) N = n;
+        n = gaunt_max_factorial         (4, 0, 4, 0, 8, 0);       if (n > N) N = n;
+        n = gaunt_real_max_factorial    (4, 0, 4, 0, 8, 0);       if (n > N) N = n;
+        wigner_warmup_factorial_cache(N);
+    }
 
     /* Now count allocations across a representative call mix. */
     g_n_alloc = 0;
@@ -96,6 +116,18 @@ int main(void)
     printf("test_warmup: %ld allocations across the representative mix\n",
            g_n_alloc);
     TEST_ASSERT(g_n_alloc == 0);
+
+    /* wigner_thread_cleanup() must drop both the scratch and the
+     * factorial cache, so a subsequent symbol evaluation re-enters
+     * the lazy-init path and allocates again. */
+    wigner_thread_cleanup();
+    g_n_alloc = 0;
+    g_counting = 1;
+    (void)wigner3j(2, 2, 2, 0, 0, 0);
+    g_counting = 0;
+    printf("test_warmup: %ld allocations on the call after cleanup "
+           "(expected > 0)\n", g_n_alloc);
+    TEST_ASSERT(g_n_alloc > 0);
 
     return g_tests_failed ? 1 : 0;
 }
