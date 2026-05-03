@@ -85,9 +85,12 @@ void bigint_div_prime_pow(bigint_t *a, uint64_t p, int k);
  * Lifecycle:  bigint_ws_init  ->  bigint_ws_reserve  ->  ...use...  ->  bigint_ws_free
  */
 typedef struct {
-    bigint_t mul_temp;   /* temp for bigint_mul_ws when destination is aliased */
-    bigint_t pp_pw;      /* p^k accumulator in the binary-exponentiation loop */
-    bigint_t pp_base;    /* current base in the binary-exponentiation loop  */
+    bigint_t mul_temp;     /* temp for bigint_mul_ws when destination is aliased */
+    bigint_t pp_pw;        /* p^k accumulator in the binary-exponentiation loop */
+    bigint_t pp_base;      /* current base in the binary-exponentiation loop  */
+    bigint_t kar_scratch;  /* Karatsuba scratch (schoolbook backend); unused
+                              by the FLINT backend, where multiplication is
+                              delegated to FLINT's own scratch management.   */
 } bigint_ws_t;
 
 void bigint_ws_init   (bigint_ws_t *ws);

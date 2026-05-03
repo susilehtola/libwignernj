@@ -153,6 +153,7 @@ void bigint_ws_init(bigint_ws_t *ws)
     fmpz_init(ws->mul_temp.v);
     fmpz_init(ws->pp_pw.v);
     fmpz_init(ws->pp_base.v);
+    fmpz_init(ws->kar_scratch.v);   /* unused on this backend */
 }
 
 void bigint_ws_free(bigint_ws_t *ws)
@@ -160,6 +161,7 @@ void bigint_ws_free(bigint_ws_t *ws)
     fmpz_clear(ws->mul_temp.v);
     fmpz_clear(ws->pp_pw.v);
     fmpz_clear(ws->pp_base.v);
+    fmpz_clear(ws->kar_scratch.v);
 }
 
 void bigint_ws_reserve(bigint_ws_t *ws, size_t max_words)

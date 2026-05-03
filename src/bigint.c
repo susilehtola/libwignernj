@@ -146,17 +146,233 @@ void bigint_mul_u64(bigint_t *r, const bigint_t *a, uint64_t b)
     bigint_trim(r);
 }
 
-void bigint_mul(bigint_t *r, const bigint_t *a, const bigint_t *b)
+/*
+ * Crossover below which schoolbook multiplication is faster than
+ * Karatsuba.  Tuned via tools/bench_karatsuba.c on x86-64 GCC; the
+ * exact value is not critical -- anywhere from ~16 to ~64 limbs gives
+ * almost the same performance because the Karatsuba constant factor
+ * is dominated by the schoolbook leaf at this size.  Overridable via
+ * -DKARATSUBA_THRESHOLD=N at compile time so the benchmark can sweep
+ * both code paths.
+ */
+#ifndef KARATSUBA_THRESHOLD
+#define KARATSUBA_THRESHOLD 32
+#endif
+
+/* r[0..n-1] += b[0..nb-1]; returns final carry-out (0 or 1). */
+static uint64_t add_inplace_words(uint64_t *r, size_t n,
+                                  const uint64_t *b, size_t nb)
+{
+    uint64_t carry = 0;
+    size_t i;
+    for (i = 0; i < nb && i < n; i++)
+        r[i] = bigint_addc(r[i], b[i], carry, &carry);
+    for (; i < n && carry; i++)
+        r[i] = bigint_addc(r[i], 0, carry, &carry);
+    return carry;
+}
+
+/* r[0..n-1] -= b[0..nb-1]; returns final borrow-out (0 or 1). */
+static uint64_t sub_inplace_words(uint64_t *r, size_t n,
+                                  const uint64_t *b, size_t nb)
+{
+    uint64_t borrow = 0;
+    size_t i;
+    for (i = 0; i < nb && i < n; i++)
+        r[i] = bigint_subb(r[i], b[i], borrow, &borrow);
+    for (; i < n && borrow; i++)
+        r[i] = bigint_subb(r[i], 0, borrow, &borrow);
+    return borrow;
+}
+
+/*
+ * Schoolbook leaf:  r[0 .. na+nb-1] += a[0..na-1] * b[0..nb-1].
+ * The += is for bit-exact reuse from inside the Karatsuba combine, where
+ * the destination region may already hold partial results.  For pure
+ * multiplication the caller zeros r first; nothing in this routine reads
+ * r before its first write at any given index.  r must be disjoint from
+ * a and b.
+ */
+static void school_mul_words(uint64_t *r,
+                             const uint64_t *a, size_t na,
+                             const uint64_t *b, size_t nb)
 {
     size_t i, j;
+    for (i = 0; i < na; i++) {
+        uint64_t carry = 0;
+        for (j = 0; j < nb; j++) {
+            uint64_t lo, hi;
+            bigint_mul_add2(a[i], b[j], r[i+j], carry, &lo, &hi);
+            r[i+j] = lo;
+            carry  = hi;
+        }
+        r[i + nb] += carry;
+    }
+}
+
+/*
+ * Karatsuba multiplication on word arrays:  r[0..na+nb-1] = a*b.
+ *
+ *   - r is zero-initialized and disjoint from a and b.
+ *   - scratch points to at least kar_scratch_words(max(na,nb)) words of
+ *     working memory, also disjoint from r, a, b.
+ *
+ * Splits at k = min(na,nb)/2:
+ *   a = a1*B^k + a0,  b = b1*B^k + b0,  B = 2^64
+ *   z0 = a0*b0,  z2 = a1*b1,  zm = (a0+a1)(b0+b1) - z0 - z2
+ *   a*b = z2*B^(2k) + zm*B^k + z0
+ *
+ * Below KARATSUBA_THRESHOLD the routine falls through to schoolbook.
+ */
+static void kar_mul_words(uint64_t *r,
+                          const uint64_t *a, size_t na,
+                          const uint64_t *b, size_t nb,
+                          uint64_t *scratch)
+{
+    size_t mn = (na < nb) ? na : nb;
+    size_t k, na1, nb1;
+    size_t suma_alloc, sumb_alloc, z1_alloc;
+    uint64_t *sum_a, *sum_b, *z1, *sub;
+    size_t suma_size, sumb_size, z1_size, z0_size, z2_size;
+
+    if (mn < KARATSUBA_THRESHOLD) {
+        school_mul_words(r, a, na, b, nb);
+        return;
+    }
+
+    k   = mn / 2;
+    na1 = na - k;
+    nb1 = nb - k;
+
+    /* Slice the scratch buffer.  na1 >= k and nb1 >= k since na,nb >= 2k. */
+    suma_alloc = na1 + 1;
+    sumb_alloc = nb1 + 1;
+    z1_alloc   = na1 + nb1 + 2;
+    sum_a = scratch;
+    sum_b = sum_a + suma_alloc;
+    z1    = sum_b + sumb_alloc;
+    sub   = z1    + z1_alloc;     /* sub-call scratch starts here */
+
+    /* z0 = a0 * b0  ->  r[0 .. 2k-1].  r[2k..] is still zero. */
+    kar_mul_words(r, a, k, b, k, sub);
+    /* z2 = a1 * b1  ->  r[2k .. 2k + na1+nb1 - 1] */
+    kar_mul_words(r + 2*k, a + k, na1, b + k, nb1, sub);
+
+    /* sum_a = a0 + a1.  Start with the longer half (a1, na1 >= k limbs)
+     * and add a0 (k limbs); the result fits in na1+1 limbs. */
+    memcpy(sum_a, a + k, na1 * sizeof(uint64_t));
+    sum_a[na1] = 0;
+    add_inplace_words(sum_a, na1 + 1, a, k);
+    suma_size = na1 + 1;
+    while (suma_size > 0 && sum_a[suma_size - 1] == 0) suma_size--;
+
+    /* sum_b = b0 + b1, same shape. */
+    memcpy(sum_b, b + k, nb1 * sizeof(uint64_t));
+    sum_b[nb1] = 0;
+    add_inplace_words(sum_b, nb1 + 1, b, k);
+    sumb_size = nb1 + 1;
+    while (sumb_size > 0 && sum_b[sumb_size - 1] == 0) sumb_size--;
+
+    /* z1 = sum_a * sum_b (recursive). */
+    memset(z1, 0, z1_alloc * sizeof(uint64_t));
+    if (suma_size > 0 && sumb_size > 0)
+        kar_mul_words(z1, sum_a, suma_size, sum_b, sumb_size, sub);
+    z1_size = z1_alloc;
+    while (z1_size > 0 && z1[z1_size - 1] == 0) z1_size--;
+
+    /* z1 -= z0  (z0 occupies r[0 .. 2k-1]). */
+    z0_size = 2 * k;
+    while (z0_size > 0 && r[z0_size - 1] == 0) z0_size--;
+    if (z0_size > 0)
+        sub_inplace_words(z1, z1_size, r, z0_size);
+    while (z1_size > 0 && z1[z1_size - 1] == 0) z1_size--;
+
+    /* z1 -= z2  (z2 occupies r[2k .. 2k + na1+nb1 - 1]). */
+    z2_size = na1 + nb1;
+    while (z2_size > 0 && r[2*k + z2_size - 1] == 0) z2_size--;
+    if (z2_size > 0)
+        sub_inplace_words(z1, z1_size, r + 2*k, z2_size);
+    while (z1_size > 0 && z1[z1_size - 1] == 0) z1_size--;
+
+    /* r += z1 << (k*64), i.e. r[k .. k+z1_size-1] += z1. */
+    if (z1_size > 0)
+        add_inplace_words(r + k, na + nb - k, z1, z1_size);
+}
+
+/*
+ * Upper bound on Karatsuba scratch (in 64-bit words) for a multiplication
+ * with operand sizes (na, nb).  Recurrence at level (na, nb):
+ *   need(na, nb) = 2*(na1+nb1) + 4  +  max{need over sub-multiplies}
+ * The three sub-multiplies are evaluated sequentially and reuse the same
+ * sub-scratch slice, so we only need the largest of them; that is the
+ * (sum_a, sum_b) cross product on operands of sizes up to (na1+1, nb1+1).
+ * Imbalanced operands (na << nb) shrink the smaller dimension by half but
+ * leave the larger one nearly intact, so a single-argument estimator is
+ * not safe -- both sizes must be tracked.
+ */
+static size_t kar_scratch_words(size_t na, size_t nb)
+{
+    size_t total = 0;
+    while (((na < nb) ? na : nb) >= KARATSUBA_THRESHOLD) {
+        size_t mn  = (na < nb) ? na : nb;
+        size_t k   = mn / 2;
+        size_t na1 = na - k;
+        size_t nb1 = nb - k;
+        total += 2 * (na1 + nb1) + 4;
+        na = na1 + 1;
+        nb = nb1 + 1;
+    }
+    return total + 16;
+}
+
+/*
+ * Multiplication with caller-provided scratch:  r[0..na+nb-1] = a*b.
+ * r is assumed zero-initialized and disjoint from a, b, ws_scratch.
+ * Below the Karatsuba threshold ws_scratch is unused.
+ */
+static void mul_words_ws(uint64_t *r,
+                         const uint64_t *a, size_t na,
+                         const uint64_t *b, size_t nb,
+                         bigint_t *ws_scratch)
+{
+    size_t mn = (na < nb) ? na : nb;
+    if (mn < KARATSUBA_THRESHOLD) {
+        school_mul_words(r, a, na, b, nb);
+        return;
+    }
+    bigint_ensure(ws_scratch, kar_scratch_words(na, nb));
+    kar_mul_words(r, a, na, b, nb, ws_scratch->words);
+}
+
+/*
+ * Top-level dispatch without a workspace:  r[0..na+nb-1] = a*b.  Used by
+ * the bigint_mul (no-ws) entry point; allocates a one-shot scratch when
+ * Karatsuba is selected.
+ */
+static void mul_words(uint64_t *r,
+                      const uint64_t *a, size_t na,
+                      const uint64_t *b, size_t nb)
+{
+    size_t mn = (na < nb) ? na : nb;
+    uint64_t *scratch;
+    if (mn < KARATSUBA_THRESHOLD) {
+        school_mul_words(r, a, na, b, nb);
+        return;
+    }
+    scratch = (uint64_t *)xmalloc(kar_scratch_words(na, nb) * sizeof(uint64_t));
+    kar_mul_words(r, a, na, b, nb, scratch);
+    free(scratch);
+}
+
+void bigint_mul(bigint_t *r, const bigint_t *a, const bigint_t *b)
+{
     bigint_t local;
     bigint_t *dest;
     int aliased;
     if (a->size == 0 || b->size == 0) { bigint_set_zero(r); return; }
-    /* The inner loop reads res.words[i+j] *after* writes to lower indices
-     * within the same outer-i sweep have moved on, so destination aliasing
-     * with an operand corrupts that operand mid-loop.  Only use a temp
-     * when the destination is actually aliased. */
+    /* Karatsuba reads ahead of where it writes via the recursive
+     * combine, so destination aliasing with an operand still requires
+     * a separate temp when r == a or r == b. */
     aliased = (r == a || r == b);
     if (aliased) {
         bigint_init(&local);
@@ -170,17 +386,7 @@ void bigint_mul(bigint_t *r, const bigint_t *a, const bigint_t *b)
         r->size = a->size + b->size;
         dest = r;
     }
-    for (i = 0; i < a->size; i++) {
-        uint64_t carry = 0;
-        for (j = 0; j < b->size; j++) {
-            uint64_t lo, hi;
-            bigint_mul_add2(a->words[i], b->words[j],
-                            dest->words[i+j], carry, &lo, &hi);
-            dest->words[i+j] = lo;
-            carry            = hi;
-        }
-        dest->words[i + b->size] += carry;
-    }
+    mul_words(dest->words, a->words, a->size, b->words, b->size);
     bigint_trim(dest);
     if (aliased) {
         bigint_copy(r, &local);
@@ -239,6 +445,7 @@ void bigint_ws_init(bigint_ws_t *ws)
     bigint_init(&ws->mul_temp);
     bigint_init(&ws->pp_pw);
     bigint_init(&ws->pp_base);
+    bigint_init(&ws->kar_scratch);
 }
 
 void bigint_ws_free(bigint_ws_t *ws)
@@ -246,6 +453,7 @@ void bigint_ws_free(bigint_ws_t *ws)
     bigint_free(&ws->mul_temp);
     bigint_free(&ws->pp_pw);
     bigint_free(&ws->pp_base);
+    bigint_free(&ws->kar_scratch);
 }
 
 void bigint_ws_reserve(bigint_ws_t *ws, size_t max_words)
@@ -253,12 +461,14 @@ void bigint_ws_reserve(bigint_ws_t *ws, size_t max_words)
     bigint_ensure(&ws->mul_temp, max_words);
     bigint_ensure(&ws->pp_pw,    max_words);
     bigint_ensure(&ws->pp_base,  max_words);
+    /* Karatsuba scratch needs to cover the worst-case multiplication of
+     * two max_words bigints; that bound dominates every other use. */
+    bigint_ensure(&ws->kar_scratch, kar_scratch_words(max_words, max_words));
 }
 
 void bigint_mul_ws(bigint_t *r, const bigint_t *a, const bigint_t *b,
                    bigint_ws_t *ws)
 {
-    size_t i, j;
     bigint_t *dest;
     int aliased;
     if (a->size == 0 || b->size == 0) { bigint_set_zero(r); return; }
@@ -274,17 +484,8 @@ void bigint_mul_ws(bigint_t *r, const bigint_t *a, const bigint_t *b,
         r->size = a->size + b->size;
         dest = r;
     }
-    for (i = 0; i < a->size; i++) {
-        uint64_t carry = 0;
-        for (j = 0; j < b->size; j++) {
-            uint64_t lo, hi;
-            bigint_mul_add2(a->words[i], b->words[j],
-                            dest->words[i+j], carry, &lo, &hi);
-            dest->words[i+j] = lo;
-            carry            = hi;
-        }
-        dest->words[i + b->size] += carry;
-    }
+    mul_words_ws(dest->words, a->words, a->size, b->words, b->size,
+                 &ws->kar_scratch);
     bigint_trim(dest);
     if (aliased) bigint_copy(r, dest);
 }
