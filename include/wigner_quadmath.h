@@ -44,6 +44,10 @@ __float128 clebsch_gordan_q(int tj1, int tm1, int tj2, int tm2,
 __float128 racah_w_q(int tj1, int tj2, int tJ,
                      int tj3, int tj12, int tj23);
 
+__float128 fano_x_q(int tj1, int tj2, int tj12,
+                    int tj3, int tj4, int tj34,
+                    int tj13, int tj24, int tJ);
+
 __float128 gaunt_q     (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 __float128 gaunt_real_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 

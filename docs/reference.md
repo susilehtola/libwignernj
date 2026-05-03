@@ -192,6 +192,27 @@ The same selection rules as the 6j symbol apply.
 
 ---
 
+### Fano X-coefficient
+
+```
+X(j1 j2 j12; j3 j4 j34; j13 j24 J)
+```
+
+A normalisation variant of the 9j symbol used in the analysis of
+polarisation correlations (Fano 1953; Edmonds 1957 §6.4):
+
+```
+X(j1 j2 j12; j3 j4 j34; j13 j24 J)
+  = sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)]
+    * { j1   j2   j12 }
+      { j3   j4   j34 }
+      { j13  j24  J   }
+```
+
+The same selection rules as the 9j symbol apply.
+
+---
+
 ### Gaunt coefficient
 
 ```
@@ -267,6 +288,20 @@ long double clebsch_gordan_l(int tj1, int tm1, int tj2, int tm2, int tJ, int tM)
 float       racah_w_f(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23);
 double      racah_w  (int tj1, int tj2, int tJ, int tj3, int tj12, int tj23);
 long double racah_w_l(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23);
+```
+
+### Fano X
+
+```c
+float       fano_x_f(int tj1, int tj2, int tj12,
+                     int tj3, int tj4, int tj34,
+                     int tj13, int tj24, int tJ);
+double      fano_x  (int tj1, int tj2, int tj12,
+                     int tj3, int tj4, int tj34,
+                     int tj13, int tj24, int tJ);
+long double fano_x_l(int tj1, int tj2, int tj12,
+                     int tj3, int tj4, int tj34,
+                     int tj13, int tj24, int tJ);
 ```
 
 ### Gaunt
@@ -381,6 +416,9 @@ __float128 clebsch_gordan_q(int tj1, int tm1, int tj2, int tm2,
                             int tJ,  int tM);
 __float128 racah_w_q(int tj1, int tj2, int tJ,
                      int tj3, int tj12, int tj23);
+__float128 fano_x_q(int tj1, int tj2, int tj12,
+                    int tj3, int tj4, int tj34,
+                    int tj13, int tj24, int tJ);
 __float128 gaunt_q     (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 __float128 gaunt_real_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 ```
@@ -451,6 +489,12 @@ void racah_w_mpfr(mpfr_t rop,
                   int tj1, int tj2, int tJ, int tj3,
                   int tj12, int tj23,
                   mpfr_rnd_t rnd);
+
+void fano_x_mpfr(mpfr_t rop,
+                 int tj1, int tj2, int tj12,
+                 int tj3, int tj4, int tj34,
+                 int tj13, int tj24, int tJ,
+                 mpfr_rnd_t rnd);
 
 void gaunt_mpfr(mpfr_t rop,
                 int tl1, int tm1,

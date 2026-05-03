@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this library is
 
-**libwignernj** — exact evaluation of Wigner 3j, 6j, 9j symbols, Clebsch-Gordan coefficients, Racah W coefficients, and Gaunt coefficients in C99, following the prime-factorization algorithm of Johansson & Forssén (SIAM J. Sci. Comput. 38(1), A376–A384, 2016; doi:10.1137/15M1021908). The key property: all intermediate arithmetic is exact integer arithmetic; floating-point conversion happens only at the final step. Results are accurate to the last bit of the chosen output precision.
+**libwignernj** — exact evaluation of Wigner 3j, 6j, 9j symbols, Clebsch-Gordan coefficients, Racah W coefficients, Fano X-coefficients, and Gaunt coefficients in C99, following the prime-factorization algorithm of Johansson & Forssén (SIAM J. Sci. Comput. 38(1), A376–A384, 2016; doi:10.1137/15M1021908). The key property: all intermediate arithmetic is exact integer arithmetic; floating-point conversion happens only at the final step. Results are accurate to the last bit of the chosen output precision.
 
 Language interfaces: C (primary), C++ (header-only wrapper that links against `libwignernj`), Python (CPython extension), Fortran 90 (iso_c_binding).
 
@@ -72,6 +72,7 @@ Clebsch-Gordan and Racah W are thin wrappers over the Wigner symbols. Gaunt has 
 | `src/wigner9j.c` | `wigner9j_exact()` (sum over k of three 6j exact-path products) + public variants |
 | `src/clebsch.c` | `clebsch_gordan*`: CG via 3j, formula `(-1)^(j1-j2+M) sqrt(2J+1) * 3j(j1,j2,J;m1,m2,-M)` |
 | `src/racah.c` | `racah_w*`: Racah W via 6j, formula `(-1)^(j1+j2+J+j3) * 6j{j1,j2,j12;j3,J,j23}` |
+| `src/fano_x.c` | `fano_x*`: Fano X via 9j, formula `sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] * 9j{j1,j2,j12;j3,j4,j34;j13,j24,J}` |
 | `src/gaunt.c` | `gaunt*`: own exact pipeline — combined pfrac for [Δ]²·factorials·normalization, two Racah sums multiplied as bigints, then `÷sqrt(π)` at float step |
 | `include/wigner.h` | Public C API — all functions, `_f`/`/`_l` precisions |
 | `include/wigner_quadmath.h` | libquadmath API — requires `BUILD_QUADMATH=ON`; declares `_q` (`__float128`) variant of every public symbol |

@@ -58,6 +58,13 @@ void racah_w_mpfr(mpfr_t rop,
                   int tj12, int tj23,
                   mpfr_rnd_t rnd);
 
+/* Fano X-coefficient  X(j1 j2 j12; j3 j4 j34; j13 j24 J) */
+void fano_x_mpfr(mpfr_t rop,
+                 int tj1, int tj2, int tj12,
+                 int tj3, int tj4, int tj34,
+                 int tj13, int tj24, int tJ,
+                 mpfr_rnd_t rnd);
+
 /* Gaunt coefficient  ∫ Y_{l1}^{m1} Y_{l2}^{m2} Y_{l3}^{m3} dΩ */
 void gaunt_mpfr(mpfr_t rop,
                 int tl1, int tm1,

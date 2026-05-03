@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Fano X-coefficient (`fano_x`, `fano_x_f`, `fano_x_l`, `fano_x_q`,
+  `fano_x_mpfr`), implemented as a thin wrapper over the 9j exact
+  pipeline that folds the four `sqrt(2j+1)` factors into the existing
+  prime-decomposed outer-sqrt tuple via the same scheme used by the
+  Clebsch--Gordan `sqrt(2J+1)` factor. Fortran (`wfanox`, `wfanoxq`),
+  C++ (`wigner::fanox<T>`), and Python (`wigner.fano_x`) bindings
+  follow the same pattern as the other derived symbols.
 - IEEE 754 binary128 (`__float128`) back-end via libquadmath, enabled with
   `-DBUILD_QUADMATH=ON`. Adds `wigner3j_q`, `wigner6j_q`, `wigner9j_q`,
   `clebsch_gordan_q`, `racah_w_q`, `gaunt_q`, and `gaunt_real_q` in a new

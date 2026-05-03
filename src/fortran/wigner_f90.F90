@@ -191,6 +191,39 @@ module wigner
     end function
 #endif
 
+    ! --- Fano X-coefficient ---
+    function fano_x_f(tj1,tj2,tj12,tj3,tj4,tj34,tj13,tj24,tJ) &
+        bind(c,name='fano_x_f')
+      import c_int, c_float
+      integer(c_int), value :: tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ
+      real(c_float)         :: fano_x_f
+    end function
+
+    function fano_x(tj1,tj2,tj12,tj3,tj4,tj34,tj13,tj24,tJ) &
+        bind(c,name='fano_x')
+      import c_int, c_double
+      integer(c_int), value :: tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ
+      real(c_double)        :: fano_x
+    end function
+
+#if c_long_double > 0
+    function fano_x_l(tj1,tj2,tj12,tj3,tj4,tj34,tj13,tj24,tJ) &
+        bind(c,name='fano_x_l')
+      import c_int, c_long_double
+      integer(c_int), value :: tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ
+      real(c_long_double)   :: fano_x_l
+    end function
+#endif
+
+#ifdef WIGNERNJ_HAVE_QUADMATH
+    function fano_x_q(tj1,tj2,tj12,tj3,tj4,tj34,tj13,tj24,tJ) &
+        bind(c,name='fano_x_q')
+      import c_int, real128
+      integer(c_int), value :: tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ
+      real(real128)         :: fano_x_q
+    end function
+#endif
+
     ! --- Gaunt ---
     function gaunt_f(tl1,tm1,tl2,tm2,tl3,tm3) bind(c,name='gaunt_f')
       import c_int, c_float
@@ -331,6 +364,20 @@ contains
     val = racah_w(to_tj(j1), to_tj(j2), to_tj(J), to_tj(j3), to_tj(j12), to_tj(j23))
   end function wracahw
 
+  function wfanox(j1,j2,j12,j3,j4,j34,j13,j24,J) result(val)
+    real(c_double), intent(in) :: j1, j2, j12, j3, j4, j34, j13, j24, J
+    real(c_double) :: val
+    if (.not. (is_half_int(j1) .and. is_half_int(j2) .and. is_half_int(j12) .and. &
+               is_half_int(j3) .and. is_half_int(j4) .and. is_half_int(j34) .and. &
+               is_half_int(j13) .and. is_half_int(j24) .and. is_half_int(J))) then
+      write(error_unit,'(A)') 'wigner(Fortran): wfanox: argument is not a half-integer'
+      val = 0.0_c_double; return
+    end if
+    val = fano_x(to_tj(j1),  to_tj(j2),  to_tj(j12), &
+                 to_tj(j3),  to_tj(j4),  to_tj(j34), &
+                 to_tj(j13), to_tj(j24), to_tj(J))
+  end function wfanox
+
   function wgaunt(l1,m1,l2,m2,l3,m3) result(val)
     real(c_double), intent(in) :: l1, m1, l2, m2, l3, m3
     real(c_double) :: val
@@ -436,6 +483,20 @@ contains
     val = racah_w_q(to_tj_q(j1), to_tj_q(j2), to_tj_q(J), &
                     to_tj_q(j3), to_tj_q(j12), to_tj_q(j23))
   end function wracahwq
+
+  function wfanoxq(j1,j2,j12,j3,j4,j34,j13,j24,J) result(val)
+    real(real128), intent(in) :: j1, j2, j12, j3, j4, j34, j13, j24, J
+    real(real128) :: val
+    if (.not. (is_half_int_q(j1)  .and. is_half_int_q(j2)  .and. is_half_int_q(j12) .and. &
+               is_half_int_q(j3)  .and. is_half_int_q(j4)  .and. is_half_int_q(j34) .and. &
+               is_half_int_q(j13) .and. is_half_int_q(j24) .and. is_half_int_q(J))) then
+      write(error_unit,'(A)') 'wigner(Fortran): wfanoxq: argument is not a half-integer'
+      val = 0.0_real128; return
+    end if
+    val = fano_x_q(to_tj_q(j1),  to_tj_q(j2),  to_tj_q(j12), &
+                   to_tj_q(j3),  to_tj_q(j4),  to_tj_q(j34), &
+                   to_tj_q(j13), to_tj_q(j24), to_tj_q(J))
+  end function wfanoxq
 
   function wgauntq(l1,m1,l2,m2,l3,m3) result(val)
     real(real128), intent(in) :: l1, m1, l2, m2, l3, m3

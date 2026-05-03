@@ -6,6 +6,7 @@
  */
 #include "run_tests.h"
 #include "../include/wigner.h"
+#include <float.h>
 
 /* Clebsch-Gordan */
 typedef struct{int tj1,tm1,tj2,tm2,tJ,tM;double val;}cg_t;
@@ -1395,6 +1396,48 @@ int main(void)
         const gaunt_t *c=&g_gaunt[i];
         double got=gaunt(c->tl1,c->tm1,c->tl2,c->tm2,c->tl3,c->tm3);
         TEST_NEAR(got,c->val,1e-12);
+    }
+
+    /* Fano X = sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] * {9j}.
+     * Self-consistency: compare fano_x against the explicit normalisation
+     * of wigner9j over a sweep of valid arguments.  This catches
+     * normalisation bugs in fano_x without needing external reference
+     * values; the underlying 9j is checked separately above. */
+    {
+        /* Hand-picked small cases and a few that exercise large normalisation. */
+        struct { int t1,t2,t12,t3,t4,t34,t13,t24,tJ; } cases[] = {
+            { 2,2,2,  2,2,2,  2,2,2 },     /* all-equal-1 */
+            { 1,1,2,  1,1,0,  2,2,2 },     /* mixed half-integer */
+            { 4,4,0,  4,4,0,  0,0,0 },     /* zeros pattern */
+            { 4,2,2,  2,4,2,  2,2,4 },     /* asymmetric */
+            { 6,4,2,  4,6,2,  2,2,4 },     /* moderate j */
+            { 8,6,2,  6,8,2,  2,2,4 },     /* slightly larger */
+        };
+        size_t nc = sizeof(cases)/sizeof(cases[0]);
+        for(i=0;i<(int)nc;i++){
+            int t1=cases[i].t1,t2=cases[i].t2,t12=cases[i].t12;
+            int t3=cases[i].t3,t4=cases[i].t4,t34=cases[i].t34;
+            int t13=cases[i].t13,t24=cases[i].t24,tJ=cases[i].tJ;
+            double w = wigner9j(t1,t2,t12, t3,t4,t34, t13,t24,tJ);
+            double norm = sqrt((double)((t12+1)*(t34+1)*(t13+1)*(t24+1)));
+            double expected = norm * w;
+            double got = fano_x(t1,t2,t12, t3,t4,t34, t13,t24,tJ);
+            TEST_NEAR(got, expected, 4e-14);
+        }
+    }
+
+    /* Selection-rule zero (one triangle violated) → X = 0 */
+    TEST_ABS(fano_x(2,2,2, 2,2,2, 2,2,5), 0.0, 1e-30);
+    TEST_ABS(fano_x_f(2,2,2, 2,2,2, 2,2,5), 0.0, 1e-30);
+    TEST_ABS(fano_x_l(2,2,2, 2,2,2, 2,2,5), 0.0, 1e-30);
+
+    /* All-precision agreement on a non-trivial value */
+    {
+        float       vf = fano_x_f(4,4,0, 4,4,0, 0,0,0);
+        double      vd = fano_x  (4,4,0, 4,4,0, 0,0,0);
+        long double vl = fano_x_l(4,4,0, 4,4,0, 0,0,0);
+        TEST_NEAR((double)vf, vd, 1e-6);
+        TEST_NEAR((double)vl, vd, 2.0 * DBL_EPSILON);
     }
 
     SUMMARY();

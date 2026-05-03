@@ -96,6 +96,16 @@ int main(void)
     EXPECT_NEAR_Q(racah_w_q(8, 6, 4, 6, 8, 10),
                   (__float128)racah_w_l(8, 6, 4, 6, 8, 10), ld_tol);
 
+    /* Fano X = sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] * 9j.
+     * Closed-form check: at all-equal-tj=4 the explicit normalisation is
+     * exactly 5^2 = 25 times the underlying 9j. */
+    EXPECT_NEAR_Q(fano_x_q(4,4,4, 4,4,4, 4,4,4),
+                  25.0Q * wigner9j_q(4,4,4, 4,4,4, 4,4,4), q_tol);
+
+    /* Cross-precision: quad agrees with long-double on a non-trivial value. */
+    EXPECT_NEAR_Q(fano_x_q(8,6,2, 6,8,2, 2,2,4),
+                  (__float128)fano_x_l(8,6,2, 6,8,2, 2,2,4), ld_tol);
+
     /* Large-j 9j stresses three independent bigints in the float128
      * conversion path. */
     EXPECT_NEAR_Q(wigner9j_q(20,20,20, 20,20,20, 20,20,20),
