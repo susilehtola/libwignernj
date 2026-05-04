@@ -14,9 +14,9 @@ int main(void)
     bigint_init(&in); bigint_init(&id);
     bigint_init(&sn); bigint_init(&sd);
 
-    i2 = g_prime_index[2];
-    i3 = g_prime_index[3];
-    i5 = g_prime_index[5];
+    i2 = prime_index_of(2);
+    i3 = prime_index_of(3);
+    i5 = prime_index_of(5);
     TEST_ASSERT(i2 == 0);
     TEST_ASSERT(i3 == 1);
     TEST_ASSERT(i5 == 2);
@@ -39,7 +39,7 @@ int main(void)
     TEST_ASSERT(f.exp[i2] == 8);
     TEST_ASSERT(f.exp[i3] == 4);
     TEST_ASSERT(f.exp[i5] == 2);
-    TEST_ASSERT(f.exp[g_prime_index[7]] == 1);
+    TEST_ASSERT(f.exp[prime_index_of(7)] == 1);
 
     /* pfrac_mul_int: 12 = 2^2 * 3 */
     pfrac_zero(&f);
@@ -57,7 +57,7 @@ int main(void)
     /* pfrac_mul_int: prime 97 */
     pfrac_zero(&f);
     pfrac_mul_int(&f, 97);
-    TEST_ASSERT(f.exp[g_prime_index[97]] == 1);
+    TEST_ASSERT(f.exp[prime_index_of(97)] == 1);
 
     /* pfrac_copy */
     pfrac_zero(&f);

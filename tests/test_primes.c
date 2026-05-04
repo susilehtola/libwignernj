@@ -17,11 +17,11 @@ int main(void)
     TEST_ASSERT(g_nprimes >= 2262);
 
     /* Index lookup */
-    TEST_ASSERT(g_prime_index[2]  == 0);
-    TEST_ASSERT(g_prime_index[3]  == 1);
-    TEST_ASSERT(g_prime_index[4]  == -1);
-    TEST_ASSERT(g_prime_index[97] >= 0);
-    TEST_ASSERT(g_primes[g_prime_index[97]] == 97);
+    TEST_ASSERT(prime_index_of(2)  == 0);
+    TEST_ASSERT(prime_index_of(3)  == 1);
+    TEST_ASSERT(prime_index_of(4)  == -1);
+    TEST_ASSERT(prime_index_of(97) >= 0);
+    TEST_ASSERT(g_primes[prime_index_of(97)] == 97);
 
     /* Legendre valuations: known values */
     /* v_2(8!) = 7 */

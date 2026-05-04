@@ -15,7 +15,7 @@
  * the tables live in read-only program data.  The default sieve
  * limit (20011) was chosen on a rule-of-thumb that ~50 kB is a
  * reasonable upper bound on hard-coded constant tables: at this
- * limit, g_primes[2263] of int (~9 kB) plus g_prime_index[20012] of
+ * limit, g_primes[2263] of int (~9 kB) plus g_pi_table[20012] of
  * short (~40 kB) totals ~49 kB on a typical 64-bit target, while
  * still admitting angular momenta well beyond what most application
  * domains require (j <= 6666 for 3j/6j and j <= 4999 for 9j; see
@@ -99,19 +99,31 @@ extern WIGNERNJ_DATA const int g_nprimes;
 extern WIGNERNJ_DATA const int g_primes[MAX_PRIME_COUNT];
 
 /*
- * g_prime_index[p] = index i such that g_primes[i] == p, or -1.
- * Valid for 0 <= p <= PRIME_SIEVE_LIMIT.
- */
-extern WIGNERNJ_DATA const short g_prime_index[PRIME_SIEVE_LIMIT + 1];
-
-/*
  * g_pi_table[n] = pi(n) = number of primes <= n.  Valid for
  * 0 <= n <= PRIME_SIEVE_LIMIT.  Equal to the smallest i such that
  * g_primes[i] > n.  Used by pfrac_mul_factorial / pfrac_div_factorial
  * to size their per-call vector add over the cached prime
- * decomposition of n!, replacing the per-call binary search of g_primes.
+ * decomposition of n!, replacing the per-call binary search of
+ * g_primes.  Also doubles as the lookup table for prime_index_of()
+ * below, so that the library does not need to ship a separate
+ * 40 kB g_prime_index table just for the prime-or-composite test.
  */
 extern WIGNERNJ_DATA const short g_pi_table[PRIME_SIEVE_LIMIT + 1];
+
+/*
+ * Returns the index i such that g_primes[i] == p, or -1 when p is
+ * composite (or p < 2).  Derived from g_pi_table: pi(p) > pi(p-1)
+ * exactly when p contributes to the prime count, in which case
+ * i = pi(p) - 1.
+ */
+static inline int prime_index_of(int p)
+{
+    int hi, lo;
+    if (p < 2 || p > PRIME_SIEVE_LIMIT) return -1;
+    hi = g_pi_table[p];
+    lo = g_pi_table[p - 1];
+    return (hi > lo) ? hi - 1 : -1;
+}
 
 /*
  * Return v_p(n!) = sum_{k>=1} floor(n / p^k), the p-adic valuation of n!.

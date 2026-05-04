@@ -21,13 +21,12 @@ while i * i <= LIMIT:
     i += 1
 
 primes = [p for p in range(2, LIMIT + 1) if not sieve[p]]
-prime_index = [-1] * (LIMIT + 1)
-for idx, p in enumerate(primes):
-    prime_index[p] = idx
 
 # pi(n) = number of primes <= n.  Indexed by n in [0 .. LIMIT].  Used by
 # pfrac_mul_factorial / pfrac_div_factorial to size their per-factorial
-# vector add without a per-call binary search of g_primes.
+# vector add without a per-call binary search of g_primes; also serves
+# as the lookup table for prime_index_of() in tests, replacing the
+# separate g_prime_index table that used to be emitted here.
 pi_table = [0] * (LIMIT + 1)
 running = 0
 for n in range(LIMIT + 1):
@@ -50,18 +49,6 @@ for i, p in enumerate(primes):
     row.append(f"{p:5d}")
     if len(row) == 16 or i == len(primes) - 1:
         suffix = "," if i < len(primes) - 1 else ""
-        print("    " + ",".join(row) + suffix)
-        row = []
-print("};")
-print()
-
-# g_prime_index — 20 values per row
-print(f"const short g_prime_index[PRIME_SIEVE_LIMIT + 1] = {{")
-row = []
-for i, v in enumerate(prime_index):
-    row.append(f"{v:5d}")
-    if len(row) == 20 or i == len(prime_index) - 1:
-        suffix = "," if i < len(prime_index) - 1 else ""
         print("    " + ",".join(row) + suffix)
         row = []
 print("};")
