@@ -41,16 +41,11 @@ int wigner_max_factorial_arg(void) { return MAX_FACTORIAL_ARG; }
  * thread-safe (no shared state), just slower.
  */
 
-/* Number of primes <= n in g_primes (binary search). */
+/* Number of primes <= n in g_primes.  O(1) lookup into the
+ * compile-time table generated alongside g_primes. */
 static int fact_width(int n)
 {
-    int lo = 0, hi = g_nprimes;
-    while (lo < hi) {
-        int mid = (lo + hi) / 2;
-        if (g_primes[mid] <= n) lo = mid + 1;
-        else                    hi = mid;
-    }
-    return lo;
+    return (int)g_pi_table[n];
 }
 
 #if WIGNERNJ_HAVE_TLS
