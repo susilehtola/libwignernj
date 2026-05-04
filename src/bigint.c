@@ -408,11 +408,97 @@ void bigint_div_u64(bigint_t *r, const bigint_t *a, uint64_t b)
     bigint_trim(r);
 }
 
+/*
+ * In-place left-shift by k bits.  a <<= k.  Equivalent to a *= 2^k.
+ * Used by bigint_mul_prime_pow{,_ws} as the p == 2 fast path: a single
+ * O(words(a)) shift replaces k iterations of O(words(a)) bigint_mul_u64
+ * (whose multiplier happens to be 2 but whose code path is the
+ * generic per-word multiply-add).
+ */
+static void bigint_shl_inplace(bigint_t *a, int k)
+{
+    int bw, bb;
+    size_t old_size, i;
+    if (a->size == 0 || k <= 0) return;
+    bw = k / 64;
+    bb = k % 64;
+    old_size = a->size;
+    /* Reserve up to bw + 1 extra words at the top.  bigint_trim below
+     * removes any unused top word. */
+    bigint_ensure(a, old_size + (size_t)bw + 1);
+    if (bb == 0) {
+        /* Pure word shift. */
+        memmove(a->words + bw, a->words, old_size * sizeof(uint64_t));
+        memset(a->words, 0, (size_t)bw * sizeof(uint64_t));
+        a->size = old_size + (size_t)bw;
+        bigint_trim(a);
+        return;
+    }
+    /* Mixed bit/word shift.  Iterate top-down so each write is to an
+     * index above every read, avoiding any read-after-write hazard
+     * (the same-index aliasing in the bw == 0 case is well-defined
+     * because the read happens before the write within a single
+     * compound expression). */
+    a->words[old_size + (size_t)bw] = a->words[old_size - 1] >> (64 - bb);
+    for (i = old_size + (size_t)bw - 1; i > (size_t)bw; i--) {
+        uint64_t hi = a->words[i - (size_t)bw];
+        uint64_t lo = a->words[i - (size_t)bw - 1];
+        a->words[i] = (hi << bb) | (lo >> (64 - bb));
+    }
+    a->words[bw] = a->words[0] << bb;
+    if (bw > 0)
+        memset(a->words, 0, (size_t)bw * sizeof(uint64_t));
+    a->size = old_size + (size_t)bw + 1;
+    bigint_trim(a);
+}
+
+/*
+ * In-place right-shift by k bits.  a >>= k.  Equivalent to a /= 2^k
+ * when a is exactly divisible (the only case that arises in
+ * bigint_div_prime_pow's caller -- the floor-division semantics of an
+ * unsigned right-shift agree with exact division here).
+ */
+static void bigint_shr_inplace(bigint_t *a, int k)
+{
+    int bw, bb;
+    size_t new_size, i;
+    if (a->size == 0 || k <= 0) return;
+    bw = k / 64;
+    bb = k % 64;
+    if ((size_t)bw >= a->size) { a->size = 0; return; }
+    new_size = a->size - (size_t)bw;
+    if (bb == 0) {
+        memmove(a->words, a->words + bw, new_size * sizeof(uint64_t));
+        a->size = new_size;
+        bigint_trim(a);
+        return;
+    }
+    /* Mixed bit/word right-shift; bottom-up so writes go to indices
+     * <= the indices we read. */
+    for (i = 0; i + 1 < new_size; i++) {
+        uint64_t lo = a->words[i + (size_t)bw];
+        uint64_t hi = a->words[i + (size_t)bw + 1];
+        a->words[i] = (lo >> bb) | (hi << (64 - bb));
+    }
+    a->words[new_size - 1] = a->words[a->size - 1] >> bb;
+    a->size = new_size;
+    bigint_trim(a);
+}
+
 void bigint_mul_prime_pow(bigint_t *a, uint64_t p, int k)
 {
     bigint_t pw, base;
     int i;
     if (k <= 0) return;
+    /* p == 2 fast path: a single in-place shift replaces k generic
+     * bigint_mul_u64 multiplications.  In the LCM-scaling loop of the
+     * Racah sum the p=2 exponent is the largest by far (Legendre's
+     * formula gives v_2(N!) ~ N for large N), so this special case
+     * carries most of the weight. */
+    if (p == 2) {
+        bigint_shl_inplace(a, k);
+        return;
+    }
     if (k <= 8) {
         for (i = 0; i < k; i++) bigint_mul_u64(a, a, p);
         return;
@@ -435,6 +521,10 @@ void bigint_mul_prime_pow(bigint_t *a, uint64_t p, int k)
 void bigint_div_prime_pow(bigint_t *a, uint64_t p, int k)
 {
     int i;
+    if (p == 2) {
+        bigint_shr_inplace(a, k);
+        return;
+    }
     for (i = 0; i < k; i++) bigint_div_u64(a, a, p);
 }
 
@@ -494,6 +584,10 @@ void bigint_mul_prime_pow_ws(bigint_t *a, uint64_t p, int k, bigint_ws_t *ws)
 {
     int i;
     if (k <= 0) return;
+    if (p == 2) {
+        bigint_shl_inplace(a, k);
+        return;
+    }
     if (k <= 8) {
         for (i = 0; i < k; i++) bigint_mul_u64(a, a, p);
         return;

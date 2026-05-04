@@ -105,6 +105,15 @@ extern WIGNERNJ_DATA const int g_primes[MAX_PRIME_COUNT];
 extern WIGNERNJ_DATA const short g_prime_index[PRIME_SIEVE_LIMIT + 1];
 
 /*
+ * g_pi_table[n] = pi(n) = number of primes <= n.  Valid for
+ * 0 <= n <= PRIME_SIEVE_LIMIT.  Equal to the smallest i such that
+ * g_primes[i] > n.  Used by pfrac_mul_factorial / pfrac_div_factorial
+ * to size their per-call vector add over the cached prime
+ * decomposition of n!, replacing the per-call binary search of g_primes.
+ */
+extern WIGNERNJ_DATA const short g_pi_table[PRIME_SIEVE_LIMIT + 1];
+
+/*
  * Return v_p(n!) = sum_{k>=1} floor(n / p^k), the p-adic valuation of n!.
  * pi is the index of p in g_primes.  n must satisfy 0 <= n <= MAX_FACTORIAL_ARG.
  */
