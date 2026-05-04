@@ -412,6 +412,77 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
 
+  # ── Code coverage ─────────────────────────────────────────────────────────
+  # Build the schoolbook configuration with --coverage, run the full test
+  # suite, and upload the merged report to Codecov.io.  Kept as a separate
+  # cell because --coverage slows tests by 2-3x and conflicts with the
+  # sanitizer build's interception of mallocs.  We deliberately do NOT
+  # set BUILD_FLINT here: FLINT lives outside our source tree, would
+  # contribute no coverable lines, and would slow the run further.
+  coverage:
+    name: "Ubuntu / GCC / coverage"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y gfortran libmpfr-dev libquadmath0 lcov
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Configure
+        env:
+          CC: gcc
+          CXX: g++
+        run: |
+          cmake -B build \
+            -DBUILD_FORTRAN=ON \
+            -DBUILD_MPFR=ON \
+            -DBUILD_QUADMATH=ON \
+            -DBUILD_PYTHON=ON \
+            -DBUILD_CXX_TESTS=ON \
+            -DBUILD_TESTS=ON \
+            -DBUILD_COVERAGE=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: C / C++ / Fortran tests
+        run: ctest --test-dir build --output-on-failure --parallel
+
+      - name: Python tests
+        # Run pytest against the Python extension that BUILD_PYTHON+BUILD_COVERAGE
+        # already produced under build/wigner/, rather than letting setuptools
+        # build a second uninstrumented copy.  Python's import order puts the
+        # cwd ahead of PYTHONPATH, so the source-tree wigner/__init__.py is
+        # what actually loads -- we just need to drop the CMake-built
+        # _wigner.so next to it so the package's relative import succeeds.
+        run: |
+          pip install pytest
+          ln -sf "$PWD/build/wigner/_wigner.so" wigner/_wigner.so
+          python -m pytest tests/python/ -v
+
+      - name: Collect coverage
+        run: |
+          lcov --capture --directory build --output-file coverage.info \
+               --rc geninfo_unexecuted_blocks=1 \
+               --ignore-errors mismatch,inconsistent
+          # Drop system headers and the test sources themselves from
+          # the report; we want the library itself covered.
+          lcov --remove coverage.info '/usr/*' '*/tests/*' \
+               --output-file coverage.info \
+               --ignore-errors unused
+          lcov --summary coverage.info
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+
   # ── Python extension ──────────────────────────────────────────────────────
   python:
     name: "Python ${{ matrix.python-version }} on ${{ matrix.os }}"

@@ -39,6 +39,30 @@ int main(void)
  * the private header via the public install layout. */
 extern void xalloc_set_test_failure_countdown(long n);
 
+/* When the test is built with --coverage (gcc) or
+ * -fprofile-instr-generate (clang) the .gcda / .profraw file is
+ * written by an at-exit handler that _exit() bypasses, so children
+ * that complete the workload without tripping the injector would
+ * otherwise contribute zero coverage data.  Call the appropriate
+ * flush primitive before _exit to capture them.
+ *
+ * The flush functions are gated on WIGNERNJ_COVERAGE, which CMake's
+ * BUILD_COVERAGE option defines.  We deliberately avoid plain
+ * `__attribute__((weak))` here: ELF leaves an unresolved weak
+ * reference null at link time, but Mach-O (macOS) demands the
+ * symbol be defined and would fail to link non-coverage builds. */
+#if defined(WIGNERNJ_COVERAGE) && (defined(__GNUC__) || defined(__clang__))
+extern void __gcov_dump(void)              __attribute__((weak));   /* gcc 9+ */
+extern int  __llvm_profile_write_file(void) __attribute__((weak));  /* clang */
+static void coverage_flush(void)
+{
+    if (__gcov_dump)               __gcov_dump();
+    if (__llvm_profile_write_file) (void)__llvm_profile_write_file();
+}
+#else
+static void coverage_flush(void) { /* no instrumentation */ }
+#endif
+
 typedef void (*work_fn)(void);
 
 static void work_3j  (void) { (void)wigner3j (10,10,10,  2, 4,-6); }
@@ -71,7 +95,10 @@ static int run_with_failure_at(work_fn work, long n)
         (void)devnull;
         xalloc_set_test_failure_countdown(n);
         work();
-        /* If we get here the work completed without tripping the injector. */
+        /* If we get here the work completed without tripping the injector.
+         * Flush coverage data before _exit (the at-exit handlers that
+         * normally write .gcda are bypassed by _exit). */
+        coverage_flush();
         _exit(0);
     }
 
