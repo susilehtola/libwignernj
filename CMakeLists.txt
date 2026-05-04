@@ -25,6 +25,7 @@ option(BUILD_TESTS        "Build test suite"             ON)
 option(BUILD_EXAMPLES     "Build language-binding examples" ON)
 option(BUILD_CXX_TESTS    "Build C++ header tests"      ON)
 option(BUILD_LTO          "Enable link-time optimisation (LTO/IPO)"  ON)
+option(BUILD_COVERAGE     "Build with --coverage instrumentation (gcc/clang)" OFF)
 
 # Probe the toolchain for LTO/IPO support and silently fall back if it
 # isn't available -- LTO defaults to ON because libwignernj is
@@ -60,6 +61,27 @@ if(BUILD_LTO AND MSVC)
         "BUILD_LTO disabled on MSVC: /GL emits IL .obj files that "
         "the WINDOWS_EXPORT_ALL_SYMBOLS auto-export step cannot parse.")
     set(BUILD_LTO OFF CACHE BOOL "" FORCE)
+endif()
+
+# ── Coverage instrumentation ──────────────────────────────────────────────────
+# When BUILD_COVERAGE=ON, every target in this build gets compiled and
+# linked with --coverage, and -O0 is forced so that the line-by-line
+# coverage map is not mangled by inlining or dead-code elimination.
+# The instrumentation works on gcc and clang; on MSVC the option is a
+# no-op (the toolchain does not understand --coverage).  Pair this with
+# `lcov` (or grcov for clang's source-based coverage) to merge .gcda
+# files into a report.  See the "Ubuntu / GCC / coverage" cell in
+# .github/workflows/ci.yml for the exact command sequence.
+if(BUILD_COVERAGE)
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(--coverage -O0)
+        add_link_options(--coverage)
+        add_compile_definitions(WIGNERNJ_COVERAGE)
+    else()
+        message(WARNING
+            "BUILD_COVERAGE=ON requested but compiler '${CMAKE_C_COMPILER_ID}' "
+            "does not recognise --coverage; flag ignored.")
+    endif()
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
