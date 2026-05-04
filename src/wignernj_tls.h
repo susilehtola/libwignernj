@@ -22,7 +22,13 @@
 #ifndef WIGNERNJ_TLS_H
 #define WIGNERNJ_TLS_H
 
-#if defined(_MSC_VER)
+#if defined(WIGNERNJ_FORCE_NO_TLS)
+/* Build override: pretend the toolchain has no TLS keyword.  Used by
+ * the dedicated CI cell that exercises the per-call-allocation
+ * fallback path on a compiler that would otherwise pick TLS. */
+#  define WIGNERNJ_TLS
+#  define WIGNERNJ_HAVE_TLS 0
+#elif defined(_MSC_VER)
 #  define WIGNERNJ_TLS __declspec(thread)
 #  define WIGNERNJ_HAVE_TLS 1
 #elif defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER) \
