@@ -112,6 +112,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     bigint_t *sum_pos, *sum_neg, *scaled;
     size_t mw;
     int lcm_max_idx;
+    int n_terms;
 
     /* Reset (rather than init) `out`: callers always pass a previously-
      * initialised wigner_exact_t (either freshly allocated or held in
@@ -140,7 +141,6 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     scratch  = wigner_scratch_acquire();
     ws       = &scratch->ws;
     outer    = &scratch->pfracs[0];
-    term     = &scratch->pfracs[1];
     lcm_exp  =  scratch->lcm_exp[0];
     sum_pos  = &scratch->bigints[0];
     sum_neg  = &scratch->bigints[1];
@@ -148,7 +148,6 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
 
     bigint_ws_reserve(ws, mw);
     pfrac_zero(outer);
-    pfrac_zero(term);
     wigner_scratch_lcm_clear(scratch, 0);
     bigint_set_zero(sum_pos);
     bigint_set_zero(sum_neg);
@@ -160,13 +159,16 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     /* Compute outer sqrt factor */
     build_outer_sqrt_3j(outer, tj1, tj2, tj3, tm1, tm2, tm3);
 
-    /* ── Pass 1: find LCM exponents (max denom exponent per prime) ── */
+    /* ── Pass 1: build each term pfrac once into the cache, find LCM ── */
+    n_terms = s_max - s_min + 1;
+    wigner_scratch_terms_reserve(scratch, n_terms);
     lcm_max_idx = 0;
     for (s = s_min; s <= s_max; s++) {
         /* Build denominator pfrac for term s:
          * s! * (j1+j2-j3-s)! * (j1-m1-s)! * (j2+m2-s)! *
          * (j3-j2+m1+s)! * (j3-j1-m2+s)!
          */
+        term = &scratch->terms[s - s_min];
         pfrac_zero(term);
         pfrac_mul_factorial(term, s);
         pfrac_mul_factorial(term, (tj1 + tj2 - tj3) / 2 - s);
@@ -183,15 +185,9 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     }
     wigner_scratch_lcm_dirty(scratch, 0, lcm_max_idx);
 
-    /* ── Pass 2: accumulate scaled integer Racah sum ── */
+    /* ── Pass 2: walk cached pfracs, accumulate scaled integer sum ── */
     for (s = s_min; s <= s_max; s++) {
-        pfrac_zero(term);
-        pfrac_mul_factorial(term, s);
-        pfrac_mul_factorial(term, (tj1 + tj2 - tj3) / 2 - s);
-        pfrac_mul_factorial(term, (tj1 - tm1) / 2 - s);
-        pfrac_mul_factorial(term, (tj2 + tm2) / 2 - s);
-        pfrac_mul_factorial(term, (tj3 - tj2 + tm1) / 2 + s);
-        pfrac_mul_factorial(term, (tj3 - tj1 - tm2) / 2 + s);
+        term = &scratch->terms[s - s_min];
 
         /* scaled_term = LCM / term_denom = prod p_i^(lcm_exp[i] - term.exp[i]).
          * term.max_idx <= lcm_max_idx by construction. */

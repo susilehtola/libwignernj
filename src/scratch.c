@@ -22,6 +22,8 @@ static void scratch_init(wigner_scratch_t *s)
         s->lcm_exp[i] = (int *)xcalloc((size_t)g_nprimes, sizeof(int));
         s->lcm_max_dirty[i] = 0;
     }
+    s->terms     = NULL;
+    s->terms_cap = 0;
     wigner_exact_init(&s->exact);
 }
 
@@ -35,6 +37,11 @@ static void scratch_destroy(wigner_scratch_t *s)
         pfrac_free(&s->pfracs[i]);
     for (i = 0; i < WIGNER_SCRATCH_LCMEXP; i++)
         free(s->lcm_exp[i]);
+    for (i = 0; i < s->terms_cap; i++)
+        pfrac_free(&s->terms[i]);
+    free(s->terms);
+    s->terms     = NULL;
+    s->terms_cap = 0;
     /* Mark the cached exact as never-zero so wigner_exact_free actually
      * frees its bigints (the is_zero short-circuit would otherwise leak). */
     s->exact.is_zero = 0;
@@ -53,6 +60,16 @@ void wigner_scratch_lcm_dirty(wigner_scratch_t *s, int idx, int new_max)
 {
     if (new_max > s->lcm_max_dirty[idx])
         s->lcm_max_dirty[idx] = new_max;
+}
+
+void wigner_scratch_terms_reserve(wigner_scratch_t *s, int n_terms)
+{
+    int i;
+    if (n_terms <= s->terms_cap) return;
+    s->terms = (pfrac_t *)xrealloc(s->terms, (size_t)n_terms * sizeof(pfrac_t));
+    for (i = s->terms_cap; i < n_terms; i++)
+        pfrac_init(&s->terms[i]);
+    s->terms_cap = n_terms;
 }
 
 /* ── TLS-cached path (the common case) ────────────────────────────────────── */
@@ -140,6 +157,15 @@ void wigner_warmup(void)
     bigint_reserve(&s->exact.int_den,  mw_prod);
     bigint_reserve(&s->exact.sqrt_num, mw_prod);
     bigint_reserve(&s->exact.sqrt_den, mw_prod);
+
+    /* Term-pfrac cache: the longest Racah sum any symbol can produce
+     * within the prime-table ceiling has at most MAX_FACTORIAL_ARG+1
+     * terms (the 6j sum range, bounded by half the sum of four j's).
+     * Pre-allocating that many pfrac_t slots costs ~g_nprimes ints per
+     * slot; at the absolute ceiling this is the largest single per-thread
+     * memory commitment of the warmup. */
+    wigner_scratch_terms_reserve(s, MAX_FACTORIAL_ARG + 1);
+
     /* lcm_exp arrays are already sized to g_nprimes ints in scratch_init,
      * which is the worst-case for the prime table.  Pfracs are similarly
      * sized once on the first pfrac_mul_factorial call. */

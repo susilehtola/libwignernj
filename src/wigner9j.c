@@ -91,11 +91,13 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
                           int *lcm_max_idx_io,
                           bigint_t *sum_pos, bigint_t *sum_neg,
                           bigint_t *scaled,
-                          pfrac_t *term,
+                          wigner_scratch_t *scratch,
                           bigint_ws_t *ws)
 {
     int s, s_min, s_max, pi;
     int lcm_max_idx = 0;
+    int n_terms;
+    pfrac_t *term;
 
     {
         int a = (tj1+tj2+tj3)/2, b = (tj1+tj5+tj6)/2;
@@ -130,8 +132,11 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
     bigint_set_zero(sum_pos);
     bigint_set_zero(sum_neg);
 
-    /* Pass 1: find LCM exponents */
+    /* Pass 1: build each term pfrac once into the cache, find LCM */
+    n_terms = s_max - s_min + 1;
+    wigner_scratch_terms_reserve(scratch, n_terms);
     for (s = s_min; s <= s_max; s++) {
+        term = &scratch->terms[s - s_min];
         pfrac_zero(term);
         pfrac_div_factorial(term, s - (tj1+tj2+tj3)/2);
         pfrac_div_factorial(term, s - (tj1+tj5+tj6)/2);
@@ -148,17 +153,9 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
         if (term->max_idx > lcm_max_idx) lcm_max_idx = term->max_idx;
     }
 
-    /* Pass 2: accumulate */
+    /* Pass 2: walk cached pfracs, accumulate */
     for (s = s_min; s <= s_max; s++) {
-        pfrac_zero(term);
-        pfrac_div_factorial(term, s - (tj1+tj2+tj3)/2);
-        pfrac_div_factorial(term, s - (tj1+tj5+tj6)/2);
-        pfrac_div_factorial(term, s - (tj4+tj2+tj6)/2);
-        pfrac_div_factorial(term, s - (tj4+tj5+tj3)/2);
-        pfrac_div_factorial(term, (tj1+tj2+tj4+tj5)/2 - s);
-        pfrac_div_factorial(term, (tj2+tj3+tj5+tj6)/2 - s);
-        pfrac_div_factorial(term, (tj1+tj3+tj4+tj6)/2 - s);
-        pfrac_mul_factorial(term, s + 1);
+        term = &scratch->terms[s - s_min];
         bigint_set_u64(scaled, 1);
         for (pi = 0; pi < lcm_max_idx; pi++) {
             int e = lcm_exp[pi] + term->exp[pi];
@@ -182,7 +179,7 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     int tk, tk_min, tk_max, pi;
     wigner_scratch_t *scratch;
     bigint_ws_t *ws;
-    pfrac_t  *outer, *kdep, *term;
+    pfrac_t  *outer, *kdep;
     int      *global_lcm, *lcm1, *lcm2, *lcm3;
     bigint_t *sum_pos, *sum_neg, *scaled, *s1, *s2, *s3, *tmp;
     bigint_t *inner_pos, *inner_neg, *inner_scaled;
@@ -221,7 +218,6 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     ws            = &scratch->ws;
     outer         = &scratch->pfracs[0];
     kdep          = &scratch->pfracs[1];
-    term          = &scratch->pfracs[2];   /* used by racah_6j_sum */
     global_lcm    =  scratch->lcm_exp[0];
     lcm1          =  scratch->lcm_exp[1];
     lcm2          =  scratch->lcm_exp[2];
@@ -240,7 +236,6 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     bigint_ws_reserve(ws, mw_prod);
     pfrac_zero(outer);
     pfrac_zero(kdep);
-    pfrac_zero(term);
     /* Clear the dirty prefix of every lcm array.  Note: racah_6j_sum
      * tracks its own per-call dirty bound through lcm{1,2,3}_max, so we
      * only need to handle global_lcm here. */
@@ -292,11 +287,11 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
         add_delta_sqrt(kdep, tj12, tj23, tk); add_delta_sqrt(kdep, tj12, tj23, tk);
 
         racah_6j_sum(tj11,tj21,tj31, tj32,tj33,tk,  tmp,&ss1,lcm1, &lcm1_max,
-                     inner_pos, inner_neg, inner_scaled, term, ws);
+                     inner_pos, inner_neg, inner_scaled, scratch, ws);
         racah_6j_sum(tj11,tj12,tj13, tj23,tj33,tk,  tmp,&ss2,lcm2, &lcm2_max,
-                     inner_pos, inner_neg, inner_scaled, term, ws);
+                     inner_pos, inner_neg, inner_scaled, scratch, ws);
         racah_6j_sum(tj22,tj21,tj23, tk,tj12,tj32,  tmp,&ss3,lcm3, &lcm3_max,
-                     inner_pos, inner_neg, inner_scaled, term, ws);
+                     inner_pos, inner_neg, inner_scaled, scratch, ws);
 
         /* Iterate over the union of contributing prime indices: kdep,
          * lcm1, lcm2, lcm3.  Anything beyond this bound is zero. */
@@ -320,11 +315,11 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
         add_delta_sqrt(kdep, tj12, tj23, tk); add_delta_sqrt(kdep, tj12, tj23, tk);
 
         racah_6j_sum(tj11,tj21,tj31, tj32,tj33,tk,  s1,&ss1,lcm1, &lcm1_max,
-                     inner_pos, inner_neg, inner_scaled, term, ws);
+                     inner_pos, inner_neg, inner_scaled, scratch, ws);
         racah_6j_sum(tj11,tj12,tj13, tj23,tj33,tk,  s2,&ss2,lcm2, &lcm2_max,
-                     inner_pos, inner_neg, inner_scaled, term, ws);
+                     inner_pos, inner_neg, inner_scaled, scratch, ws);
         racah_6j_sum(tj22,tj21,tj23, tk,tj12,tj32,  s3,&ss3,lcm3, &lcm3_max,
-                     inner_pos, inner_neg, inner_scaled, term, ws);
+                     inner_pos, inner_neg, inner_scaled, scratch, ws);
 
         if (bigint_is_zero(s1) || bigint_is_zero(s2) || bigint_is_zero(s3))
             continue;

@@ -89,6 +89,7 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
     bigint_t *sum_pos, *sum_neg, *scaled;
     size_t mw;
     int lcm_max_idx;
+    int n_terms;
 
     wigner_exact_reset(out);
 
@@ -112,7 +113,6 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
     scratch  = wigner_scratch_acquire();
     ws       = &scratch->ws;
     outer    = &scratch->pfracs[0];
-    term     = &scratch->pfracs[1];
     lcm_exp  =  scratch->lcm_exp[0];
     sum_pos  = &scratch->bigints[0];
     sum_neg  = &scratch->bigints[1];
@@ -120,7 +120,6 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
 
     bigint_ws_reserve(ws, mw);
     pfrac_zero(outer);
-    pfrac_zero(term);
     wigner_scratch_lcm_clear(scratch, 0);
     bigint_set_zero(sum_pos);
     bigint_set_zero(sum_neg);
@@ -135,7 +134,9 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
     add_delta_sqrt(outer, tj4, tj2, tj6);
     add_delta_sqrt(outer, tj4, tj5, tj3);
 
-    /* ── Pass 1: find LCM exponents ── */
+    /* ── Pass 1: build each term pfrac once into the cache, find LCM ── */
+    n_terms = s_max - s_min + 1;
+    wigner_scratch_terms_reserve(scratch, n_terms);
     lcm_max_idx = 0;
     for (s = s_min; s <= s_max; s++) {
         /* Denominator factorials of term s:
@@ -143,6 +144,7 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
          * (j1+j2+j4+j5-s)! (j2+j3+j5+j6-s)! (j1+j3+j4+j6-s)!
          * Numerator factorial: (s+1)!
          */
+        term = &scratch->terms[s - s_min];
         pfrac_zero(term);
         pfrac_div_factorial(term, s - (tj1 + tj2 + tj3) / 2);
         pfrac_div_factorial(term, s - (tj1 + tj5 + tj6) / 2);
@@ -162,17 +164,9 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
     }
     wigner_scratch_lcm_dirty(scratch, 0, lcm_max_idx);
 
-    /* ── Pass 2: accumulate sum ── */
+    /* ── Pass 2: walk cached pfracs, accumulate sum ── */
     for (s = s_min; s <= s_max; s++) {
-        pfrac_zero(term);
-        pfrac_div_factorial(term, s - (tj1 + tj2 + tj3) / 2);
-        pfrac_div_factorial(term, s - (tj1 + tj5 + tj6) / 2);
-        pfrac_div_factorial(term, s - (tj4 + tj2 + tj6) / 2);
-        pfrac_div_factorial(term, s - (tj4 + tj5 + tj3) / 2);
-        pfrac_div_factorial(term, (tj1 + tj2 + tj4 + tj5) / 2 - s);
-        pfrac_div_factorial(term, (tj2 + tj3 + tj5 + tj6) / 2 - s);
-        pfrac_div_factorial(term, (tj1 + tj3 + tj4 + tj6) / 2 - s);
-        pfrac_mul_factorial(term, s + 1);
+        term = &scratch->terms[s - s_min];
 
         bigint_set_u64(scaled, 1);
         for (pi = 0; pi < lcm_max_idx; pi++) {

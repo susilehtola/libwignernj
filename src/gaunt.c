@@ -89,11 +89,14 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
                                 bigint_t *sum_out, int *sum_sign_out,
                                 int *lcm_exp, int *lcm_max_io,
                                 bigint_t *sum_pos, bigint_t *sum_neg,
-                                bigint_t *scaled, pfrac_t *term,
+                                bigint_t *scaled,
+                                wigner_scratch_t *scratch,
                                 bigint_ws_t *ws)
 {
     int s, s_min, s_max, pi;
     int lcm_max = 0;
+    int n_terms;
+    pfrac_t *term;
 
     gaunt_racah_bounds(tj1, tj2, tj3, tm1, tm2, &s_min, &s_max);
 
@@ -107,8 +110,11 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
     bigint_set_zero(sum_pos);
     bigint_set_zero(sum_neg);
 
-    /* Pass 1: LCM exponents */
+    /* Pass 1: build each term pfrac once into the cache, find LCM */
+    n_terms = s_max - s_min + 1;
+    wigner_scratch_terms_reserve(scratch, n_terms);
     for (s = s_min; s <= s_max; s++) {
+        term = &scratch->terms[s - s_min];
         pfrac_zero(term);
         pfrac_mul_factorial(term, s);
         pfrac_mul_factorial(term, (tj1 + tj2 - tj3) / 2 - s);
@@ -122,15 +128,9 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
         if (term->max_idx > lcm_max) lcm_max = term->max_idx;
     }
 
-    /* Pass 2: accumulate scaled terms */
+    /* Pass 2: walk cached pfracs, accumulate scaled terms */
     for (s = s_min; s <= s_max; s++) {
-        pfrac_zero(term);
-        pfrac_mul_factorial(term, s);
-        pfrac_mul_factorial(term, (tj1 + tj2 - tj3) / 2 - s);
-        pfrac_mul_factorial(term, (tj1 - tm1) / 2 - s);
-        pfrac_mul_factorial(term, (tj2 + tm2) / 2 - s);
-        pfrac_mul_factorial(term, (tj3 - tj2 + tm1) / 2 + s);
-        pfrac_mul_factorial(term, (tj3 - tj1 - tm2) / 2 + s);
+        term = &scratch->terms[s - s_min];
         bigint_set_u64(scaled, 1);
         for (pi = 0; pi < lcm_max; pi++) {
             int diff = lcm_exp[pi] - term->exp[pi];
@@ -160,7 +160,7 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     int pi;
     wigner_scratch_t *scratch;
     bigint_ws_t *ws;
-    pfrac_t  *outer, *term;
+    pfrac_t  *outer;
     int      *lcm0, *lcmm;
     bigint_t *sum0, *summ, *sum_pos, *sum_neg, *scaled;
     int ss0, ssm;
@@ -185,11 +185,11 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
 
     /* Acquire the thread's cached scratch.  Gaunt uses 5 bigints
      * (sum0, summ + sum_pos/sum_neg/scaled inside the inner Racah
-     * sum), 2 pfracs (outer and term), and 2 lcm arrays (lcm0, lcmm). */
+     * sum), 1 pfrac (outer; the per-term pfracs live in the cached
+     * terms array), and 2 lcm arrays (lcm0, lcmm). */
     scratch  = wigner_scratch_acquire();
     ws       = &scratch->ws;
     outer    = &scratch->pfracs[0];
-    term     = &scratch->pfracs[1];
     lcm0     =  scratch->lcm_exp[0];
     lcmm     =  scratch->lcm_exp[1];
     sum0     = &scratch->bigints[0];
@@ -200,7 +200,6 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
 
     bigint_ws_reserve(ws, mw_prod);
     pfrac_zero(outer);
-    pfrac_zero(term);
     wigner_scratch_lcm_clear(scratch, 0);
     wigner_scratch_lcm_clear(scratch, 1);
     bigint_set_zero(sum0);    bigint_reserve(sum0,    mw);
@@ -262,11 +261,11 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     lcmm_max = 0;
 
     gaunt_3j_racah_sum(tl1, tl2, tl3, 0, 0, sum0, &ss0, lcm0, &lcm0_max,
-                       sum_pos, sum_neg, scaled, term, ws);
+                       sum_pos, sum_neg, scaled, scratch, ws);
     if (bigint_is_zero(sum0)) { out->is_zero = 1; goto cleanup; }
 
     gaunt_3j_racah_sum(tl1, tl2, tl3, tm1, tm2, summ, &ssm, lcmm, &lcmm_max,
-                       sum_pos, sum_neg, scaled, term, ws);
+                       sum_pos, sum_neg, scaled, scratch, ws);
     if (bigint_is_zero(summ)) { out->is_zero = 1; goto cleanup; }
 
     /* Product of the two Racah sums */

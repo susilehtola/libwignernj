@@ -46,9 +46,9 @@
 #include "wigner_exact.h"
 
 /* Slot counts sized for the most demanding caller in each category
- * (wigner9j for bigints and lcm_exp; gaunt for pfracs). */
+ * (wigner9j for bigints, lcm_exp, and pfracs). */
 #define WIGNER_SCRATCH_BIGINTS  10
-#define WIGNER_SCRATCH_PFRACS    3
+#define WIGNER_SCRATCH_PFRACS    2
 #define WIGNER_SCRATCH_LCMEXP    4
 
 typedef struct {
@@ -57,6 +57,14 @@ typedef struct {
     pfrac_t          pfracs [WIGNER_SCRATCH_PFRACS];
     int             *lcm_exp[WIGNER_SCRATCH_LCMEXP];
     int              lcm_max_dirty[WIGNER_SCRATCH_LCMEXP];
+    /* Variable-sized cache of per-Racah-sum-term pfracs.  Lazy-grown to
+     * the largest sum a given thread has seen.  Each Racah-sum loop
+     * builds its term pfracs into [0, n_terms) once during pass 1, then
+     * pass 2 walks them without rebuilding.  Capacity persists across
+     * calls; pfracs at indices < terms_cap are pfrac_init'd and ready
+     * to be pfrac_zero'd by the caller. */
+    pfrac_t         *terms;
+    int              terms_cap;
     /* Cached wigner_exact_t reused across calls.  Lifecycle: init'd
      * once at scratch creation, the public wrappers reset it before
      * each call, and it is destroyed when the scratch is released. */
@@ -72,6 +80,13 @@ void              wigner_scratch_relinquish(wigner_scratch_t *s);
  * dirty bound when a new caller writes further than the last one. */
 void wigner_scratch_lcm_clear(wigner_scratch_t *s, int idx);
 void wigner_scratch_lcm_dirty(wigner_scratch_t *s, int idx, int new_max);
+
+/* Ensure the scratch's term-pfrac cache holds at least n_terms slots,
+ * growing in place if necessary.  Newly created slots are pfrac_init'd
+ * (caller is responsible for pfrac_zero before use).  Capacity persists
+ * across calls; this is how Racah-sum loops avoid rebuilding the
+ * per-term pfrac in pass 2. */
+void wigner_scratch_terms_reserve(wigner_scratch_t *s, int n_terms);
 
 /* Test-only.  In the TLS-cached build, drops the calling thread's
  * cached scratch so the next acquire goes through the lazy-init path
