@@ -213,7 +213,7 @@ void pfrac_div_factorial(pfrac_t *f, int n)
 
 void pfrac_mul_int(pfrac_t *f, int k)
 {
-    int pk, i;
+    int i;
     int last = -1;
     if (k <= 1) return;
     if (k > PRIME_SIEVE_LIMIT) {
@@ -223,18 +223,38 @@ void pfrac_mul_int(pfrac_t *f, int k)
             k, PRIME_SIEVE_LIMIT);
         pfrac_fatal("aborting");
     }
-    for (i = 0; i < g_nprimes && g_primes[i] <= k; i++) {
-        pk = g_primes[i];
-        while (k % pk == 0) {
+    /*
+     * Trial-divide k by primes up to floor(sqrt(k)).  When the loop
+     * exits with k > 1, the residual factor must itself be prime (it
+     * has no divisor below sqrt(k_original)), so its index can be
+     * looked up in O(1) via prime_index_of() rather than continuing
+     * the trial-division loop.  For prime or near-prime k this turns
+     * an O(pi(k)) sweep into an O(pi(sqrt(k))) one -- e.g. for
+     * k = 1031 (prime, just above 32^2), 173 prime tests become 11.
+     *
+     * The bound check uses the *current* k (which decreases as we
+     * divide it), so smooth k -- which collapse to 1 quickly -- exit
+     * the loop as soon as no remaining factor is small enough to
+     * matter, matching the speed of the original tight loop.
+     */
+    for (i = 0; i < g_nprimes; i++) {
+        long long p = g_primes[i];
+        if (p * p > (long long)k) break;
+        while (k % g_primes[i] == 0) {
             f->exp[i]++;
             last = i;
-            k /= pk;
+            k /= g_primes[i];
         }
         if (k == 1) break;
     }
-    /* Unreachable when k <= PRIME_SIEVE_LIMIT, but kept as a defensive check. */
-    if (k != 1)
-        pfrac_fatal("pfrac_mul_int: residual factor after full factorization (internal error)");
+    if (k > 1) {
+        int idx = prime_index_of(k);
+        if (idx < 0)
+            pfrac_fatal("pfrac_mul_int: residual factor not in prime table "
+                        "(internal error)");
+        f->exp[idx]++;
+        if (idx > last) last = idx;
+    }
     if (last + 1 > f->max_idx) f->max_idx = last + 1;
 }
 
