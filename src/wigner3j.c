@@ -19,9 +19,7 @@
 #include "primes.h"
 #include "scratch.h"
 #include "wigner.h"
-#include "xalloc.h"
-#include <stdlib.h>
-#include <string.h>
+#include <stdlib.h>      /* abs */
 
 /* ── selection rules ─────────────────────────────────────────────────────── */
 

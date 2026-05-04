@@ -41,9 +41,8 @@
 #include "primes.h"
 #include "scratch.h"
 #include "wigner.h"
-#include <stdlib.h>
-#include <string.h>
-#include <math.h>
+#include <stdlib.h>      /* abs */
+#include <math.h>        /* sqrtf, sqrt, sqrtl, acosl */
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846264338327950288
@@ -91,11 +90,10 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
                                 int *lcm_exp, int *lcm_max_io,
                                 bigint_t *sum_pos, bigint_t *sum_neg,
                                 bigint_t *scaled, pfrac_t *term,
-                                bigint_ws_t *ws, size_t mw)
+                                bigint_ws_t *ws)
 {
     int s, s_min, s_max, pi;
     int lcm_max = 0;
-    (void)mw;
 
     gaunt_racah_bounds(tj1, tj2, tj3, tm1, tm2, &s_min, &s_max);
 
@@ -264,11 +262,11 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     lcmm_max = 0;
 
     gaunt_3j_racah_sum(tl1, tl2, tl3, 0, 0, sum0, &ss0, lcm0, &lcm0_max,
-                       sum_pos, sum_neg, scaled, term, ws, mw);
+                       sum_pos, sum_neg, scaled, term, ws);
     if (bigint_is_zero(sum0)) { out->is_zero = 1; goto cleanup; }
 
     gaunt_3j_racah_sum(tl1, tl2, tl3, tm1, tm2, summ, &ssm, lcmm, &lcmm_max,
-                       sum_pos, sum_neg, scaled, term, ws, mw);
+                       sum_pos, sum_neg, scaled, term, ws);
     if (bigint_is_zero(summ)) { out->is_zero = 1; goto cleanup; }
 
     /* Product of the two Racah sums */
