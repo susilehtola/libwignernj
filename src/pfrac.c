@@ -41,14 +41,16 @@ int wigner_max_factorial_arg(void) { return MAX_FACTORIAL_ARG; }
  * thread-safe (no shared state), just slower.
  */
 
+#if WIGNERNJ_HAVE_TLS
+
 /* Number of primes <= n in g_primes.  O(1) lookup into the
- * compile-time table generated alongside g_primes. */
+ * compile-time table generated alongside g_primes.  Only used by the
+ * TLS-cached factorial-decomposition cache; the no-TLS fallback walks
+ * the prime list directly via g_primes[i] <= n. */
 static int fact_width(int n)
 {
     return (int)g_pi_table[n];
 }
-
-#if WIGNERNJ_HAVE_TLS
 
 /* Pointer table: indexed by N, lazy-allocated rows.  The table itself
  * is allocated lazily on first cache access. */

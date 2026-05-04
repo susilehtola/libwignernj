@@ -171,6 +171,42 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
 
+  # ── No-TLS fallback ───────────────────────────────────────────────────────
+  # The per-thread cached scratch and factorial-decomposition cache select
+  # one of __thread / __declspec(thread) / _Thread_local on every supported
+  # toolchain, falling back to per-call allocation on hypothetical compilers
+  # without any TLS keyword.  -DWIGNERNJ_FORCE_NO_TLS forces that fallback
+  # path on, ensuring it stays compiling and continues to produce identical
+  # results.
+  no-tls-fallback:
+    name: "Ubuntu / GCC / no-TLS fallback"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y gfortran libmpfr-dev
+
+      - name: Configure (force no-TLS fallback)
+        env:
+          CC: gcc
+          CXX: g++
+        run: |
+          cmake -B build \
+            -DBUILD_FORTRAN=ON \
+            -DBUILD_MPFR=ON \
+            -DBUILD_CXX_TESTS=ON \
+            -DBUILD_TESTS=ON \
+            -DCMAKE_C_FLAGS="-DWIGNERNJ_FORCE_NO_TLS"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --parallel
+
   # ── Downstream CMake package detection ────────────────────────────────────
   # Verifies that an installed libwignernj exports the C, C++ (header-only
   # wrapper), and Fortran 90 interfaces correctly so that a downstream CMake
