@@ -193,7 +193,7 @@ jobs:
             -DBUILD_TESTS=ON
 
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --parallel --verbose
 
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
@@ -228,7 +228,7 @@ jobs:
             -DCMAKE_C_FLAGS="-DBIGINT_FORCE_PORTABLE"
 
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --parallel --verbose
 
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
@@ -267,7 +267,7 @@ jobs:
             -DCMAKE_C_FLAGS="-DBIGINT_NO_DIVQ"
 
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --parallel --verbose
 
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
@@ -305,7 +305,7 @@ jobs:
             -DBUILD_LTO=OFF
 
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --parallel --verbose
 
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
@@ -341,7 +341,7 @@ jobs:
             -DCMAKE_C_FLAGS="-DWIGNERNJ_FORCE_NO_TLS"
 
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --parallel --verbose
 
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
@@ -405,7 +405,7 @@ jobs:
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
 
       - name: Build
-        run: cmake --build build --parallel
+        run: cmake --build build --parallel --verbose
 
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
@@ -470,7 +470,7 @@ jobs:
             -DBUILD_CXX_TESTS=ON
 
       - name: Build
-        run: cmake --build build --config Release --parallel
+        run: cmake --build build --config Release --parallel --verbose
 
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure --parallel

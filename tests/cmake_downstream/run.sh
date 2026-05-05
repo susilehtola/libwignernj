@@ -40,9 +40,9 @@ cmake -S "$SOURCE_DIR" -B "$BUILD" \
       -DCMAKE_INSTALL_PREFIX="$PREFIX" \
       -DBUILD_SHARED_LIBS=$SHARED \
       -DBUILD_FORTRAN=$WITH_FORTRAN \
-      -DBUILD_TESTS=OFF -DBUILD_CXX_TESTS=OFF >/dev/null
-cmake --build "$BUILD" --parallel >/dev/null
-cmake --install "$BUILD" >/dev/null
+      -DBUILD_TESTS=OFF -DBUILD_CXX_TESTS=OFF
+cmake --build "$BUILD" --parallel --verbose
+cmake --install "$BUILD"
 
 echo "=== 2. Configure the downstream consumer ==="
 cmake -S "$SCRIPT_DIR" -B "$DOWN" \
@@ -50,7 +50,7 @@ cmake -S "$SCRIPT_DIR" -B "$DOWN" \
       -DWITH_FORTRAN=$WITH_FORTRAN
 
 echo "=== 3. Build the downstream consumer ==="
-cmake --build "$DOWN" --parallel
+cmake --build "$DOWN" --parallel --verbose
 
 echo "=== 4. Run the downstream tests ==="
 ctest --test-dir "$DOWN" --output-on-failure
