@@ -272,16 +272,16 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
 
-  # ── Link-time optimisation ────────────────────────────────────────────────
-  # `-DBUILD_LTO=ON` enables CMake's INTERPROCEDURAL_OPTIMIZATION on the
-  # library (and on the Fortran wrapper / Python extension when those are
-  # built).  The option is OFF by default to keep debug-friendly and
-  # static-analyser-friendly builds untouched, but consumers can opt in for
-  # the small per-call speedup that cross-TU inlining of pfrac.c helpers
-  # delivers on the Racah-sum hot path.  This cell ensures the option
-  # continues to compile clean and produces identical test output.
-  build-lto:
-    name: "Ubuntu / GCC / LTO"
+  # ── Link-time optimisation off ────────────────────────────────────────────
+  # BUILD_LTO defaults to ON now that libwignernj is positioned as a
+  # high-performance math library, so every other cell in this file
+  # exercises the LTO-on dispatch.  This cell exists to keep the
+  # LTO-off fallback compiling clean and producing identical test
+  # output -- consumers who need a fast build (Debug, sanitizers,
+  # static analysis) reach for -DBUILD_LTO=OFF and we want that path
+  # to stay green.
+  build-no-lto:
+    name: "Ubuntu / GCC / no LTO"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -302,7 +302,7 @@ jobs:
             -DBUILD_QUADMATH=ON \
             -DBUILD_CXX_TESTS=ON \
             -DBUILD_TESTS=ON \
-            -DBUILD_LTO=ON
+            -DBUILD_LTO=OFF
 
       - name: Build
         run: cmake --build build --parallel
@@ -399,6 +399,7 @@ jobs:
             -DBUILD_MPFR=ON \
             -DBUILD_CXX_TESTS=ON \
             -DBUILD_TESTS=ON \
+            -DBUILD_LTO=OFF \
             -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all" \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
