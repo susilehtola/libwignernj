@@ -285,15 +285,20 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     pfrac_to_sqrt_rational_ws(outer, &out->int_num, &out->int_den,
                               &out->sqrt_num, &out->sqrt_den, ws);
 
-    /* Combined LCM denominator → int_den. */
+    /* Combined LCM denominator → int_den.  Per-prime exponent is
+     * lcm0[pi] + lcmm[pi]; route through the uint64-batched
+     * accumulator helper instead of one bigint_mul_prime_pow_ws call
+     * per prime, mirroring the wignerXj_exact end-of-function paths. */
     {
         int lcm_union_max = (lcm0_max > lcmm_max) ? lcm0_max : lcmm_max;
+        uint64_t acc = 1;
         for (pi = 0; pi < lcm_union_max; pi++) {
             int e = lcm0[pi] + lcmm[pi];
             if (e > 0)
-                bigint_mul_prime_pow_ws(&out->int_den,
+                pfrac_mul_pow_into_acc(&out->int_den, &acc,
                                         (uint64_t)g_primes[pi], e, ws);
         }
+        if (acc > 1) bigint_mul_u64(&out->int_den, &out->int_den, acc);
     }
 
 cleanup:

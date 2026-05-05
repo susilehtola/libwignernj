@@ -383,11 +383,8 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     pfrac_to_sqrt_rational_ws(outer,
                               &out->int_num, &out->int_den,
                               &out->sqrt_num, &out->sqrt_den, ws);
-    for (pi = 0; pi < global_lcm_max; pi++) {
-        if (global_lcm[pi] > 0)
-            bigint_mul_prime_pow_ws(&out->int_den,
-                                    (uint64_t)g_primes[pi], global_lcm[pi], ws);
-    }
+    pfrac_bigint_mul_prime_pow_array(&out->int_den, global_lcm,
+                                      global_lcm_max, ws);
 
     /* Update dirty bounds for next call's tail-zeroing. */
     wigner_scratch_lcm_dirty(scratch, 0, global_lcm_max);
