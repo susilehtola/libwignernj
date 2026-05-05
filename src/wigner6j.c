@@ -238,11 +238,7 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
                                &out->int_num, &out->int_den,
                                &out->sqrt_num, &out->sqrt_den, ws);
 
-    for (pi = 0; pi < lcm_max_idx; pi++) {
-        if (lcm_exp[pi] > 0)
-            bigint_mul_prime_pow_ws(&out->int_den,
-                                    (uint64_t)g_primes[pi], lcm_exp[pi], ws);
-    }
+    pfrac_bigint_mul_prime_pow_array(&out->int_den, lcm_exp, lcm_max_idx, ws);
 
     wigner_scratch_relinquish(scratch);
 }

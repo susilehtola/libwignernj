@@ -74,6 +74,41 @@ void pfrac_to_sqrt_rational_ws(const pfrac_t *f,
                                 bigint_ws_t *ws);
 
 /*
+ * Multiply prime power g_primes[pi]^exp into a bigint accumulator
+ * pattern.  A uint64_t *acc collects small contributions and is
+ * flushed to *dst via bigint_mul_u64 only when overflow is imminent;
+ * larger contributions fall back to bigint_mul_prime_pow_ws.  Exposed
+ * for callers (gaunt.c) whose per-prime exponent is computed from a
+ * combination of arrays that doesn't fit pfrac_bigint_mul_prime_pow_array's
+ * single-array signature; the simpler-array case should call that
+ * helper instead.
+ *
+ * Caller must initialise *acc = 1 before the loop and flush a final
+ * `if (*acc > 1) bigint_mul_u64(dst, dst, *acc)` after.
+ */
+void pfrac_mul_pow_into_acc(bigint_t *dst, uint64_t *acc,
+                             uint64_t p, int exp, bigint_ws_t *ws);
+
+/*
+ * Multiply a (in place) by prod_{i: exp[i] > 0} g_primes[i]^exp[i].
+ * Uses the same uint64-batched accumulator pattern as
+ * pfrac_lcm_scaled_product: small contributions are folded into a
+ * uint64_t and only flushed to the bigint when the accumulator would
+ * overflow.  Falls back to bigint_mul_prime_pow_ws (with shift fast
+ * path for p == 2 and binary-exponentiation for larger exponents)
+ * when an individual p^exp doesn't fit in uint64_t.
+ *
+ * Replaces the simpler `for (pi) if (exp[pi] > 0) bigint_mul_prime_pow_ws(...)`
+ * pattern at the end-of-function int_den construction in every Racah
+ * exact() routine -- profile identified the per-prime call chain
+ * there as the second-largest residual cost at large j.
+ */
+void pfrac_bigint_mul_prime_pow_array(bigint_t *a,
+                                       const int *exp,
+                                       int max_idx,
+                                       bigint_ws_t *ws);
+
+/*
  * Build the per-term scaling bigint scaled = LCM / term_denominator that
  * the Racah-sum pass-2 inner loop multiplies into the running sum.  For
  * each prime g_primes[i] with effective exponent
