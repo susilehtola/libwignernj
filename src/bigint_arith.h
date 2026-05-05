@@ -115,13 +115,114 @@ static inline uint64_t bigint_subb(uint64_t a, uint64_t b,
 }
 
 /*
- * Divide [hi:lo] (128 bits, with hi < d) by d.  Returns the 64-bit quotient
- * and writes the remainder (< d) to *rem.
+ * Knuth's Algorithm D for 128/64 unsigned division at base B = 2^32.
+ * Caller guarantees hi < d (so the quotient fits in 64 bits) and
+ * d >= 2^32 (the simpler 32-bit two-step long division below handles
+ * the d < 2^32 case at lower constant cost).
  *
- * On the C99 fallback path d must satisfy d < 2^32, otherwise the
- * intermediate (r1 << 32) below could overflow.  In libwignernj the divisor
- * is always a prime <= PRIME_SIEVE_LIMIT (20011), so this is always
- * satisfied.
+ * Two long-division steps each produce a 32-bit quotient digit,
+ * recombined into the 64-bit result.  Uses bigint_mul_add /
+ * bigint_subb for the inner 64x64->128 product and 64-bit subtraction-
+ * with-borrow, so the same routine compiles correctly on the
+ * BIGINT_HAVE_UINT128 path (where the helpers fold to native
+ * __uint128_t arithmetic) and on the pure-C99 fallback (where they
+ * fall through to four 32x32->64 partial products with explicit carry
+ * tracking).
+ *
+ * Reference: Knuth, TAOCP Vol. 2, Algorithm D (Section 4.3.1).  We
+ * specialise to a fixed n=2 (divisor digits) and m=2 (extra
+ * dividend digits over the divisor) and inline the trial-quotient
+ * refinement (at most two iterations after divisor normalisation)
+ * and the post-subtraction add-back correction (which fires with
+ * probability ~2^-32 per step).
+ */
+static inline uint64_t bigint_div128_alg_d(uint64_t hi, uint64_t lo,
+                                            uint64_t d, uint64_t *rem)
+{
+    int s, step;
+    uint64_t dn, uhi, ulo, d1, d0, mid_digits[2];
+    uint64_t cur, qhat, rhat, prod_lo, prod_hi, num_lo, num_hi;
+    uint64_t bsub, badd;
+    uint32_t qdigit[2];
+
+    /* Step 1: normalise divisor so its top bit is set. */
+    s = 0;
+    {
+        uint64_t t = d;
+        while ((t & (1ULL << 63)) == 0) { t <<= 1; s++; }
+    }
+    dn = d << s;
+    /* Apply the same shift to the dividend.  hi < d implies the shifted
+     * top half stays within 64 bits. */
+    if (s == 0) {
+        uhi = hi;
+        ulo = lo;
+    } else {
+        uhi = (hi << s) | (lo >> (64 - s));
+        ulo = lo << s;
+    }
+
+    /* Decompose into 32-bit digits. */
+    d1 = dn >> 32;
+    d0 = dn & 0xFFFFFFFFULL;
+    mid_digits[0] = ulo >> 32;        /* fed in for step 0 */
+    mid_digits[1] = ulo & 0xFFFFFFFFULL; /* fed in for step 1 */
+
+    cur = uhi;
+    for (step = 0; step < 2; step++) {
+        uint64_t mid = mid_digits[step];
+
+        /* Trial quotient digit q_hat = floor(cur / d1), capped at B-1. */
+        if ((cur >> 32) >= d1) {
+            qhat = 0xFFFFFFFFULL;
+            /* rhat = cur - qhat * d1 = (cur - d1*B) + d1, where
+             * cur - d1*B >= 0 since (cur >> 32) >= d1. */
+            rhat = (cur - (d1 << 32)) + d1;
+        } else {
+            qhat = cur / d1;
+            rhat = cur - qhat * d1;
+        }
+
+        /* Refine: while q_hat * d0 > B*r_hat + mid, decrement q_hat.
+         * Skip once r_hat overflows 32 bits (the comparison is then
+         * trivially false; computing the RHS would also overflow). */
+        while (rhat < (1ULL << 32)
+            && qhat * d0 > (rhat << 32) + mid) {
+            qhat--;
+            rhat += d1;
+        }
+
+        /* Subtract qhat * dn from the 96-bit numerator (cur << 32 | mid).
+         * prod = qhat * dn fits in 96 bits; numer96 fits in 96 bits;
+         * the difference fits in 64 bits when qhat is correct, with a
+         * possible 1-step add-back if qhat overshot by 1. */
+        bigint_mul_add(qhat, dn, 0, &prod_lo, &prod_hi);
+        num_lo = (cur << 32) | mid;
+        num_hi = cur >> 32;
+        cur = bigint_subb(num_lo, prod_lo, 0, &bsub);
+        num_hi = bigint_subb(num_hi, prod_hi, bsub, &bsub);
+        if (bsub) {
+            /* qhat was 1 too large (rare: probability ~2^-32 per step
+             * after refinement).  Add back one copy of dn. */
+            qhat--;
+            cur = bigint_addc(cur, dn, 0, &badd);
+            num_hi = num_hi + badd; /* clears num_hi back to 0 */
+        }
+
+        qdigit[step] = (uint32_t)qhat;
+    }
+
+    /* Recombine quotient and denormalise remainder. */
+    *rem = cur >> s;
+    return ((uint64_t)qdigit[0] << 32) | qdigit[1];
+}
+
+/*
+ * Divide [hi:lo] (128 bits, with hi < d) by d.  Returns the 64-bit
+ * quotient and writes the remainder (< d) to *rem.  Handles arbitrary
+ * 64-bit divisors so the library scales correctly when the prime
+ * table is regenerated for an enlarged sieve limit (where individual
+ * primes themselves can exceed 2^32).
  */
 static inline uint64_t bigint_div128(uint64_t hi, uint64_t lo,
                                       uint64_t d, uint64_t *rem)
@@ -138,30 +239,37 @@ static inline uint64_t bigint_div128(uint64_t hi, uint64_t lo,
      * profile-confirmed as a top-3 hot spot at j=4000.  Inline asm
      * forces the hardware instruction.  The -DBIGINT_NO_DIVQ build
      * override disables this asm path while keeping __uint128_t
-     * available, so a dedicated CI cell can exercise the
-     * __uint128_t/d code below on x86-64 hardware -- that path is
-     * the one selected on aarch64, ppc64le, and any other target
-     * with __uint128_t but no hardware 128/64 instruction. */
+     * available, so a dedicated CI cell exercises the Algorithm-D
+     * code below on x86-64 hardware -- that path is the one selected
+     * on aarch64, ppc64le, and any other target with __uint128_t but
+     * no hardware 128/64 instruction. */
     uint64_t q, r;
     __asm__ ("divq %4"
              : "=a"(q), "=d"(r)
              : "a"(lo), "d"(hi), "rm"(d));
     *rem = r;
     return q;
-#elif BIGINT_HAVE_UINT128
-    bigint_u128_t numer = ((bigint_u128_t)hi << 64) | lo;
-    *rem = (uint64_t)(numer % d);
-    return (uint64_t)(numer / d);
 #else
-    uint64_t numer, q1, r1, q2;
-    /* Two-step 64/32 long division. */
-    numer = (hi << 32) | (lo >> 32);
-    q1 = numer / d;
-    r1 = numer % d;
-    numer = (r1 << 32) | (lo & 0xFFFFFFFFu);
-    q2 = numer / d;
-    *rem = numer % d;
-    return (q1 << 32) | (q2 & 0xFFFFFFFFu);
+    /* Software path.  Two-step 64/32 long division for d < 2^32 (the
+     * common case in libwignernj: every prime <= PRIME_SIEVE_LIMIT
+     * with the default sieve fits comfortably in 32 bits), Knuth's
+     * Algorithm D for d >= 2^32 (the case that arises with batched
+     * small-integer denominators in the Racah-sum recurrence and with
+     * regenerated prime tables whose sieve limit exceeds 2^32).  Both
+     * branches use only 64-bit arithmetic primitives, so the routine
+     * compiles correctly on toolchains without __uint128_t. */
+    if (d < (1ULL << 32)) {
+        uint64_t numer, q1, r1, q2;
+        numer = (hi << 32) | (lo >> 32);
+        q1 = numer / d;
+        r1 = numer % d;
+        numer = (r1 << 32) | (lo & 0xFFFFFFFFu);
+        q2 = numer / d;
+        *rem = numer % d;
+        return (q1 << 32) | (q2 & 0xFFFFFFFFu);
+    } else {
+        return bigint_div128_alg_d(hi, lo, d, rem);
+    }
 #endif
 }
 
