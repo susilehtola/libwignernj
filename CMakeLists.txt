@@ -11,19 +11,42 @@ option(BUILD_QUADMATH     "Build libquadmath / __float128 interface"  OFF)
 option(BUILD_FLINT        "Use FLINT/GMP/MPFR for the bigint backend"  OFF)
 option(BUILD_TESTS        "Build test suite"             ON)
 option(BUILD_CXX_TESTS    "Build C++ header tests"      ON)
-option(BUILD_LTO          "Enable link-time optimisation (LTO/IPO)"  OFF)
+option(BUILD_LTO          "Enable link-time optimisation (LTO/IPO)"  ON)
 
-# Probe the toolchain for LTO/IPO support so consumers get a clear error
-# rather than a confusing link failure when the option is requested on a
-# compiler/linker pair that doesn't provide it.
+# Probe the toolchain for LTO/IPO support and silently fall back if it
+# isn't available -- LTO defaults to ON because libwignernj is
+# positioned as a high-performance math library and the cross-TU
+# inlining of pfrac.c helpers into the Racah-sum hot path is worth a
+# few percent across every consumer who just runs `cmake`.  Users who
+# need a fast build (Debug, sanitizers, static analysis) can pass
+# -DBUILD_LTO=OFF to opt out.
 if(BUILD_LTO)
     include(CheckIPOSupported)
     check_ipo_supported(RESULT _wignernj_ipo_supported OUTPUT _wignernj_ipo_error)
     if(NOT _wignernj_ipo_supported)
-        message(FATAL_ERROR
-            "BUILD_LTO=ON but link-time optimisation is not supported by "
-            "this toolchain: ${_wignernj_ipo_error}")
+        message(STATUS
+            "Link-time optimisation not supported by this toolchain "
+            "(${_wignernj_ipo_error}); BUILD_LTO disabled.")
+        set(BUILD_LTO OFF CACHE BOOL "" FORCE)
     endif()
+endif()
+
+# MSVC's /GL (LTO) emits LLVM-bitcode-style "anonymous IL" object files
+# instead of COFF, which then breaks the WINDOWS_EXPORT_ALL_SYMBOLS
+# auto-export step:  cmake -E __create_def reads the .obj files to
+# discover exported symbols, and reports
+#   "unrecognized file format in '...wignernj.dir/Release/xalloc.obj'"
+# when LTO is on.  We rely on auto-export to keep wignernj.lib in sync
+# with the public API, so the cleanest fix is to disable LTO on MSVC.
+# Consumers who want LTO with MSVC can hand-write a .def file or sprinkle
+# __declspec(dllexport) on every public function and pass
+# -DWINDOWS_EXPORT_ALL_SYMBOLS=OFF -DBUILD_LTO=ON, but that's a hostile
+# default for a library positioned for embeddability across toolchains.
+if(BUILD_LTO AND MSVC)
+    message(STATUS
+        "BUILD_LTO disabled on MSVC: /GL emits IL .obj files that "
+        "the WINDOWS_EXPORT_ALL_SYMBOLS auto-export step cannot parse.")
+    set(BUILD_LTO OFF CACHE BOOL "" FORCE)
 endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
