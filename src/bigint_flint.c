@@ -111,6 +111,18 @@ void bigint_div_u64(bigint_t *r, const bigint_t *a, uint64_t b)
     fmpz_divexact_ui(r->v, a->v, (unsigned long)b);
 }
 
+void bigint_div_u64_exact(bigint_t *r, const bigint_t *a, uint64_t d)
+{
+    /* FLINT's fmpz_divexact_ui already exploits the exact-divisibility
+     * precondition with Hensel-style arithmetic internally, so the
+     * "exact" variant is just the same call as bigint_div_u64 for
+     * this backend.  The naming-distinction matters only for the
+     * in-tree backend, where bigint_div_u64 carries a remainder
+     * through the per-limb 128/64 path while bigint_div_u64_exact
+     * uses modular-inverse multiplication. */
+    fmpz_divexact_ui(r->v, a->v, (unsigned long)d);
+}
+
 void bigint_mul_prime_pow(bigint_t *a, uint64_t p, int k)
 {
     if (k <= 0) return;
