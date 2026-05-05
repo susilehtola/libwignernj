@@ -11,6 +11,20 @@ option(BUILD_QUADMATH     "Build libquadmath / __float128 interface"  OFF)
 option(BUILD_FLINT        "Use FLINT/GMP/MPFR for the bigint backend"  OFF)
 option(BUILD_TESTS        "Build test suite"             ON)
 option(BUILD_CXX_TESTS    "Build C++ header tests"      ON)
+option(BUILD_LTO          "Enable link-time optimisation (LTO/IPO)"  OFF)
+
+# Probe the toolchain for LTO/IPO support so consumers get a clear error
+# rather than a confusing link failure when the option is requested on a
+# compiler/linker pair that doesn't provide it.
+if(BUILD_LTO)
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT _wignernj_ipo_supported OUTPUT _wignernj_ipo_error)
+    if(NOT _wignernj_ipo_supported)
+        message(FATAL_ERROR
+            "BUILD_LTO=ON but link-time optimisation is not supported by "
+            "this toolchain: ${_wignernj_ipo_error}")
+    endif()
+endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -59,6 +73,7 @@ set_target_properties(wignernj PROPERTIES
     C_STANDARD_REQUIRED ON
     VERSION   ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
+    INTERPROCEDURAL_OPTIMIZATION ${BUILD_LTO}
     # Auto-generate the MSVC import library by exporting every function
     # symbol.  On ELF/Mach-O the public-by-default visibility makes this
     # a no-op; on Windows it is what saves us from sprinkling
@@ -241,6 +256,7 @@ if(BUILD_FORTRAN)
                 ${CMAKE_CURRENT_BINARY_DIR}/fortran_modules
             VERSION   ${PROJECT_VERSION}
             SOVERSION ${PROJECT_VERSION_MAJOR}
+            INTERPROCEDURAL_OPTIMIZATION ${BUILD_LTO}
             WINDOWS_EXPORT_ALL_SYMBOLS ON
             # Bake $ORIGIN into the installed library so that, when a
             # downstream binary's DT_RUNPATH points at some non-system
@@ -321,6 +337,7 @@ if(BUILD_PYTHON)
         set_target_properties(_wigner PROPERTIES
             C_STANDARD 99
             C_STANDARD_REQUIRED ON
+            INTERPROCEDURAL_OPTIMIZATION ${BUILD_LTO}
             OUTPUT_NAME "_wigner"
             LIBRARY_OUTPUT_DIRECTORY
                 ${CMAKE_CURRENT_BINARY_DIR}/wigner
