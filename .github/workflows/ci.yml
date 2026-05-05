@@ -171,6 +171,44 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
 
+  # ── Link-time optimisation ────────────────────────────────────────────────
+  # `-DBUILD_LTO=ON` enables CMake's INTERPROCEDURAL_OPTIMIZATION on the
+  # library (and on the Fortran wrapper / Python extension when those are
+  # built).  The option is OFF by default to keep debug-friendly and
+  # static-analyser-friendly builds untouched, but consumers can opt in for
+  # the small per-call speedup that cross-TU inlining of pfrac.c helpers
+  # delivers on the Racah-sum hot path.  This cell ensures the option
+  # continues to compile clean and produces identical test output.
+  build-lto:
+    name: "Ubuntu / GCC / LTO"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y gfortran libmpfr-dev libquadmath0
+
+      - name: Configure
+        env:
+          CC: gcc
+          CXX: g++
+        run: |
+          cmake -B build \
+            -DBUILD_FORTRAN=ON \
+            -DBUILD_MPFR=ON \
+            -DBUILD_QUADMATH=ON \
+            -DBUILD_CXX_TESTS=ON \
+            -DBUILD_TESTS=ON \
+            -DBUILD_LTO=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --parallel
+
   # ── No-TLS fallback ───────────────────────────────────────────────────────
   # The per-thread cached scratch and factorial-decomposition cache select
   # one of __thread / __declspec(thread) / _Thread_local on every supported
