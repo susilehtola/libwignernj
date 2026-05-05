@@ -164,16 +164,60 @@ void wigner6j_exact(int tj1, int tj2, int tj3,
     }
     wigner_scratch_lcm_dirty(scratch, 0, lcm_max_idx);
 
-    /* ── Pass 2: walk cached pfracs, accumulate sum ── */
-    for (s = s_min; s <= s_max; s++) {
-        term = &scratch->terms[s - s_min];
-        /* scaled = LCM / term_denom = prod p_i^(lcm_exp[i] + term.exp[i])
-         * via the batched-uint64 helper. */
-        pfrac_lcm_scaled_product(scaled, lcm_exp, term->exp, +1,
-                                  lcm_max_idx, ws);
+    /* ── Pass 2: incremental walk of LCM-scaled term values ──
+     *
+     * The 6j Racah term is
+     *   T_s = (s+1)! / [(s-α₁)!(s-α₂)!(s-α₃)!(s-α₄)!(β₁-s)!(β₂-s)!(β₃-s)!]
+     * with α₁..₄ the four triangle sums and β₁..₃ the three quadruple
+     * sums.  The successive-term ratio
+     *   T_{s+1}/T_s = (s+2)(β₁-s)(β₂-s)(β₃-s)
+     *               / [(s+1-α₁)(s+1-α₂)(s+1-α₃)(s+1-α₄)]
+     * gives an integer recurrence on scaled_s = LCM·T_s,
+     *   scaled_{s+1} (s+1-α₁)(s+1-α₂)(s+1-α₃)(s+1-α₄)
+     *     = scaled_s (s+2)(β₁-s)(β₂-s)(β₃-s).
+     *
+     * Each factor is bounded above by ~2·MAX_FACTORIAL_ARG: triangle
+     * sums αᵢ are at most MAX_FACTORIAL_ARG-1 (else build_outer_sqrt_6j
+     * would have aborted in Pass 1), and quadruple sums βⱼ pair two
+     * triangles that share one j, so βⱼ ≤ 2·MAX_FACTORIAL_ARG.  The
+     * batched quadruple product therefore fits in uint64 when
+     * (2·MAX_FACTORIAL_ARG)⁴ ≤ 2⁶⁴, i.e. MAX_FACTORIAL_ARG ≤ 2¹⁵ ·
+     * something; we conservatively pin the static_assert at 32767.
+     * Algorithm D in bigint_div128 handles the resulting 64-bit
+     * divisor on every backend.
+     */
+#if MAX_FACTORIAL_ARG > 32767
+#error "MAX_FACTORIAL_ARG too large for batched 6j Pass-2 ratio update (quadruple product would overflow uint64); regenerate the prime table with a smaller --limit, or split this loop into pairwise mul/div"
+#endif
+    {
+        uint64_t a1 = (uint64_t)((tj1 + tj2 + tj3) / 2);
+        uint64_t a2 = (uint64_t)((tj1 + tj5 + tj6) / 2);
+        uint64_t a3 = (uint64_t)((tj4 + tj2 + tj6) / 2);
+        uint64_t a4 = (uint64_t)((tj4 + tj5 + tj3) / 2);
+        uint64_t b1 = (uint64_t)((tj1 + tj2 + tj4 + tj5) / 2);
+        uint64_t b2 = (uint64_t)((tj2 + tj3 + tj5 + tj6) / 2);
+        uint64_t b3 = (uint64_t)((tj1 + tj3 + tj4 + tj6) / 2);
 
-        if ((s & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
-        else              bigint_add(sum_neg, sum_neg, scaled);
+        /* Seed: scaled_{s_min} = LCM·T_{s_min} via the existing
+         * prime-power helper from the cached pfrac for term 0. */
+        pfrac_lcm_scaled_product(scaled, lcm_exp, scratch->terms[0].exp, +1,
+                                  lcm_max_idx, ws);
+        if ((s_min & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
+        else                  bigint_add(sum_neg, sum_neg, scaled);
+
+        /* Step s -> s+1.  At s = s_max we stop without applying the
+         * ratio: (β-s) would hit 0 there for the i with βᵢ = s_max. */
+        for (s = s_min; s < s_max; s++) {
+            uint64_t us  = (uint64_t)s;
+            uint64_t num = (us + 2) * (b1 - us) * (b2 - us) * (b3 - us);
+            uint64_t den = (us + 1 - a1) * (us + 1 - a2)
+                         * (us + 1 - a3) * (us + 1 - a4);
+            bigint_mul_u64(scaled, scaled, num);
+            bigint_div_u64(scaled, scaled, den);
+
+            if (((s + 1) & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
+            else                    bigint_add(sum_neg, sum_neg, scaled);
+        }
     }
 
     out->sum_sign = bigint_sub_signed(&out->sum, sum_pos, sum_neg);
