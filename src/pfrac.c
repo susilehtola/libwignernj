@@ -176,9 +176,17 @@ void pfrac_mul_factorial(pfrac_t *f, int n)
     }
 #if WIGNERNJ_HAVE_TLS
     {
-        const int *row = fact_cache_get(n);
+        /* `restrict`: row points into the per-thread factorial-
+         * decomposition cache, ex points to the term's own buffer;
+         * they are disjoint by construction.  Without restrict the
+         * compiler must assume aliasing through `f->exp` (a struct
+         * field reachable by pointer), which blocks the auto-
+         * vectoriser at -O3.  Lifting f->exp to a restrict-qualified
+         * local lets GCC emit 16-byte SSE2 vpaddd / vpsubd. */
+        const int * restrict row = fact_cache_get(n);
+        int       * restrict ex  = f->exp;
         width = fact_width(n);
-        for (i = 0; i < width; i++) f->exp[i] += row[i];
+        for (i = 0; i < width; i++) ex[i] += row[i];
     }
 #else
     for (i = 0; i < g_nprimes && g_primes[i] <= n; i++)
@@ -201,9 +209,10 @@ void pfrac_div_factorial(pfrac_t *f, int n)
     }
 #if WIGNERNJ_HAVE_TLS
     {
-        const int *row = fact_cache_get(n);
+        const int * restrict row = fact_cache_get(n);
+        int       * restrict ex  = f->exp;
         width = fact_width(n);
-        for (i = 0; i < width; i++) f->exp[i] -= row[i];
+        for (i = 0; i < width; i++) ex[i] -= row[i];
     }
 #else
     for (i = 0; i < g_nprimes && g_primes[i] <= n; i++)
