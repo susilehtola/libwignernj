@@ -73,4 +73,33 @@ void pfrac_to_sqrt_rational_ws(const pfrac_t *f,
                                 bigint_t *sqrt_num, bigint_t *sqrt_den,
                                 bigint_ws_t *ws);
 
+/*
+ * Build the per-term scaling bigint scaled = LCM / term_denominator that
+ * the Racah-sum pass-2 inner loop multiplies into the running sum.  For
+ * each prime g_primes[i] with effective exponent
+ *
+ *   diff = lcm[i] + sign * term_exp[i]   (sign = -1 for 3j-style sums where
+ *                                          term_exp tracks denominator
+ *                                          factorials directly; sign = +1
+ *                                          for 6j/9j-style sums where
+ *                                          term_exp is the signed net
+ *                                          exponent of the rational term)
+ *
+ * the contribution g_primes[i]^diff is folded into a uint64_t accumulator
+ * when it fits, flushing to `scaled` via a single bigint_mul_u64 only when
+ * the accumulator would overflow.  Replaces a chain of up to max_idx
+ * separate bigint_mul_prime_pow_ws calls with a small handful of
+ * bigint_mul_u64s, eliminating the per-call binary-exponentiation setup
+ * and bigint sweep that dominated the inner loop at small to moderate j.
+ *
+ * `scaled` is set to 1 first.  Output is identical bit-for-bit to the
+ * unbatched loop.
+ */
+void pfrac_lcm_scaled_product(bigint_t *scaled,
+                                const int *lcm,
+                                const int *term_exp,
+                                int sign,
+                                int max_idx,
+                                bigint_ws_t *ws);
+
 #endif /* PFRAC_H */
