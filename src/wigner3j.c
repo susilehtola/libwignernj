@@ -185,18 +185,74 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     }
     wigner_scratch_lcm_dirty(scratch, 0, lcm_max_idx);
 
-    /* ── Pass 2: walk cached pfracs, accumulate scaled integer sum ── */
-    for (s = s_min; s <= s_max; s++) {
-        term = &scratch->terms[s - s_min];
-        /* scaled = LCM / term_denom = prod p_i^(lcm_exp[i] - term.exp[i])
-         * built via the batched-uint64 helper.  term.max_idx <= lcm_max_idx
-         * by construction. */
-        pfrac_lcm_scaled_product(scaled, lcm_exp, term->exp, -1,
-                                  lcm_max_idx, ws);
+    /* ── Pass 2: incremental walk of LCM-scaled term values ──
+     *
+     * Define D_s = s! · (a-s)! · (b-s)! · (c-s)! · (d+s)! · (e+s)!
+     * with
+     *   a = (tj1+tj2-tj3)/2,  b = (tj1-tm1)/2,  c = (tj2+tm2)/2,
+     *   d = (tj3-tj2+tm1)/2,  e = (tj3-tj1-tm2)/2.
+     * Then scaled_s := LCM/D_s satisfies the integer recurrence
+     *
+     *   scaled_{s+1} · (s+1)(d+s+1)(e+s+1) = scaled_s · (a-s)(b-s)(c-s).
+     *
+     * All six factors are positive integers <= MAX_FACTORIAL_ARG within
+     * the sum range, and Pass 1 has already established the LCM and
+     * stored every term's pfrac in scratch->terms[].  Each step
+     * therefore reduces to a single multiplication by the triple
+     * numerator product and a single exact division by the triple
+     * denominator product on the running scaled bigint -- two
+     * single-word bigint operations per term, replacing the O(pi(j))
+     * prime-power expansion of pfrac_lcm_scaled_product that profiling
+     * identified (62.7% in bigint_mul_u64 inside that helper at
+     * j=4000) as the dominant cost at large j.
+     *
+     * Each triple product is bounded by MAX_FACTORIAL_ARG^3.  The
+     * static_assert below pins this to a compile-time check against
+     * UINT64_MAX so a regenerated prime table that exceeded the
+     * batched-product safe range would break the build with a clear
+     * message rather than silently miscompute.  At the default
+     * MAX_FACTORIAL_ARG = 20000, MAX_FACTORIAL_ARG^3 ~ 8e12 has more
+     * than 11 bits of headroom under UINT64_MAX ~ 1.8e19; the
+     * crossover at 2^64 is around MAX_FACTORIAL_ARG ~ 2.64e6.
+     * Algorithm D in bigint_div128 handles arbitrary 64-bit divisors
+     * on every backend (hardware divq on x86-64, __uint128_t-using
+     * Algorithm D on aarch64 etc., pure-C99 Algorithm D on toolchains
+     * without __uint128_t), so the batched divisor is correct on
+     * every supported target.
+     */
+#if MAX_FACTORIAL_ARG > 2642245
+#error "MAX_FACTORIAL_ARG too large for batched 3j Pass-2 ratio update (triple product would overflow uint64); regenerate the prime table with a smaller --limit, or replace the batched mul/div in this loop with six single-factor calls"
+#endif
+    {
+        uint64_t a = (uint64_t)((tj1 + tj2 - tj3) / 2);
+        uint64_t b = (uint64_t)((tj1 - tm1) / 2);
+        uint64_t c = (uint64_t)((tj2 + tm2) / 2);
+        uint64_t d = (uint64_t)((tj3 - tj2 + tm1) / 2);
+        uint64_t e = (uint64_t)((tj3 - tj1 - tm2) / 2);
 
-        /* Accumulate with sign (-1)^s */
-        if ((s & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
-        else              bigint_add(sum_neg, sum_neg, scaled);
+        /* Seed: scaled_{s_min} = LCM/D_{s_min} via the existing
+         * prime-power helper, using the cached pfrac for the first
+         * term.  This is the only call to that helper per wigner3j;
+         * every subsequent term is reached by ratio update below. */
+        pfrac_lcm_scaled_product(scaled, lcm_exp, scratch->terms[0].exp, -1,
+                                  lcm_max_idx, ws);
+        if ((s_min & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
+        else                  bigint_add(sum_neg, sum_neg, scaled);
+
+        /* Step s -> s+1.  At s = s_max we stop without applying the
+         * ratio: a-s would be 0 there (one of the bounds enforces
+         * s_max <= a, similarly b, c) and the next scaled_s would be
+         * 0 by the well-defined limit, but we never need it. */
+        for (s = s_min; s < s_max; s++) {
+            uint64_t us  = (uint64_t)s;
+            uint64_t num = (a - us) * (b - us) * (c - us);
+            uint64_t den = (us + 1) * (d + us + 1) * (e + us + 1);
+            bigint_mul_u64(scaled, scaled, num);
+            bigint_div_u64(scaled, scaled, den);
+
+            if (((s + 1) & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
+            else                    bigint_add(sum_neg, sum_neg, scaled);
+        }
     }
 
     out->sum_sign = bigint_sub_signed(&out->sum, sum_pos, sum_neg);

@@ -153,13 +153,40 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
         if (term->max_idx > lcm_max_idx) lcm_max_idx = term->max_idx;
     }
 
-    /* Pass 2: walk cached pfracs, accumulate */
-    for (s = s_min; s <= s_max; s++) {
-        term = &scratch->terms[s - s_min];
-        pfrac_lcm_scaled_product(scaled, lcm_exp, term->exp, +1,
+    /* Pass 2: incremental walk via the 6j Racah-term ratio recurrence
+     * (see the analogous block in wigner6j.c for the derivation and
+     * the static_assert bound on MAX_FACTORIAL_ARG; the recurrence is
+     * identical here since racah_6j_sum is structurally a 6j inner
+     * sum).  Replaces the per-term O(pi(j)) prime-power expansion
+     * with a single uint64-batched mul/div per term, called O(j)
+     * times per outer-k iteration of the 9j accumulator. */
+#if MAX_FACTORIAL_ARG > 32767
+#error "MAX_FACTORIAL_ARG too large for batched 9j inner-Racah ratio update; the wigner6j.c bound applies here too"
+#endif
+    {
+        uint64_t a1 = (uint64_t)((tj1+tj2+tj3)/2);
+        uint64_t a2 = (uint64_t)((tj1+tj5+tj6)/2);
+        uint64_t a3 = (uint64_t)((tj4+tj2+tj6)/2);
+        uint64_t a4 = (uint64_t)((tj4+tj5+tj3)/2);
+        uint64_t b1 = (uint64_t)((tj1+tj2+tj4+tj5)/2);
+        uint64_t b2 = (uint64_t)((tj2+tj3+tj5+tj6)/2);
+        uint64_t b3 = (uint64_t)((tj1+tj3+tj4+tj6)/2);
+
+        pfrac_lcm_scaled_product(scaled, lcm_exp, scratch->terms[0].exp, +1,
                                   lcm_max_idx, ws);
-        if ((s & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
-        else              bigint_add(sum_neg, sum_neg, scaled);
+        if ((s_min & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
+        else                  bigint_add(sum_neg, sum_neg, scaled);
+
+        for (s = s_min; s < s_max; s++) {
+            uint64_t us  = (uint64_t)s;
+            uint64_t num = (us + 2) * (b1 - us) * (b2 - us) * (b3 - us);
+            uint64_t den = (us + 1 - a1) * (us + 1 - a2)
+                         * (us + 1 - a3) * (us + 1 - a4);
+            bigint_mul_u64(scaled, scaled, num);
+            bigint_div_u64(scaled, scaled, den);
+            if (((s + 1) & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
+            else                    bigint_add(sum_neg, sum_neg, scaled);
+        }
     }
 
     *sum_sign_out = bigint_sub_signed(sum_out, sum_pos, sum_neg);
