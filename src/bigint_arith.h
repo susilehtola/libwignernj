@@ -126,7 +126,29 @@ static inline uint64_t bigint_subb(uint64_t a, uint64_t b,
 static inline uint64_t bigint_div128(uint64_t hi, uint64_t lo,
                                       uint64_t d, uint64_t *rem)
 {
-#if BIGINT_HAVE_UINT128
+#if defined(__x86_64__) && (defined(__GNUC__) || defined(__clang__)) \
+    && !defined(BIGINT_FORCE_PORTABLE) \
+    && !defined(BIGINT_NO_DIVQ)
+    /* x86-64 has a hardware divq that does 128/64 -> 64+remainder in
+     * ~20 cycles when hi < d, which is always the case in bigint code
+     * (bigint_div_u64 carries the remainder of the previous limb as
+     * `hi`, and that remainder is < d by definition).  Letting the
+     * compiler emit __uint128_t division calls libgcc's generic
+     * __udivmodti4 (~50-100 cycles software emulation) instead --
+     * profile-confirmed as a top-3 hot spot at j=4000.  Inline asm
+     * forces the hardware instruction.  The -DBIGINT_NO_DIVQ build
+     * override disables this asm path while keeping __uint128_t
+     * available, so a dedicated CI cell can exercise the
+     * __uint128_t/d code below on x86-64 hardware -- that path is
+     * the one selected on aarch64, ppc64le, and any other target
+     * with __uint128_t but no hardware 128/64 instruction. */
+    uint64_t q, r;
+    __asm__ ("divq %4"
+             : "=a"(q), "=d"(r)
+             : "a"(lo), "d"(hi), "rm"(d));
+    *rem = r;
+    return q;
+#elif BIGINT_HAVE_UINT128
     bigint_u128_t numer = ((bigint_u128_t)hi << 64) | lo;
     *rem = (uint64_t)(numer % d);
     return (uint64_t)(numer / d);

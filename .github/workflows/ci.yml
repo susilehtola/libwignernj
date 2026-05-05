@@ -171,6 +171,45 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure --parallel
 
+  # ── __uint128_t software-emulation division path ──────────────────────────
+  # bigint_div128 has three code paths on x86-64: the hardware divq inline
+  # asm (the default), the __uint128_t / d expression that GCC compiles into
+  # libgcc's __udivmodti4 software emulation, and the pure-C99 32-bit
+  # fallback.  -DBIGINT_NO_DIVQ disables the divq asm without disabling
+  # __uint128_t, so this cell exercises the middle path on x86-64 hardware
+  # -- the same path that runs on aarch64, ppc64le, and any other target
+  # with __uint128_t but no hardware 128/64 instruction.  Together with the
+  # c99-fallback cell above, every dispatch arm of bigint_div128 is now
+  # tested on every push.
+  no-divq:
+    name: "Ubuntu / GCC / __uint128_t division (no divq asm)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y gfortran libmpfr-dev
+
+      - name: Configure (disable divq asm, keep __uint128_t)
+        env:
+          CC: gcc
+          CXX: g++
+        run: |
+          cmake -B build \
+            -DBUILD_FORTRAN=ON \
+            -DBUILD_MPFR=ON \
+            -DBUILD_CXX_TESTS=ON \
+            -DBUILD_TESTS=ON \
+            -DCMAKE_C_FLAGS="-DBIGINT_NO_DIVQ"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --parallel
+
   # ── Link-time optimisation ────────────────────────────────────────────────
   # `-DBUILD_LTO=ON` enables CMake's INTERPROCEDURAL_OPTIMIZATION on the
   # library (and on the Fortran wrapper / Python extension when those are
