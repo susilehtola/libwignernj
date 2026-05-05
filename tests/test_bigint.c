@@ -85,6 +85,53 @@ int main(void)
     bigint_div_u64(&r, &a, 2);
     TEST_NEAR(bigint_to_double(&r), pow(2.0, 63.0), 1e-14);
 
+    /* div_u64 with a 64-bit divisor (exercises the Algorithm-D path
+     * of bigint_div128 on every backend that doesn't have a hardware
+     * 128/64 instruction; the x86-64 hardware divq backend handles
+     * arbitrary 64-bit divisors directly).  Compute 7 * D / D = 7
+     * for D = 0xDEADBEEFCAFEBABE (a representative > 2^32 value). */
+    {
+        const uint64_t big_d = 0xDEADBEEFCAFEBABEULL;
+        bigint_set_u64(&a, big_d);
+        bigint_mul_u64(&a, &a, 7);
+        bigint_div_u64(&r, &a, big_d);
+        TEST_ASSERT(bigint_bit_length(&r) > 0);
+        TEST_ASSERT(bigint_to_double(&r) == 7.0);
+    }
+
+    /* div_u64 with the largest 64-bit divisor (2^64-1).  Stress-tests
+     * the trial-quotient saturation branch of Algorithm D: the high
+     * 32 bits of the normalised dividend equal d1, forcing q_hat to
+     * the cap 2^32-1, then refinement and add-back as needed. */
+    {
+        const uint64_t big_d = 0xFFFFFFFFFFFFFFFFULL;
+        bigint_set_u64(&a, big_d);
+        bigint_mul_u64(&a, &a, 13);
+        bigint_div_u64(&r, &a, big_d);
+        TEST_ASSERT(bigint_to_double(&r) == 13.0);
+    }
+
+    /* div_u64 with a 64-bit divisor whose product with a multi-word
+     * dividend yields a non-trivial 96-bit running numerator at the
+     * Algorithm-D long-division step boundary.  Computes
+     * (2^96 + 1) / 0x100000001 (= 2^32 + 1), which has a known closed
+     * form: floor((2^96 + 1) / (2^32 + 1)) = 2^64 - 2^32 + 1, with
+     * remainder 0. */
+    {
+        const uint64_t big_d = 0x100000001ULL;
+        bigint_t two_to_96, one;
+        bigint_init(&two_to_96); bigint_init(&one);
+        bigint_set_u64(&two_to_96, 1);
+        bigint_mul_prime_pow(&two_to_96, 2, 96);
+        bigint_set_u64(&one, 1);
+        bigint_add(&a, &two_to_96, &one);                /* a = 2^96 + 1 */
+        bigint_div_u64(&r, &a, big_d);
+        /* Expected: 2^64 - 2^32 + 1.  Check via a round-trip. */
+        bigint_mul_u64(&b, &r, big_d);
+        TEST_ASSERT(bigint_cmp(&a, &b) == 0);
+        bigint_free(&two_to_96); bigint_free(&one);
+    }
+
     /* bigint_copy */
     bigint_set_u64(&a, 9999999999ULL);
     bigint_copy(&r, &a);
