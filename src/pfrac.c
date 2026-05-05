@@ -280,6 +280,48 @@ void pfrac_to_sqrt_rational(const pfrac_t *f,
     }
 }
 
+void pfrac_lcm_scaled_product(bigint_t *scaled,
+                                const int *lcm,
+                                const int *term_exp,
+                                int sign,
+                                int max_idx,
+                                bigint_ws_t *ws)
+{
+    int pi;
+    uint64_t acc = 1;
+
+    bigint_set_u64(scaled, 1);
+    for (pi = 0; pi < max_idx; pi++) {
+        int diff = lcm[pi] + sign * term_exp[pi];
+        if (diff <= 0) continue;
+        uint64_t p = (uint64_t)g_primes[pi];
+
+        /* Compute p^diff in a uint64_t, falling back to the bigint
+         * prime-power path if it overflows. */
+        uint64_t pp = 1;
+        int e, fits = 1;
+        for (e = 0; e < diff; e++) {
+            if (pp > UINT64_MAX / p) { fits = 0; break; }
+            pp *= p;
+        }
+        if (!fits) {
+            if (acc > 1) { bigint_mul_u64(scaled, scaled, acc); acc = 1; }
+            bigint_mul_prime_pow_ws(scaled, p, diff, ws);
+            continue;
+        }
+
+        /* Fold pp into the running accumulator; flush if multiplying
+         * into acc would overflow. */
+        if (acc > UINT64_MAX / pp) {
+            bigint_mul_u64(scaled, scaled, acc);
+            acc = pp;
+        } else {
+            acc *= pp;
+        }
+    }
+    if (acc > 1) bigint_mul_u64(scaled, scaled, acc);
+}
+
 void pfrac_to_sqrt_rational_ws(const pfrac_t *f,
                                 bigint_t *int_num,  bigint_t *int_den,
                                 bigint_t *sqrt_num, bigint_t *sqrt_den,

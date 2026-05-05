@@ -156,11 +156,8 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
     /* Pass 2: walk cached pfracs, accumulate */
     for (s = s_min; s <= s_max; s++) {
         term = &scratch->terms[s - s_min];
-        bigint_set_u64(scaled, 1);
-        for (pi = 0; pi < lcm_max_idx; pi++) {
-            int e = lcm_exp[pi] + term->exp[pi];
-            if (e > 0) bigint_mul_prime_pow_ws(scaled, (uint64_t)g_primes[pi], e, ws);
-        }
+        pfrac_lcm_scaled_product(scaled, lcm_exp, term->exp, +1,
+                                  lcm_max_idx, ws);
         if ((s & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
         else              bigint_add(sum_neg, sum_neg, scaled);
     }

@@ -188,15 +188,11 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     /* ── Pass 2: walk cached pfracs, accumulate scaled integer sum ── */
     for (s = s_min; s <= s_max; s++) {
         term = &scratch->terms[s - s_min];
-
-        /* scaled_term = LCM / term_denom = prod p_i^(lcm_exp[i] - term.exp[i]).
-         * term.max_idx <= lcm_max_idx by construction. */
-        bigint_set_u64(scaled, 1);
-        for (pi = 0; pi < lcm_max_idx; pi++) {
-            int diff = lcm_exp[pi] - term->exp[pi];
-            if (diff > 0)
-                bigint_mul_prime_pow_ws(scaled, (uint64_t)g_primes[pi], diff, ws);
-        }
+        /* scaled = LCM / term_denom = prod p_i^(lcm_exp[i] - term.exp[i])
+         * built via the batched-uint64 helper.  term.max_idx <= lcm_max_idx
+         * by construction. */
+        pfrac_lcm_scaled_product(scaled, lcm_exp, term->exp, -1,
+                                  lcm_max_idx, ws);
 
         /* Accumulate with sign (-1)^s */
         if ((s & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
