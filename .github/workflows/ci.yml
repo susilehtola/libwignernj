@@ -2,6 +2,35 @@
 # Copyright (c) 2026 Susi Lehtola
 name: CI
 
+# Architecture coverage policy
+# ----------------------------
+# Every conditional code path (compiler-detected, build-flag-gated,
+# arch-detected) must be exercised by at least one cell that runs the
+# full test suite on each architecture where that path is selected in
+# production.  The cells in this file currently cover:
+#
+#   - x86-64 Linux GCC / Clang   (every push, free runners)
+#   - x86-64 Windows MSVC        (every push, free runner)
+#   - arm64 Linux GCC            (every push, free runner)
+#   - arm64 macOS Clang          (every push, free runner)
+#   - arm64 Windows MSVC         (every push, free runner)
+#
+# Override-on-x86-64 cells like -DBIGINT_NO_DIVQ and
+# -DBIGINT_FORCE_PORTABLE are valuable as fast smoke tests of the
+# arm64 / MSVC dispatch arms on x86-64 hardware, but they do not
+# substitute for the native-arch cells above.
+#
+# Architectures NOT continuously covered (no free public runner):
+#
+#   - ppc64le (POWER LE), s390x (IBM Z), i686 (32-bit x86)
+#
+# These are tested at release time via a manual sweep across all
+# current Fedora architectures; the result is documented in the
+# paper and in section "Implementation limits and portability" of
+# the manuscript.  A push that introduces an architecture-conditional
+# code path for any of these targets MUST add a corresponding cell
+# (qemu-emulated if necessary) before merging.
+
 on:
   push:
     branches: [main]
@@ -96,6 +125,29 @@ jobs:
             flint: ON
             shared: ON
 
+          # arm64 Linux + GCC.  Pairs with macos-latest's arm64 Clang
+          # to give native arm64 coverage of the bigint_div128
+          # __uint128_t + Algorithm D path on every push (no hardware
+          # 128/64 instruction on aarch64), in addition to ensuring
+          # the bigint multi-word arithmetic and the per-thread
+          # caches remain endian-clean and ABI-correct on this
+          # increasingly common server / cloud target.
+          # libquadmath / __float128 is a GCC x86-specific extension and
+          # has no aarch64 (or ppc64le, s390x) counterpart, so quadmath
+          # must be OFF here.  FLINT is also OFF since libflint-dev is
+          # available on arm64 Ubuntu but pulls in a long dependency
+          # chain; the FLINT-backend identity check runs on x86-64 and
+          # is sufficient.
+          - name: "Ubuntu / GCC / arm64"
+            os: ubuntu-24.04-arm
+            cc: gcc
+            cxx: g++
+            fortran: ON
+            mpfr: ON
+            quadmath: OFF
+            flint: OFF
+            shared: ON
+
     steps:
       - uses: actions/checkout@v4
 
@@ -103,7 +155,17 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y gfortran libmpfr-dev libquadmath0
+          if [ "${{ matrix.fortran }}" = "ON" ]; then
+            sudo apt-get install -y gfortran
+          fi
+          if [ "${{ matrix.mpfr }}" = "ON" ]; then
+            sudo apt-get install -y libmpfr-dev
+          fi
+          # libquadmath is a GCC x86-specific extension; the package
+          # exists only on x86-64 Ubuntu, hence the quadmath gate.
+          if [ "${{ matrix.quadmath }}" = "ON" ]; then
+            sudo apt-get install -y libquadmath0
+          fi
           if [ "${{ matrix.flint }}" = "ON" ]; then
             sudo apt-get install -y libflint-dev
           fi
@@ -372,15 +434,28 @@ jobs:
 
   # ── Windows / MSVC ────────────────────────────────────────────────────────
   # Verifies that the library builds and the test suite passes under
-  # Microsoft Visual C++ on Windows.  MSVC has no __uint128_t, so the
-  # pure-C99 fallback path of bigint_arith.h is exercised here without an
-  # explicit -DBIGINT_FORCE_PORTABLE.  Fortran and MPFR are disabled on
-  # this runner -- gfortran is not part of a default MSVC toolchain and
-  # libmpfr is not in the runner image.  C++ tests are kept on, since the
-  # header-only wrapper exercises both the C library and a C++11 compiler.
+  # Microsoft Visual C++ on both Windows architectures.  MSVC has no
+  # __uint128_t, so the pure-C99 fallback path of bigint_arith.h is
+  # exercised here without an explicit -DBIGINT_FORCE_PORTABLE.
+  # Running this on both x86-64 (windows-latest) and arm64
+  # (windows-11-arm) gives every push native MSVC coverage on each
+  # Windows arch, since MSVC's arm64 codegen can differ from x86-64
+  # in carry / overflow handling and stack-frame layout.  Fortran
+  # and MPFR are disabled on these runners -- gfortran is not part of
+  # a default MSVC toolchain and libmpfr is not in the runner image.
+  # C++ tests are kept on, since the header-only wrapper exercises
+  # both the C library and a C++11 compiler.
   build-windows:
-    name: "Windows / MSVC"
-    runs-on: windows-latest
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "Windows / MSVC (x86-64)"
+            os: windows-latest
+          - name: "Windows / MSVC (arm64)"
+            os: windows-11-arm
     steps:
       - uses: actions/checkout@v4
 
