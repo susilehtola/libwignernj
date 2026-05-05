@@ -3,6 +3,18 @@
 cmake_minimum_required(VERSION 3.16)
 project(wignernj VERSION 0.2.0 LANGUAGES C)
 
+# Default to an optimised build when the consumer hasn't picked a
+# CMAKE_BUILD_TYPE (e.g. plain `cmake -B build`).  libwignernj is
+# positioned as a high-performance math library, so the unconfigured
+# default should be Release rather than the empty (no-optimisation)
+# default of single-config generators like Make and Ninja.  Multi-
+# config generators (Visual Studio, Xcode) ignore this; they pick the
+# configuration at build time via --config.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING
+        "Build type (Release|RelWithDebInfo|Debug|MinSizeRel)" FORCE)
+endif()
+
 option(BUILD_SHARED_LIBS  "Build shared library"         ON)
 option(BUILD_FORTRAN      "Build Fortran interface"      ON)
 option(BUILD_PYTHON       "Build Python extension"       OFF)
@@ -124,9 +136,16 @@ target_include_directories(wignernj
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 if(NOT MSVC)
-    target_compile_options(wignernj PRIVATE -Wall -Wextra -O2)
+    # Optimisation level is taken from CMAKE_BUILD_TYPE (Release →
+    # -O3 -DNDEBUG, RelWithDebInfo → -O2 -g -DNDEBUG, Debug → -O0 -g).
+    # The previous explicit -O2 here actively defeated Release builds
+    # because target_compile_options appends after build-type flags
+    # and the trailing -O wins.  We keep just the warning flags now.
+    target_compile_options(wignernj PRIVATE -Wall -Wextra)
 else()
-    target_compile_options(wignernj PRIVATE /W3 /O2)
+    # Same idea on MSVC: /Ox-class flags come from CMAKE_BUILD_TYPE
+    # (Release adds /O2 /Ob2 /DNDEBUG); we add only the warning level.
+    target_compile_options(wignernj PRIVATE /W3)
 endif()
 if(NOT WIN32)
     # libm is needed for sqrt/ldexp/etc. on every Unix-like target;
