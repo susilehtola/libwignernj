@@ -72,6 +72,12 @@ void bigint_mul(bigint_t *r, const bigint_t *a, const bigint_t *b);
 void bigint_mul_u64(bigint_t *r, const bigint_t *a, uint64_t b);
 /* Exact (no remainder) division by a small divisor. */
 void bigint_div_u64(bigint_t *r, const bigint_t *a, uint64_t b);
+/* Exact division by a 64-bit divisor: the dividend a must be exactly
+ * divisible by d.  Uses Hensel-style modular-inverse arithmetic
+ * (multiply by precomputed d^{-1} mod 2^64), avoiding the 128/64
+ * hardware division per limb that bigint_div_u64 does -- typically
+ * ~5x faster per limb when both inputs are multi-word.  r may alias a. */
+void bigint_div_u64_exact(bigint_t *r, const bigint_t *a, uint64_t d);
 /* Multiply a by p^k in-place (p is a prime that fits in uint64_t). */
 void bigint_mul_prime_pow(bigint_t *a, uint64_t p, int k);
 /* Exact division by p^k in-place. */

@@ -183,7 +183,7 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
             uint64_t den = (us + 1 - a1) * (us + 1 - a2)
                          * (us + 1 - a3) * (us + 1 - a4);
             bigint_mul_u64(scaled, scaled, num);
-            bigint_div_u64(scaled, scaled, den);
+            bigint_div_u64_exact(scaled, scaled, den);
             if (((s + 1) & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
             else                    bigint_add(sum_neg, sum_neg, scaled);
         }

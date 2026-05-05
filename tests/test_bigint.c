@@ -85,6 +85,46 @@ int main(void)
     bigint_div_u64(&r, &a, 2);
     TEST_NEAR(bigint_to_double(&r), pow(2.0, 63.0), 1e-14);
 
+    /* bigint_div_u64_exact: Hensel-style exact division.  Compare
+     * against the generic bigint_div_u64 across a range of dividend
+     * sizes and 64-bit divisor shapes.  Both routines must produce
+     * identical output for any dividend that is a multiple of d. */
+    {
+        const uint64_t divisors[] = {
+            3ULL,                             /* small odd */
+            6ULL,                             /* small even (2*3) */
+            123456789ULL,                     /* 32-bit ish */
+            0x100000007ULL,                   /* > 2^32, prime-like */
+            0xDEADBEEFCAFEBABEULL,            /* > 2^32, mixed */
+            0xFFFFFFFFFFFFFFFFULL,            /* 2^64-1 (odd) */
+            0x8000000000000000ULL,            /* 2^63 (high power of 2) */
+        };
+        size_t n_div = sizeof(divisors) / sizeof(divisors[0]);
+        size_t k;
+        bigint_t base, prod, q1, q2;
+        bigint_init(&base); bigint_init(&prod);
+        bigint_init(&q1);   bigint_init(&q2);
+        /* Build a deliberately multi-word base, then for each divisor
+         * compute (base * d) and verify (base * d) / d == base via
+         * both code paths. */
+        bigint_set_u64(&base, 0xCAFEBABE12345678ULL);
+        bigint_mul_prime_pow(&base, 2, 50);
+        bigint_mul_u64(&base, &base, 999983);   /* mid-32-bit prime */
+        for (k = 0; k < n_div; k++) {
+            bigint_mul_u64(&prod, &base, divisors[k]);
+            bigint_div_u64      (&q1, &prod, divisors[k]);
+            bigint_div_u64_exact(&q2, &prod, divisors[k]);
+            TEST_ASSERT(bigint_cmp(&q1, &base) == 0);
+            TEST_ASSERT(bigint_cmp(&q2, &base) == 0);
+        }
+        /* In-place aliasing: r == a must work. */
+        bigint_mul_u64(&prod, &base, 0x100000007ULL);
+        bigint_div_u64_exact(&prod, &prod, 0x100000007ULL);
+        TEST_ASSERT(bigint_cmp(&prod, &base) == 0);
+        bigint_free(&base); bigint_free(&prod);
+        bigint_free(&q1);   bigint_free(&q2);
+    }
+
     /* div_u64 with a 64-bit divisor (exercises the Algorithm-D path
      * of bigint_div128 on every backend that doesn't have a hardware
      * 128/64 instruction; the x86-64 hardware divq backend handles
