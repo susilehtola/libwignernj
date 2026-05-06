@@ -25,9 +25,11 @@
  * Default-build correctness limit
  * -------------------------------
  * pfrac_mul_factorial(n) is correct only when every prime p <= n is in the
- * table, i.e. p <= PRIME_SIEVE_LIMIT.  The first prime above PRIME_SIEVE_LIMIT
- * is 20021, so the function is correct for n <= 20020.  MAX_FACTORIAL_ARG is
- * set conservatively to 20000 to give a round-number safety margin.
+ * table, i.e. p <= PRIME_SIEVE_LIMIT.  MAX_FACTORIAL_ARG is therefore set to
+ * (smallest prime > PRIME_SIEVE_LIMIT) - 1.  Both constants are computed from
+ * the sieve by tools/gen_prime_table.py and emitted into
+ * prime_table_macros.h (#included below); regenerate with
+ * `python3 tools/gen_prime_table.py` after changing LIMIT in that script.
  *
  * Callers must never pass a factorial argument exceeding MAX_FACTORIAL_ARG.
  * pfrac_mul_factorial and pfrac_div_factorial abort with a diagnostic message
@@ -37,14 +39,14 @@
  * Angular momentum limits implied by MAX_FACTORIAL_ARG
  * -----------------------------------------------------
  * The largest factorial argument in each symbol comes from the triangle-
- * coefficient denominator (j1+j2+j3+1)!, so:
+ * coefficient denominator (j1+j2+j3+1)!, so for the default LIMIT = 20011:
  *
  *   3j, 6j, CG, Racah W, Gaunt:
- *     j1+j2+j3 <= 19999  (equal-j: j <= 6666)
+ *     j1+j2+j3 <= 20019  (equal-j: j <= 6673)
  *
  *   9j (via wigner9j_exact):
  *     The k-dependent Delta denominators reach (4j+1)! for equal j, so
- *     j <= 4999 when all nine angular momenta are equal.
+ *     j <= 5004 when all nine angular momenta are equal.
  *
  * Performance note
  * ----------------
@@ -62,9 +64,11 @@
  *   9j       :  j ~  100  in milliseconds;  j ~ 1000  in minutes
  */
 
-#define PRIME_SIEVE_LIMIT   20011   /* sieve all primes up to this value    */
-#define MAX_PRIME_COUNT     2263    /* pi(20011) = 2263                     */
-#define MAX_FACTORIAL_ARG   20000   /* default-build limit: see note above  */
+/* PRIME_SIEVE_LIMIT, MAX_PRIME_COUNT, MAX_FACTORIAL_ARG.  All three are
+ * computed from the single LIMIT knob in tools/gen_prime_table.py and
+ * emitted into prime_table_macros.h.  Editing the macros here directly
+ * would be overwritten on the next regeneration. */
+#include "prime_table_macros.h"
 
 /*
  * Cross-DLL export/import annotation for the data tables below.
