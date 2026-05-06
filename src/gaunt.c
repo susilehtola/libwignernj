@@ -128,17 +128,51 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
         if (term->max_idx > lcm_max) lcm_max = term->max_idx;
     }
 
-    /* Pass 2: walk cached pfracs, accumulate scaled terms */
-    for (s = s_min; s <= s_max; s++) {
-        term = &scratch->terms[s - s_min];
-        bigint_set_u64(scaled, 1);
-        for (pi = 0; pi < lcm_max; pi++) {
-            int diff = lcm_exp[pi] - term->exp[pi];
-            if (diff > 0)
-                bigint_mul_prime_pow_ws(scaled, (uint64_t)g_primes[pi], diff, ws);
+    /* Pass 2: incremental walk of LCM-scaled term values, mirroring the
+     * 3j Pass 2 in wigner3j.c.  The Gaunt 3j Racah denominator
+     *   D_s = s! · (a-s)! · (b-s)! · (c-s)! · (d+s)! · (e+s)!
+     * with
+     *   a = (tj1+tj2-tj3)/2,  b = (tj1-tm1)/2,  c = (tj2+tm2)/2,
+     *   d = (tj3-tj2+tm1)/2,  e = (tj3-tj1-tm2)/2,
+     * is structurally identical to the 3j case, so the same triple-
+     * product ratio recurrence
+     *   scaled_{s+1} · (s+1)(d+s+1)(e+s+1) = scaled_s · (a-s)(b-s)(c-s)
+     * applies, with the same MAX_FACTORIAL_ARG ≤ 2642245 safe range
+     * for the batched uint64 mul/div primitives.  See wigner3j.c for
+     * the full derivation. */
+#if MAX_FACTORIAL_ARG > 2642245
+#error "MAX_FACTORIAL_ARG too large for batched Gaunt-Pass-2 ratio update (triple product would overflow uint64); regenerate the prime table with a smaller --limit, or replace the batched mul/div in this loop with six single-factor calls"
+#endif
+    {
+        uint64_t a = (uint64_t)((tj1 + tj2 - tj3) / 2);
+        uint64_t b = (uint64_t)((tj1 - tm1) / 2);
+        uint64_t c = (uint64_t)((tj2 + tm2) / 2);
+        uint64_t d = (uint64_t)((tj3 - tj2 + tm1) / 2);
+        uint64_t e = (uint64_t)((tj3 - tj1 - tm2) / 2);
+
+        /* Seed: scaled_{s_min} = LCM/D_{s_min} via the prime-power
+         * helper, using the cached pfrac for the first term.  This is
+         * the only call to that helper per gaunt_3j_racah_sum; every
+         * subsequent term is reached by ratio update below. */
+        pfrac_lcm_scaled_product(scaled, lcm_exp, scratch->terms[0].exp, -1,
+                                  lcm_max, ws);
+        if ((s_min & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
+        else                  bigint_add(sum_neg, sum_neg, scaled);
+
+        /* Step s -> s+1.  At s = s_max we stop without applying the
+         * ratio: a-s would be 0 there (one of the upper-bound factors
+         * is zero by the s_max definition), and the next scaled is 0
+         * by the well-defined limit, but we never need it. */
+        for (s = s_min; s < s_max; s++) {
+            uint64_t us  = (uint64_t)s;
+            uint64_t num = (a - us) * (b - us) * (c - us);
+            uint64_t den = (us + 1) * (d + us + 1) * (e + us + 1);
+            bigint_mul_u64(scaled, scaled, num);
+            bigint_div_u64(scaled, scaled, den);
+
+            if (((s + 1) & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
+            else                    bigint_add(sum_neg, sum_neg, scaled);
         }
-        if ((s & 1) == 0) bigint_add(sum_pos, sum_pos, scaled);
-        else              bigint_add(sum_neg, sum_neg, scaled);
     }
 
     *sum_sign_out = bigint_sub_signed(sum_out, sum_pos, sum_neg);
