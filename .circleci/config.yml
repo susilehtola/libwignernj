@@ -1,0 +1,158 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 Susi Lehtola
+#
+# CircleCI configuration for libwignernj.
+#
+# CircleCI runs three architecture / libc cells whose equivalents are
+# either metered against GitHub Actions' small free quota for public
+# repos, or have no hosted GitHub Actions equivalent at all:
+#
+#   - aarch64 Linux GCC  (machine arm.medium executor; metered on GHA)
+#   - musl libc x86-64   (docker alpine; not in GHA matrix)
+#   - i686 (32-bit x86)  (docker i386/debian; not in GHA matrix)
+#
+# All three use cheap CircleCI resource classes (docker: ~10
+# credits/min, arm.medium: ~5 credits/min) so the per-push cost is
+# small even on the OSS free credit allocation.
+#
+# If the arm.medium resource class is not available on your CircleCI
+# plan tier, downgrade to arm.large / arm.xlarge.  The two docker
+# jobs use the default medium class which is universally available.
+
+version: 2.1
+
+executors:
+  arm64-linux:
+    machine:
+      image: ubuntu-2404:current
+    resource_class: arm.medium
+
+jobs:
+  # ── aarch64 Linux GCC ───────────────────────────────────────────────────
+  build-arm64-linux:
+    executor: arm64-linux
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt-get update -q
+            sudo apt-get install -y --no-install-recommends \
+              cmake make gfortran libmpfr-dev g++
+      - run:
+          name: Configure
+          # libquadmath / __float128 is a GCC x86-specific extension
+          # and has no aarch64 counterpart, hence quadmath OFF.
+          # FLINT is also OFF since the FLINT-backend identity check
+          # runs on x86-64 and is sufficient.
+          command: |
+            cmake -B build \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DBUILD_SHARED_LIBS=ON \
+              -DBUILD_FORTRAN=ON \
+              -DBUILD_MPFR=ON \
+              -DBUILD_QUADMATH=OFF \
+              -DBUILD_FLINT=OFF \
+              -DBUILD_CXX_TESTS=ON \
+              -DBUILD_TESTS=ON
+      - run:
+          name: Build
+          command: cmake --build build --parallel --verbose
+      - run:
+          name: Test
+          command: ctest --test-dir build --output-on-failure --parallel
+
+  # ── musl libc (Alpine x86-64) ───────────────────────────────────────────
+  # Exercises libwignernj on a non-glibc Linux toolchain.  Important
+  # because src/wignernj_tls.h's `__thread` / `_Thread_local` detection
+  # picks one of several TLS keywords by libc + compiler, and musl's
+  # implementation differs in subtle ways from glibc that an
+  # Ubuntu-only matrix would not catch.
+  build-musl-x86_64:
+    docker:
+      - image: docker.io/alpine:3.20
+    steps:
+      - run:
+          name: Install git (required for the CircleCI checkout step)
+          command: apk add --no-cache git openssh-client
+      - checkout
+      - run:
+          name: Install build tools
+          # Alpine's mpfr-dev depends only on the mpfr runtime, not on
+          # gmp-dev, but mpfr.h #includes <gmp.h>; pull gmp-dev in
+          # explicitly so wigner_mpfr.h compiles.
+          command: |
+            apk add --no-cache \
+              cmake make gcc g++ gfortran \
+              mpfr-dev gmp-dev musl-dev linux-headers
+      - run:
+          name: Configure
+          # Alpine ships no libquadmath (it's a glibc / GCC x86-extension
+          # only); FLINT is also OFF since the FLINT-backend identity
+          # check runs on glibc x86-64 in GHA and is sufficient.
+          command: |
+            cmake -B build \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DBUILD_SHARED_LIBS=ON \
+              -DBUILD_FORTRAN=ON \
+              -DBUILD_MPFR=ON \
+              -DBUILD_QUADMATH=OFF \
+              -DBUILD_FLINT=OFF \
+              -DBUILD_CXX_TESTS=ON \
+              -DBUILD_TESTS=ON
+      - run:
+          name: Build
+          command: cmake --build build --parallel --verbose
+      - run:
+          name: Test
+          command: ctest --test-dir build --output-on-failure --parallel
+
+  # ── i686 (32-bit x86) Debian ────────────────────────────────────────────
+  # Exercises libwignernj on a 32-bit toolchain where __uint128_t is
+  # not available, so bigint_arith.h selects its pure-C99 fallback path
+  # natively rather than under -DBIGINT_FORCE_PORTABLE.  Also tests
+  # 32-bit pointer / 32-bit size_t edges, which the x86-64 cells don't.
+  build-i686:
+    docker:
+      - image: docker.io/i386/debian:stable
+    steps:
+      - run:
+          name: Install git (required for the CircleCI checkout step)
+          command: |
+            apt-get update -q
+            apt-get install -y --no-install-recommends \
+              git openssh-client ca-certificates
+      - checkout
+      - run:
+          name: Install build tools
+          command: |
+            apt-get install -y --no-install-recommends \
+              cmake make gcc g++ gfortran libmpfr-dev pkg-config
+      - run:
+          name: Configure
+          # libquadmath / __float128 is a GCC x86-64-specific extension;
+          # the i386 toolchain does not provide it.  FLINT off for the
+          # same reason as the musl cell.
+          command: |
+            cmake -B build \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DBUILD_SHARED_LIBS=ON \
+              -DBUILD_FORTRAN=ON \
+              -DBUILD_MPFR=ON \
+              -DBUILD_QUADMATH=OFF \
+              -DBUILD_FLINT=OFF \
+              -DBUILD_CXX_TESTS=ON \
+              -DBUILD_TESTS=ON
+      - run:
+          name: Build
+          command: cmake --build build --parallel --verbose
+      - run:
+          name: Test
+          command: ctest --test-dir build --output-on-failure --parallel
+
+workflows:
+  build-and-test:
+    jobs:
+      - build-arm64-linux
+      - build-musl-x86_64
+      - build-i686
