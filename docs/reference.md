@@ -645,14 +645,17 @@ violated.  No computation is performed for zero results.
 ### Angular momentum range (correctness)
 
 All intermediate factorials are factored by trial division against a prime
-table sieved up to `PRIME_SIEVE_LIMIT = 20011`.  A factorial argument `n`
-that has a prime factor larger than 20011 would be silently mis-factored.
-The first such `n` is 20021 (which is prime).  `MAX_FACTORIAL_ARG = 20000`
-is set conservatively below this boundary.
+table sieved up to `PRIME_SIEVE_LIMIT` (default 20011).  A factorial argument
+`n` that has a prime factor larger than `PRIME_SIEVE_LIMIT` would be silently
+mis-factored, so `MAX_FACTORIAL_ARG` is set to `(smallest prime above
+PRIME_SIEVE_LIMIT) - 1`; for the default sieve limit, the next prime is 20021,
+giving `MAX_FACTORIAL_ARG = 20020`.
 
-The prime list (`g_primes`) and its inverse-lookup index (`g_prime_index`)
+The prime list (`g_primes`) and the prime-counting lookup table (`g_pi_table`)
 are hard-coded into the compiled library (~9 kB and ~40 kB respectively,
-totalling ~49 kB) rather than built at run time.  This is a deliberate
+totalling ~49 kB at the default sieve limit) rather than built at run time.
+`g_pi_table` doubles as the inverse-lookup index `prime_index_of()`, so the
+library does not ship a separate `g_prime_index` table.  This is a deliberate
 design choice: it means the library has **no caller-side initialization
 step**, is safely usable from concurrent threads with no initialization
 race, and lets the tables live in read-only program data.  The default
@@ -666,19 +669,21 @@ angular momenta are:
 
 | Symbol | Binding factorial | Limit on sum | Equal-j limit |
 |---|---|---|---|
-| 3j, 6j, CG, Racah W, complex Gaunt, real Gaunt | `(j1+j2+j3+1)!` | j1+j2+j3 ≤ 19999 | **j ≤ 6666** |
-| 9j | `(4j+1)!` (k-dependent Δ at k = k_max) | 4j ≤ 19999 | **j ≤ 4999** |
+| 3j, 6j, CG, Racah W, complex Gaunt, real Gaunt | `(j1+j2+j3+1)!` | j1+j2+j3 ≤ 20019 | **j ≤ 6673** |
+| 9j, Fano X | `(4j+1)!` (k-dependent Δ at k = k_max) | 4j ≤ 20019 | **j ≤ 5004** |
 
 These limits apply to the sum of the three largest angular momenta appearing
 in any single triangle.  Symbols with very unequal arguments can involve
-larger individual `j` values as long as no triangle sum exceeds 19999.
+larger individual `j` values as long as no triangle sum exceeds 20019.
 
 Exceeding these limits causes the library to print a diagnostic to stderr
 and call `abort()`.  The check is unconditional (not gated on `NDEBUG`).
 The ceiling is **not architectural**: it is determined by the size of the
-compile-time prime table (`PRIME_SIEVE_LIMIT` in `src/primes.h`) and can
-be raised by regenerating the table with `tools/gen_prime_table.py` for a
-larger sieve limit and rebuilding the library.
+compile-time prime table (`PRIME_SIEVE_LIMIT` in the auto-generated
+`src/prime_table_macros.h`) and can be raised by regenerating the table
+with `tools/gen_prime_table.py` for a larger sieve limit and rebuilding
+the library; `MAX_FACTORIAL_ARG` in the same header is derived from the
+sieve limit so the two stay in sync automatically.
 
 ### Performance scaling
 
@@ -705,8 +710,8 @@ k step.  For the highest 9j angular momenta supported by the prime table
 
 ### Argument type
 
-All C API arguments are plain `int`.  Angular momenta up to j = 6666
-correspond to `tj = 13332`, well within `INT_MAX`.  No overflow can occur in
+All C API arguments are plain `int`.  Angular momenta up to j = 6673
+correspond to `tj = 13346`, well within `INT_MAX`.  No overflow can occur in
 intermediate index calculations for inputs within the correctness range.
 
 ### Thread safety

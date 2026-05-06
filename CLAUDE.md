@@ -42,7 +42,7 @@ cmake -B build -DBUILD_MPFR=ON && cmake --build build
 # libquadmath / __float128 binary128 interface
 cmake -B build -DBUILD_QUADMATH=ON && cmake --build build
 
-# FLINT bigint backend (closes large-j speed gap; replaces schoolbook bigint)
+# FLINT bigint backend (closes large-j speed gap; replaces in-tree schoolbook+Karatsuba)
 cmake -B build -DBUILD_FLINT=ON && cmake --build build
 ```
 
@@ -65,8 +65,8 @@ Clebsch-Gordan and Racah W are thin wrappers over the Wigner symbols. Gaunt has 
 
 | File | Role |
 |------|------|
-| `src/primes.c` | Sieve of Eratosthenes; `legendre_valuation(n, pi)` = v_p(n!) via Legendre's formula |
-| `src/bigint.c` | Default schoolbook backend: unsigned multiword integer (little-endian `uint64_t` words) + sign; `bigint_to_{float,double,long_double}` with correct IEEE 754 round-to-nearest, plus `bigint_to_float128` / `bigint_frexp_q` (gated on `WIGNER_HAVE_QUADMATH`) using top-3-words Horner-style binary128 evaluation |
+| `src/primes.c` | `legendre_valuation(n, pi)` = v_p(n!) via Legendre's formula. The prime list is hard-coded into the compiled library by `#include "prime_table.inc"`, generated at build time by `tools/gen_prime_table.py` (the runtime sieve was removed in 0.2.0) |
+| `src/bigint.c` | Default in-tree backend: unsigned multiword integer (little-endian `uint64_t` words) + sign; schoolbook multiplication below `KARATSUBA_THRESHOLD` (default 32 limbs), Karatsuba above; `bigint_to_{float,double,long_double}` with correct IEEE 754 round-to-nearest, plus `bigint_to_float128` / `bigint_frexp_q` (gated on `WIGNER_HAVE_QUADMATH`) using top-3-words Horner-style binary128 evaluation |
 | `src/bigint_flint.c` | Optional FLINT backend (gated on `BUILD_FLINT`): the same bigint API delegated to FLINT's `fmpz_t`. Floating-point conversions go through MPFR for correct rounding; binary128 uses `mpfr_get_float128`. Replaces (does not augment) `bigint.c` when enabled |
 | `src/bigint_arith.h` | 64-bit arithmetic primitives (mul/add/sub/div with carry); native `__uint128_t` path on GCC/Clang/ICC, pure-C99 fallback (32×32 partial products, 64/32 long division) on other compilers including MSVC. `-DBIGINT_FORCE_PORTABLE` forces the fallback. |
 | `src/pfrac.c` | Prime-factored rational: signed `int exp[]` indexed by prime table index; `pfrac_mul_factorial` / `pfrac_div_factorial`; `pfrac_to_sqrt_rational` |
@@ -82,7 +82,7 @@ Clebsch-Gordan and Racah W are thin wrappers over the Wigner symbols. Gaunt has 
 | `include/wigner_quadmath.h` | libquadmath API — requires `BUILD_QUADMATH=ON`; declares `_q` (`__float128`) variant of every public symbol |
 | `include/wigner_mpfr.h` | MPFR API — requires `BUILD_MPFR=ON`; set precision on `rop` before calling |
 | `include/wigner.hpp` | C++11 header-only wrapper (links `wignernj`): `wigner::symbol3j<T>()`, real-valued overloads, `std::invalid_argument` for non-half-integer inputs |
-| `src/fortran/wigner_f90.F90` | Fortran module `wigner`: raw `bind(c)` interfaces + `w3j/w6j/w9j/wcg/wracah/wgaunt` real-valued wrappers; `_q` interfaces and `w3jq`/etc.\ wrappers gated on `WIGNERNJ_HAVE_QUADMATH` |
+| `src/fortran/wigner_f90.F90` | Fortran module `wigner`: raw `bind(c)` interfaces + `w3j/w6j/w9j/wcg/wracahw/wfanox/wgaunt/wgaunt_real` real-valued wrappers; `_q` interfaces and `w3jq`/etc.\ wrappers gated on `WIGNERNJ_HAVE_QUADMATH` |
 | `src/python/wignermodule.c` | CPython extension `_wigner`: parses int/float/Fraction, `precision=` kwarg |
 | `wigner/__init__.py` | Re-exports from `_wigner` |
 

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wigner"
-version = "0.2.0"
+version = "0.3.0"
 description = "Exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization"
 requires-python = ">=3.7"
 license = "BSD-3-Clause"

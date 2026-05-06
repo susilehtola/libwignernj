@@ -1,7 +1,7 @@
 # libwignernj
 
 Exact evaluation of Wigner 3j, 6j, and 9j symbols, Clebsch-Gordan coefficients,
-Racah W-coefficients, and Gaunt coefficients in C99.
+Racah W-coefficients, Fano X-coefficients, and Gaunt coefficients in C99.
 
 All intermediate arithmetic is exact integer arithmetic using a prime-factorization
 representation; floating-point conversion happens only at the final step.  Results
@@ -33,7 +33,7 @@ cmake -B build && cmake --build build
 ctest --test-dir build
 ```
 
-CMake options (all `ON` by default except `BUILD_PYTHON`):
+CMake options:
 
 | Option | Default | Description |
 |---|---|---|
@@ -41,10 +41,13 @@ CMake options (all `ON` by default except `BUILD_PYTHON`):
 | `BUILD_FORTRAN` | `ON` | Fortran interface |
 | `BUILD_TESTS` | `ON` | C/Fortran test suite |
 | `BUILD_CXX_TESTS` | `ON` | C++ header tests |
-| `BUILD_PYTHON` | `OFF` | Python extension |
+| `BUILD_EXAMPLES` | `ON` | Build and run the language-binding example programs as ctest tests |
+| `BUILD_LTO` | `ON` | Link-time optimisation; auto-disabled if the toolchain does not support it (and on MSVC, where it conflicts with `WINDOWS_EXPORT_ALL_SYMBOLS`) |
+| `BUILD_PYTHON` | `OFF` | Python extension (dynamically linked against `libwignernj`) |
 | `BUILD_QUADMATH` | `OFF` | libquadmath / IEEE 754 binary128 (`__float128`) interface |
 | `BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface |
-| `BUILD_FLINT` | `OFF` | Use FLINT/GMP/MPFR for the bigint backend (instead of the in-tree schoolbook) — sub-quadratic multiplication at large *j* |
+| `BUILD_FLINT` | `OFF` | Use FLINT/GMP/MPFR for the bigint backend (instead of the in-tree schoolbook with Karatsuba) — sub-quadratic multiplication at large *j* via Toom-Cook / Schönhage--Strassen |
+| `BUILD_COVERAGE` | `OFF` | Build with `--coverage -O0` for lcov / Codecov (gcc, clang) |
 
 A separate preprocessor switch `-DBIGINT_FORCE_PORTABLE` (passed via
 `CMAKE_C_FLAGS`) forces the multiword-integer back-end onto its pure-C99
@@ -198,8 +201,8 @@ The optional `precision=` keyword selects `'float'`, `'double'` (default), or
 ## Fortran API
 
 The `wigner` module provides real-valued wrappers `w3j`, `w6j`, `w9j`, `wcg`,
-`wracahw`, `wgaunt`, and `wgaunt_real` that accept double-precision real
-arguments:
+`wracahw`, `wfanox`, `wgaunt`, and `wgaunt_real` that accept double-precision
+real arguments:
 
 ```fortran
 use wigner
@@ -207,6 +210,7 @@ real(8) :: v
 v = w3j(1.0d0, 1.0d0, 0.0d0,  0.0d0, 0.0d0, 0.0d0)
 v = w6j(1.0d0, 1.0d0, 2.0d0,  1.0d0, 1.0d0, 2.0d0)
 v = wcg(0.5d0, 0.5d0, 0.5d0, -0.5d0, 1.0d0, 0.0d0)
+v = wfanox(1.0d0, 1.0d0, 2.0d0,  1.0d0, 1.0d0, 2.0d0,  2.0d0, 2.0d0, 4.0d0)
 v = wgaunt(2.0d0, 1.0d0, 2.0d0, -1.0d0, 2.0d0, 0.0d0)
 v = wgaunt_real(2.0d0, 1.0d0, 2.0d0, -1.0d0, 0.0d0, 0.0d0)
 ```
@@ -224,17 +228,19 @@ The prime list and its inverse-lookup index are hard-coded into the compiled
 library (≈49 kB of read-only data), which is what lets the library work with
 **no caller-side initialization step**.  The default sieve limit was chosen
 on a rule of thumb that ~50 kB is a reasonable upper bound for compile-time
-constant tables; the resulting prime table covers factorials up to 20000!,
+constant tables; the resulting prime table covers factorials up to 20020!,
 which translates to:
 
-- 3j / 6j / CG / Racah W / complex Gaunt / real Gaunt: j1+j2+j3 ≤ 19999 (equal-j: **j ≤ 6666**)
-- 9j: equal-j **j ≤ 4999** (k-dependent triangle denominators reach (4j+1)!)
+- 3j / 6j / CG / Racah W / complex Gaunt / real Gaunt: j1+j2+j3 ≤ 20019 (equal-j: **j ≤ 6673**)
+- 9j / Fano X: equal-j **j ≤ 5004** (k-dependent triangle denominators reach (4j+1)!; Fano X delegates to the 9j pipeline)
 
 Exceeding these limits prints a diagnostic to stderr and aborts.  The ceiling is
 **not architectural**: it is set by the size of the compile-time prime table
-(`PRIME_SIEVE_LIMIT` in `src/primes.h`) and can be raised by regenerating the
-table with `tools/gen_prime_table.py` and rebuilding, at the cost of a
-proportionally larger compiled-in table.
+(`PRIME_SIEVE_LIMIT` in the auto-generated `src/prime_table_macros.h`) and can
+be raised by regenerating the table with `tools/gen_prime_table.py` and
+rebuilding, at the cost of a proportionally larger compiled-in table.
+`MAX_FACTORIAL_ARG` in the same header is derived from the sieve limit, so
+contributors do not need to keep the two values in sync by hand.
 
 The 9j is also O(j⁴) in computation time; evaluations with j > a few hundred
 can be slow.  See [docs/reference.md](docs/reference.md#limitations) for details.

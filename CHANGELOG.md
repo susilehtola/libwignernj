@@ -7,20 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] – 2026-05-06
+
 ### Added
 - Optional FLINT bigint backend (`-DBUILD_FLINT=ON`) that replaces
-  the in-tree schoolbook multiword integer with a thin wrapper
-  around FLINT's `fmpz_t`. The asymptotic motivation is
-  sub-quadratic multiplication (Karatsuba / Toom-Cook /
-  Schönhage--Strassen via FLINT/GMP), which closes most of the
-  large-`j` performance gap to `WIGXJPF`. Floating-point
-  conversions are routed through MPFR (correct round-to-nearest-
-  even at every IEEE 754 binary precision); the binary128
-  conversion uses `mpfr_get_float128` (MPFR ≥ 4.1.0 with
-  `--enable-float128`). Bit-identical output against the
-  schoolbook is verified in CI via a dedicated `Ubuntu / GCC /
-  FLINT backend` matrix cell. The default build is unchanged and
-  remains dependency-free.
+  the in-tree multiword integer (schoolbook with Karatsuba above a
+  measured 32-limb crossover) with a thin wrapper around FLINT's
+  `fmpz_t`. The asymptotic motivation is sub-quadratic multiplication
+  beyond the Karatsuba range (Toom-Cook / Schönhage--Strassen via
+  FLINT/GMP), which closes the remaining large-`j` performance gap to
+  `WIGXJPF`. Floating-point conversions are routed through MPFR
+  (correct round-to-nearest-even at every IEEE 754 binary precision);
+  the binary128 conversion uses `mpfr_get_float128` (MPFR ≥ 4.1.0
+  with `--enable-float128`). Bit-identical output against the
+  in-tree backend is verified in CI via a dedicated
+  `Ubuntu / GCC / FLINT backend` matrix cell. The default build is
+  unchanged and remains dependency-free.
 - Fano X-coefficient (`fano_x`, `fano_x_f`, `fano_x_l`, `fano_x_q`,
   `fano_x_mpfr`), implemented as a thin wrapper over the 9j exact
   pipeline that folds the four `sqrt(2j+1)` factors into the existing
@@ -48,12 +50,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `benchmarks/` (`bench_term_cache.c`, `bench_sweep.c`, `bench_mul.c`,
   `bench_div128.c`, `bench_div128_gm.c`, `profile_3j_4000.c`,
   `profile_6j_9j.c`) used to validate libwignernj changes against
-  prior versions of itself.  Comparative benchmarks against external
-  libraries (`bench_compare.c`, `maxerr_3j.c`, `sweep_3j_j100.c`,
-  and the corresponding Makefile) were moved out of the repo and
-  ship with the paper as supplementary material instead, since they
-  link against WIGXJPF and GSL and exist to publish a comparison
-  rather than to develop the library.
+  prior versions of itself. Comparative benchmarks against external
+  libraries (`bench_compare.c` plus its Makefile) were removed from
+  the repo and now ship with the paper as supplementary material,
+  since they link against WIGXJPF and GSL and exist to publish a
+  comparison rather than to develop the library.
 - `examples/` directory with a single-file demonstration of every
   public symbol in C, C++, Fortran, and Python; built and run as
   ctest tests when `BUILD_EXAMPLES=ON` (the default).
@@ -67,12 +68,102 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Linux Clang, macOS Clang) alongside downstream `find_package` smoke
   tests for both library configurations and for the C-only and Fortran
   consumers.
+- `wigner_warmup()` public function that pre-allocates the calling
+  thread's cached scratch up to the default-build absolute maximum
+  (`j1+j2+j3 ≤ 20019` for 3j/6j/CG/Racah W/Gaunt; equal-`j` ≤ 5004 for
+  9j and Fano X), so latency-sensitive callers can pay the lazy-init
+  cost up front. Companion `wigner_thread_local_scratch_available()`
+  returns 1 when the per-thread cache is active and 0 when each call
+  allocates fresh (the no-TLS fallback).
+- Per-thread caching of bigint scratch and of the prime-factorial
+  decomposition table, gated on a runtime probe of TLS keyword
+  availability (`__thread`, `_Thread_local`, MSVC `__declspec(thread)`)
+  so the same source compiles where TLS is missing; a no-TLS fallback
+  cell in CI verifies the slow path.
+- Karatsuba multiplication in the in-tree schoolbook bigint above a
+  measured 32-limb crossover; the schoolbook + Karatsuba combination
+  is what `BUILD_FLINT=OFF` ships and is what the in-tree benchmark
+  drivers measure against.
+- Hardware `divq` 128/64-bit division on x86-64 via inline assembly,
+  with Knuth's Algorithm D as the portable fallback for arbitrary
+  64-bit divisors on aarch64, ppc64le, MSVC, and i686. A
+  `-DBIGINT_NO_DIVQ` smoke-test cell on x86-64 exercises the
+  Algorithm-D path in addition to its native execution on every other
+  architecture.
+- Hensel exact division for the 6j and 9j Pass-2 ratio recurrence,
+  replacing per-limb 128/64 division with a multiplication by the
+  modular inverse of the divisor mod `2^64`.
+- Möller--Granlund "improved division by invariant integers" (IEEE TC
+  60(2):165–175, 2011) on backends that route through the Algorithm-D
+  fallback (no hardware `divq`); replaces the per-limb long division
+  with a precomputed reciprocal and two multiplications.
+- Inner Racah-sum optimisations: small-integer ratio recurrence in
+  3j/6j/9j and Gaunt Pass 2 (replaces per-term `O(π(j_max))` prime-
+  power expansion with one batched multiply + one batched divide per
+  term), `uint64`-batched prime-power accumulator in
+  `pfrac_lcm_scaled_product`, π(N) lookup + `p=2` shift fast path,
+  trial division of `pfrac_mul_int` up to `√k`, `restrict` qualifier
+  on pfrac vector adds (unblocks SSE2 `vpaddd` auto-vectorisation),
+  and elimination of the per-term pfrac cache in Gaunt Pass 1.
+- `BUILD_LTO=ON` is now the default. Probes the toolchain via
+  `CheckIPOSupported` and silently falls back if LTO is not available;
+  also disabled on MSVC, where `/GL` emits IL `.obj` files that the
+  `WINDOWS_EXPORT_ALL_SYMBOLS` auto-export step cannot parse.
+- `BUILD_EXAMPLES=ON` (the default) builds and runs `examples/c`,
+  `examples/cpp`, `examples/fortran`, and `examples/python` as ctest
+  tests on every push, so a binding-side regression that the rest of
+  the test suite happens not to cover gets caught.
+- `BUILD_COVERAGE=ON` builds with `--coverage -O0`, runs the full
+  ctest + pytest suite, and uploads the merged `coverage.info` to
+  Codecov.io. A new `Ubuntu / GCC / coverage` GHA cell drives the
+  build. Forked `_exit` paths in `tests/test_oom.c` flush the gcov
+  buffers via weakly-referenced `__gcov_dump` /
+  `__llvm_profile_write_file` so children that complete the workload
+  contribute coverage data.
+- `BUILD_PYTHON=ON` Python build path: `Python3_add_library` produces
+  `_wigner.so` and links it against the shared `libwignernj` rather
+  than re-compiling library sources. The Fedora packaging policy
+  (no vendored copies inside the Python package) is satisfied. The
+  `pip install -e .` self-contained path is unchanged.
+- CircleCI configuration with three architecture / libc cells absent
+  from GitHub Actions or metered against its small free quota:
+  aarch64 Linux GCC (`arm.medium` machine executor), musl libc x86-64
+  (Alpine `docker:` image), and i686 (`i386/debian:stable docker:`
+  image). The aarch64 cell is the production native run for the
+  Möller--Granlund + Algorithm-D path; the musl cell exercises a non-
+  glibc TLS implementation; the i686 cell exercises `bigint_arith.h`'s
+  pure-C99 fallback natively (32-bit toolchains have no `__uint128_t`)
+  rather than via `BIGINT_FORCE_PORTABLE` on x86-64.
+- arm64 Windows MSVC CI cell on a weekly schedule + tag pushes only,
+  to catch arm64-MSVC codegen regressions before a release without
+  burning the smallest of GHA's free arm64 budgets.
+
+### Changed
+- Default CMake build type is now `Release` when `CMAKE_BUILD_TYPE` is
+  not specified. Previously the code dropped to its `add_compile_options`
+  default (no optimisation flags); users who didn't pass
+  `-DCMAKE_BUILD_TYPE` got an unintended Debug-shaped build that hid
+  the library's performance.
+- `MAX_FACTORIAL_ARG` is no longer a hand-maintained `#define` in
+  `src/primes.h`; the regenerator (`tools/gen_prime_table.py`) now
+  computes it from the prime-table sieve `LIMIT` and emits a generated
+  `src/prime_table_macros.h` consumed by the source. Contributors who
+  need a higher `j` ceiling regenerate the prime table with a single
+  larger `LIMIT` and the symbol-arg ceiling tracks automatically.
+- New project policy section in `CLAUDE.md` codifies the SemVer
+  convention, the clean-room implementation requirement, the no-intra-
+  call-threading constraint, the `MAX_FACTORIAL_ARG` extensibility
+  requirement, and the bench-driven optimisation methodology;
+  `docs/optimization_notes.md` records the optimisations that landed
+  and the three (Toom-3, compressed `pfrac_t.exp` rows, small-bigint
+  Pass-2 specialisation) that were paired-benched and reverted as
+  net-negative.
 
 ### Fixed
 - Windows MSVC link errors: `WINDOWS_EXPORT_ALL_SYMBOLS=ON` for
   auto-generated import libraries; explicit `__declspec(dllexport)`/
   `dllimport` decoration for the prime-table data symbols
-  (`g_nprimes`, `g_primes`, `g_prime_index`); co-location of test
+  (`g_nprimes`, `g_primes`, `g_pi_table`); co-location of test
   executables and `wignernj.dll` in a single output directory so the
   Windows dynamic linker resolves the DLL at test time
   (`STATUS_DLL_NOT_FOUND`).
@@ -86,6 +177,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stop linking `libm` on Windows (where it does not exist); guard
   `target_link_libraries(... PRIVATE m)` and the corresponding
   pkg-config `Libs:` line behind `if(NOT WIN32)`.
+- macOS Clang link error in non-coverage builds: the weak external
+  references to `__gcov_dump` and `__llvm_profile_write_file` in
+  `tests/test_oom.c` are now gated on `WIGNERNJ_COVERAGE`, which
+  CMake's `BUILD_COVERAGE=ON` defines. ELF leaves an unresolved weak
+  reference null at link time, but Mach-O demands the symbol be
+  defined, so non-coverage builds on macOS would fail the link step.
 
 ## [0.2.0] – 2026-05-02
 
@@ -165,6 +262,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CPython extension module exposing the same routines.
 - BSD 3-Clause licence.
 
-[Unreleased]: https://github.com/susilehtola/libwignernj/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/susilehtola/libwignernj/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/susilehtola/libwignernj/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/susilehtola/libwignernj/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/susilehtola/libwignernj/releases/tag/v0.1.0
