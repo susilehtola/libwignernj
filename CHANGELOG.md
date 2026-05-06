@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- gfortran 16's new `-Wc-binding-type` diagnostic, which fired once per
+  `_q` `bind(c)` interface (`wigner3j_q`, `wigner6j_q`, `wigner9j_q`,
+  `clebsch_gordan_q`, `racah_w_q`, `fano_x_q`, `gaunt_q`, `gaunt_real_q`)
+  because `real128` from `iso_fortran_env` is not a formally
+  C-interoperable kind. The Fortran module now imports `c_float128` from
+  `iso_c_binding` (a gfortran/Intel ifx extension that maps directly to
+  C's `__float128`) and uses it for every quadmath `bind(c)` declaration.
+  No public-API change — `c_float128` and `real128` are the same physical
+  binary128 kind on every supported toolchain, so callers that pass or
+  receive `real(real128)` continue to work.
+
 ## [0.3.0] – 2026-05-06
 
 ### Added
