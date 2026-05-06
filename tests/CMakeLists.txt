@@ -57,7 +57,7 @@ endif()
 
 # ── Warmup / zero-allocation verification ─────────────────────────────────────
 # Wraps glibc malloc/calloc/realloc via dlsym(RTLD_NEXT, ...) and asserts
-# that wigner_warmup() makes every subsequent symbol evaluation
+# that wignernj_warmup() makes every subsequent symbol evaluation
 # allocation-free.  Built only on Linux (glibc + dlsym semantics required).
 #
 # Skipped under:
@@ -128,34 +128,34 @@ endif()
 # ── Fortran interface tests ───────────────────────────────────────────────────
 
 if(BUILD_FORTRAN AND TARGET wignernj_f03)
-    add_executable(test_wigner_fortran
-        fortran/test_wigner_fortran.f90
+    add_executable(test_wignernj_fortran
+        fortran/test_wignernj_fortran.f90
     )
-    target_link_libraries(test_wigner_fortran PRIVATE wignernj_f03 wignernj ${LIBM_LINK})
-    target_include_directories(test_wigner_fortran PRIVATE
+    target_link_libraries(test_wignernj_fortran PRIVATE wignernj_f03 wignernj ${LIBM_LINK})
+    target_include_directories(test_wignernj_fortran PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}/../fortran_modules
     )
-    set_target_properties(test_wigner_fortran PROPERTIES
+    set_target_properties(test_wignernj_fortran PROPERTIES
         Fortran_MODULE_DIRECTORY
             ${CMAKE_CURRENT_BINARY_DIR}/../fortran_modules
     )
-    add_test(NAME test_wigner_fortran COMMAND test_wigner_fortran)
+    add_test(NAME test_wignernj_fortran COMMAND test_wignernj_fortran)
 
     if(BUILD_QUADMATH)
-        add_executable(test_wigner_quadmath
-            fortran/test_wigner_quadmath.F90
+        add_executable(test_wignernj_quadmath
+            fortran/test_wignernj_quadmath.F90
         )
-        target_link_libraries(test_wigner_quadmath
+        target_link_libraries(test_wignernj_quadmath
             PRIVATE wignernj_f03 wignernj quadmath ${LIBM_LINK})
-        target_compile_definitions(test_wigner_quadmath
+        target_compile_definitions(test_wignernj_quadmath
             PRIVATE WIGNERNJ_HAVE_QUADMATH)
-        target_include_directories(test_wigner_quadmath PRIVATE
+        target_include_directories(test_wignernj_quadmath PRIVATE
             ${CMAKE_CURRENT_BINARY_DIR}/../fortran_modules
         )
-        set_target_properties(test_wigner_quadmath PROPERTIES
+        set_target_properties(test_wignernj_quadmath PROPERTIES
             Fortran_MODULE_DIRECTORY
                 ${CMAKE_CURRENT_BINARY_DIR}/../fortran_modules
         )
-        add_test(NAME test_wigner_quadmath COMMAND test_wigner_quadmath)
+        add_test(NAME test_wignernj_quadmath COMMAND test_wignernj_quadmath)
     endif()
 endif()

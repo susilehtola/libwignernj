@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2026 Susi Lehtola */
 #include "run_tests.h"
-#include "../include/wigner_mpfr.h"
+#include "../include/wignernj_mpfr.h"
 #include <mpfr.h>
 
 /*

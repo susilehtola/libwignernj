@@ -4,7 +4,7 @@
  * Verify float, double, and long double variants agree with expected values.
  */
 #include "run_tests.h"
-#include "../include/wigner.h"
+#include "../include/wignernj.h"
 #include <float.h>
 #include <math.h>
 

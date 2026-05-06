@@ -8,7 +8,7 @@
 
 /*
  * Arbitrary-precision non-negative integer.  Sign is tracked externally
- * by callers (wigner_exact_t).  Two interchangeable backends are
+ * by callers (wignernj_exact_t).  Two interchangeable backends are
  * provided:
  *
  * - The default schoolbook backend (src/bigint.c) stores the value as
@@ -134,7 +134,7 @@ long double bigint_to_long_double(const bigint_t *a);
  * *out_exp such that  a ≈ m * 2^(*out_exp).
  * Returns 0.0 and *out_exp=0 for zero.  Rounds the mantissa to the
  * precision of the respective type (FLT_MANT_DIG / DBL_MANT_DIG / LDBL_MANT_DIG).
- * Used by wigner_exact_to_* to avoid intermediate overflow/underflow.
+ * Used by wignernj_exact_to_* to avoid intermediate overflow/underflow.
  */
 float       bigint_frexpf(const bigint_t *a, int *out_exp);
 double      bigint_frexp (const bigint_t *a, int *out_exp);
@@ -142,19 +142,19 @@ long double bigint_frexpl(const bigint_t *a, int *out_exp);
 
 /* IEEE 754 binary128 ("quadruple precision", __float128).  Built only when
  * the compiler provides the type -- detected at configure time and exposed
- * through WIGNER_HAVE_QUADMATH.  The conversion combines the top three
+ * through WIGNERNJ_HAVE_QUADMATH.  The conversion combines the top three
  * 64-bit words of `a` in __float128 arithmetic, which gives 192 bits of
  * raw precision for a 113-bit mantissa: the bottom ~79 bits are dropped,
  * which is enough headroom for the 2-ulp test tolerance used everywhere
  * in the verification harness. */
-#ifdef WIGNER_HAVE_QUADMATH
+#ifdef WIGNERNJ_HAVE_QUADMATH
 #include <quadmath.h>
 __float128  bigint_to_float128(const bigint_t *a);
 __float128  bigint_frexp_q    (const bigint_t *a, int *out_exp);
 #endif
 
-/* MPFR conversion (only available when compiled with WIGNER_HAVE_MPFR). */
-#ifdef WIGNER_HAVE_MPFR
+/* MPFR conversion (only available when compiled with WIGNERNJ_HAVE_MPFR). */
+#ifdef WIGNERNJ_HAVE_MPFR
 #include <mpfr.h>
 void bigint_to_mpfr(mpfr_t rop, const bigint_t *a, mpfr_rnd_t rnd);
 #endif

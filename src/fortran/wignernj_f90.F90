@@ -16,13 +16,13 @@
 ! and Varshalovich.  The Gaunt and real-Gaunt routines assume the
 ! Condon-Shortley phase for Y_l^m, with the real spherical harmonics
 ! defined by the Wikipedia/Condon-Shortley construction.  See the header
-! comment of include/wigner.h for the explicit formulas.
+! comment of include/wignernj.h for the explicit formulas.
 !
 ! Compile with preprocessing enabled (gfortran uses .F90 extension automatically,
 ! or pass -cpp).  The preprocessor guard on c_long_double handles platforms
 ! where 'long double' has no Fortran equivalent.
 
-module wigner
+module wignernj
   use iso_c_binding, only: c_int, c_float, c_double
 #if defined(__GFORTRAN__) || defined(_CRAYFTN)
   use iso_c_binding, only: c_long_double
@@ -527,4 +527,4 @@ contains
   end function wgaunt_realq
 #endif
 
-end module wigner
+end module wignernj

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2026 Susi Lehtola */
-#ifndef WIGNER_EXACT_H
-#define WIGNER_EXACT_H
+#ifndef WIGNERNJ_EXACT_H
+#define WIGNERNJ_EXACT_H
 
 #include "bigint.h"
 
@@ -30,34 +30,34 @@ typedef struct {
     bigint_t sqrt_den;   /* squarefree sqrt denominator                   */
     int      sign;       /* overall phase: +1 or -1                       */
     int      is_zero;    /* 1 if symbol is identically zero               */
-} wigner_exact_t;
+} wignernj_exact_t;
 
-void wigner_exact_init(wigner_exact_t *e);
-/* Reset an already-initialised wigner_exact_t to a fresh-result state
+void wignernj_exact_init(wignernj_exact_t *e);
+/* Reset an already-initialised wignernj_exact_t to a fresh-result state
  * without freeing its bigint buffers (used by the scratch cache). */
-void wigner_exact_reset(wigner_exact_t *e);
+void wignernj_exact_reset(wignernj_exact_t *e);
 void wigner3j_exact(int tj1, int tj2, int tj3, int tm1, int tm2, int tm3,
-                    wigner_exact_t *out);
+                    wignernj_exact_t *out);
 void wigner6j_exact(int tj1, int tj2, int tj3, int tj4, int tj5, int tj6,
-                    wigner_exact_t *out);
+                    wignernj_exact_t *out);
 void wigner9j_exact(int tj11, int tj12, int tj13,
                     int tj21, int tj22, int tj23,
                     int tj31, int tj32, int tj33,
-                    wigner_exact_t *out);
-void wigner_exact_free(wigner_exact_t *e);
+                    wignernj_exact_t *out);
+void wignernj_exact_free(wignernj_exact_t *e);
 
-float       wigner_exact_to_float      (const wigner_exact_t *e);
-double      wigner_exact_to_double     (const wigner_exact_t *e);
-long double wigner_exact_to_long_double(const wigner_exact_t *e);
+float       wignernj_exact_to_float      (const wignernj_exact_t *e);
+double      wignernj_exact_to_double     (const wignernj_exact_t *e);
+long double wignernj_exact_to_long_double(const wignernj_exact_t *e);
 
-#ifdef WIGNER_HAVE_QUADMATH
+#ifdef WIGNERNJ_HAVE_QUADMATH
 #include <quadmath.h>
-__float128  wigner_exact_to_float128   (const wigner_exact_t *e);
+__float128  wignernj_exact_to_float128   (const wignernj_exact_t *e);
 #endif
 
-#ifdef WIGNER_HAVE_MPFR
+#ifdef WIGNERNJ_HAVE_MPFR
 #include <mpfr.h>
-void wigner_exact_to_mpfr(mpfr_t rop, const wigner_exact_t *e, mpfr_rnd_t rnd);
+void wignernj_exact_to_mpfr(mpfr_t rop, const wignernj_exact_t *e, mpfr_rnd_t rnd);
 #endif
 
-#endif /* WIGNER_EXACT_H */
+#endif /* WIGNERNJ_EXACT_H */

@@ -5,7 +5,7 @@
  * Reference values computed with sympy 1.14.0.
  */
 #include "run_tests.h"
-#include "../include/wigner.h"
+#include "../include/wignernj.h"
 
 typedef struct { int tj1,tj2,tj3,tm1,tm2,tm3; double val; } w3j_t;
 static const w3j_t g_3j[] = {

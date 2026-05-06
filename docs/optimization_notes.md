@@ -23,7 +23,7 @@ ultimately merges); inspect `git log --grep` for the precise ranges.
 | Commit (or branch tag) | What                                              | Headline gain                              |
 |------------------------|---------------------------------------------------|--------------------------------------------|
 | (previously merged)    | Two-pass Racah sum (Pass 1 builds pfracs / LCM, Pass 2 accumulates LCM-scaled scaled bigint) | foundational                                |
-| (previously merged)    | Per-thread cached `wigner_scratch_t`              | allocation-free steady state                |
+| (previously merged)    | Per-thread cached `wignernj_scratch_t`              | allocation-free steady state                |
 | (previously merged)    | Per-thread factorial-decomposition cache          | replaces per-call `legendre_valuation` loop |
 | (previously merged)    | uint64-batched prime-power accumulator (`pfrac_mul_pow_into_acc`) | ~62% time saved in `pfrac_lcm_scaled_product` at j=4000 |
 | (previously merged)    | Hardware divq via inline asm on x86-64            | ~3× faster `bigint_div128` than libgcc generic |

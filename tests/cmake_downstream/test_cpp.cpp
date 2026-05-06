@@ -5,14 +5,14 @@
 
 #include <cmath>
 #include <iostream>
-#include "wigner.hpp"
+#include "wignernj.hpp"
 
 int main()
 {
     // 2*j integer form
-    double v = wigner::symbol3j<double>(2, 2, 0,  0, 0, 0);
+    double v = wignernj::symbol3j<double>(2, 2, 0,  0, 0, 0);
     // Real-valued half-integer form
-    double w = wigner::symbol3j(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
+    double w = wignernj::symbol3j(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
     double ref = -1.0 / std::sqrt(3.0);
     if (std::fabs(v - ref) > 1e-14 || std::fabs(w - ref) > 1e-14) {
         std::cerr << "C++: symbol3j returned " << v << " / " << w

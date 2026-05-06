@@ -17,7 +17,7 @@
  */
 
 #include "run_tests.h"
-#include "../include/wigner.h"
+#include "../include/wignernj.h"
 
 #if defined(_WIN32)
 

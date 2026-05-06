@@ -11,7 +11,7 @@
 #   1. find_package(wignernj REQUIRED) imports wignernj::wignernj.
 #   2. Linking a C    consumer against wignernj::wignernj works.
 #   3. Linking a C++  consumer against wignernj::wignernj works
-#      (the wigner.hpp header is a header-only wrapper around the C lib).
+#      (the wignernj.hpp header is a header-only wrapper around the C lib).
 #   4. With -DWITH_FORTRAN=ON, find_package(wignernj REQUIRED COMPONENTS
 #      Fortran) imports wignernj::wignernj_f03, propagates the Fortran
 #      .mod-file include path, and a Fortran consumer compiles and runs.

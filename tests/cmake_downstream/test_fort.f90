@@ -3,7 +3,7 @@
 !
 ! Smoke test for the Fortran 90 interface of an installed libwignernj.
 program test_fort
-  use wigner
+  use wignernj
   implicit none
   real(8) :: v, ref
   v   = w3j(1.0d0, 1.0d0, 0.0d0,  0.0d0, 0.0d0, 0.0d0)

@@ -36,11 +36,11 @@
  *   phase_0 = (-1)^(l1-l2),   phase_m = (-1)^(l1-l2-m3)
  *   combined = (-1)^(2(l1-l2)-m3) = (-1)^(-m3) = (-1)^m3.
  */
-#include "wigner_exact.h"
+#include "wignernj_exact.h"
 #include "pfrac.h"
 #include "primes.h"
 #include "scratch.h"
-#include "wigner.h"
+#include "wignernj.h"
 #include <stdlib.h>      /* abs */
 #include <math.h>        /* sqrtf, sqrt, sqrtl, acosl */
 
@@ -90,7 +90,7 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
                                 int *lcm_exp, int *lcm_max_io,
                                 bigint_t *sum_pos, bigint_t *sum_neg,
                                 bigint_t *scaled,
-                                wigner_scratch_t *scratch,
+                                wignernj_scratch_t *scratch,
                                 bigint_ws_t *ws)
 {
     int s, s_min, s_max, pi;
@@ -119,7 +119,7 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
      * inside the loop body measurably regressed small-j calls on the
      * x86-64 divq backend, where per-call overhead is otherwise
      * minimal). */
-    wigner_scratch_terms_reserve(scratch, 2);
+    wignernj_scratch_terms_reserve(scratch, 2);
 
     /* Peeled iteration s = s_min, written to slot 0 (Pass-2 seed). */
     term = &scratch->terms[0];
@@ -206,16 +206,16 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
 
 /*
  * Fills *out such that G(l1,m1,l2,m2,l3,m3)
- *   = wigner_exact_to_T(out) / sqrt(π).
+ *   = wignernj_exact_to_T(out) / sqrt(π).
  *
  * When is_zero is set, the Gaunt coefficient is zero and no further work
  * need be done.
  */
 static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
-                         wigner_exact_t *out)
+                         wignernj_exact_t *out)
 {
     int pi;
-    wigner_scratch_t *scratch;
+    wignernj_scratch_t *scratch;
     bigint_ws_t *ws;
     pfrac_t  *outer;
     int      *lcm0, *lcmm;
@@ -224,7 +224,7 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     size_t mw, mw_prod;
     int lcm0_max, lcmm_max;
 
-    wigner_exact_reset(out);
+    wignernj_exact_reset(out);
 
     if (!gaunt_selection_rules(tl1, tm1, tl2, tm2, tl3, tm3)) {
         out->is_zero = 1;
@@ -244,7 +244,7 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
      * (sum0, summ + sum_pos/sum_neg/scaled inside the inner Racah
      * sum), 1 pfrac (outer; the per-term pfracs live in the cached
      * terms array), and 2 lcm arrays (lcm0, lcmm). */
-    scratch  = wigner_scratch_acquire();
+    scratch  = wignernj_scratch_acquire();
     ws       = &scratch->ws;
     outer    = &scratch->pfracs[0];
     lcm0     =  scratch->lcm_exp[0];
@@ -257,8 +257,8 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
 
     bigint_ws_reserve(ws, mw_prod);
     pfrac_zero(outer);
-    wigner_scratch_lcm_clear(scratch, 0);
-    wigner_scratch_lcm_clear(scratch, 1);
+    wignernj_scratch_lcm_clear(scratch, 0);
+    wignernj_scratch_lcm_clear(scratch, 1);
     bigint_set_zero(sum0);    bigint_reserve(sum0,    mw);
     bigint_set_zero(summ);    bigint_reserve(summ,    mw);
     bigint_set_zero(sum_pos); bigint_reserve(sum_pos, mw);
@@ -359,9 +359,9 @@ static void gaunt_exact(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3,
     }
 
 cleanup:
-    wigner_scratch_lcm_dirty(scratch, 0, lcm0_max);
-    wigner_scratch_lcm_dirty(scratch, 1, lcmm_max);
-    wigner_scratch_relinquish(scratch);
+    wignernj_scratch_lcm_dirty(scratch, 0, lcm0_max);
+    wignernj_scratch_lcm_dirty(scratch, 1, lcmm_max);
+    wignernj_scratch_relinquish(scratch);
 }
 
 /* ── Real-spherical-harmonic Gaunt coefficient ──────────────────────────────
@@ -392,7 +392,7 @@ cleanup:
  *   (b) The total coefficient is rational (or rational times √2) with
  *       small numerator and denominator (∈ {0, ±1, ±2} divided by
  *       √2^k where k ∈ {0,2,3} is the number of non-zero |m_i|), and
- *       can be absorbed exactly into the wigner_exact_t pipeline by
+ *       can be absorbed exactly into the wignernj_exact_t pipeline by
  *       multiplying int_num/int_den/sqrt_den by small integers -- so
  *       last-bit accuracy is preserved.
  *
@@ -422,9 +422,9 @@ static int real_gaunt_T_tau(int sigma, int s, int a, int *has_i)
 }
 
 static void gaunt_real_exact(int tl1, int tm1, int tl2, int tm2,
-                              int tl3, int tm3, wigner_exact_t *out)
+                              int tl3, int tm3, wignernj_exact_t *out)
 {
-    wigner_exact_reset(out);
+    wignernj_exact_reset(out);
 
     /* ℓ and m must be integer-valued, i.e., tl, tm even. */
     if ((tl1 | tl2 | tl3 | tm1 | tm2 | tm3) & 1) {
@@ -540,57 +540,57 @@ int gaunt_real_max_factorial(int tl1, int tm1, int tl2, int tm2,
 
 float gaunt_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     float result;
     gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wigner_exact_to_float(&s->exact) / sqrtf((float)M_PI);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_float(&s->exact) / sqrtf((float)M_PI);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
 double gaunt(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     double result;
     gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wigner_exact_to_double(&s->exact) / sqrt(M_PI);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_double(&s->exact) / sqrt(M_PI);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
 long double gaunt_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     long double result;
     gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wigner_exact_to_long_double(&s->exact) / sqrtl(acosl(-1.0L));
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_long_double(&s->exact) / sqrtl(acosl(-1.0L));
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
-#ifdef WIGNER_HAVE_QUADMATH
+#ifdef WIGNERNJ_HAVE_QUADMATH
 __float128 gaunt_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     __float128 result;
     gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wigner_exact_to_float128(&s->exact) / sqrtq(M_PIq);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_float128(&s->exact) / sqrtq(M_PIq);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 #endif
 
-#ifdef WIGNER_HAVE_MPFR
-#include "wigner_mpfr.h"
+#ifdef WIGNERNJ_HAVE_MPFR
+#include "wignernj_mpfr.h"
 void gaunt_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
                              int tl3, int tm3, mpfr_rnd_t rnd)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     mpfr_t pi;
 
     gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    wigner_exact_to_mpfr(rop, &s->exact, rnd);
-    wigner_scratch_relinquish(s);
+    wignernj_exact_to_mpfr(rop, &s->exact, rnd);
+    wignernj_scratch_relinquish(s);
 
     if (!mpfr_zero_p(rop)) {
         mpfr_init2(pi, mpfr_get_prec(rop));
@@ -606,56 +606,56 @@ void gaunt_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
 
 float gaunt_real_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     float result;
     gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wigner_exact_to_float(&s->exact) / sqrtf((float)M_PI);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_float(&s->exact) / sqrtf((float)M_PI);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
 double gaunt_real(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     double result;
     gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wigner_exact_to_double(&s->exact) / sqrt(M_PI);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_double(&s->exact) / sqrt(M_PI);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
 long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     long double result;
     gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wigner_exact_to_long_double(&s->exact) / sqrtl(acosl(-1.0L));
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_long_double(&s->exact) / sqrtl(acosl(-1.0L));
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
-#ifdef WIGNER_HAVE_QUADMATH
+#ifdef WIGNERNJ_HAVE_QUADMATH
 __float128 gaunt_real_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     __float128 result;
     gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wigner_exact_to_float128(&s->exact) / sqrtq(M_PIq);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_float128(&s->exact) / sqrtq(M_PIq);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 #endif
 
-#ifdef WIGNER_HAVE_MPFR
+#ifdef WIGNERNJ_HAVE_MPFR
 void gaunt_real_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
                                   int tl3, int tm3, mpfr_rnd_t rnd)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     mpfr_t pi;
 
     gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    wigner_exact_to_mpfr(rop, &s->exact, rnd);
-    wigner_scratch_relinquish(s);
+    wignernj_exact_to_mpfr(rop, &s->exact, rnd);
+    wignernj_scratch_relinquish(s);
 
     if (!mpfr_zero_p(rop)) {
         mpfr_init2(pi, mpfr_get_prec(rop));

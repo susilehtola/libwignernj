@@ -238,12 +238,12 @@ if(BUILD_QUADMATH)
             "Disable BUILD_QUADMATH on unsupported toolchains.")
     endif()
 
-    target_compile_definitions(wignernj PUBLIC WIGNER_HAVE_QUADMATH)
+    target_compile_definitions(wignernj PUBLIC WIGNERNJ_HAVE_QUADMATH)
     target_link_libraries     (wignernj PUBLIC quadmath)
     if(WIGNERNJ_QUADMATH_INCLUDE)
         target_include_directories(wignernj PUBLIC ${WIGNERNJ_QUADMATH_INCLUDE})
     endif()
-    install(FILES include/wigner_quadmath.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(FILES include/wignernj_quadmath.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
 # MPFR arbitrary-precision interface (optional)
@@ -270,8 +270,8 @@ if(BUILD_MPFR)
         endif()
         target_link_libraries     (wignernj PUBLIC ${MPFR_LIB})
     endif()
-    target_compile_definitions(wignernj PUBLIC WIGNER_HAVE_MPFR)
-    install(FILES include/wigner_mpfr.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    target_compile_definitions(wignernj PUBLIC WIGNERNJ_HAVE_MPFR)
+    install(FILES include/wignernj_mpfr.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
 # FLINT bigint backend (optional)
@@ -306,7 +306,7 @@ if(BUILD_FORTRAN)
     check_language(Fortran)
     if(CMAKE_Fortran_COMPILER)
         enable_language(Fortran)
-        add_library(wignernj_f03 src/fortran/wigner_f90.F90)
+        add_library(wignernj_f03 src/fortran/wignernj_f90.F90)
         target_link_libraries(wignernj_f03 PUBLIC wignernj)
         # Forward the quadmath gate to the Fortran preprocessor so the
         # corresponding interface block and convenience wrappers compile
@@ -337,7 +337,7 @@ if(BUILD_FORTRAN)
         )
         # Propagate the .mod-file directory to consumers, both at build
         # time and after install, so downstream Fortran compilations
-        # find `use wigner` automatically.
+        # find `use wignernj` automatically.
         target_include_directories(wignernj_f03 INTERFACE
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/fortran_modules>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/wignernj/fortran>
@@ -370,12 +370,12 @@ endif()
 #
 #   1. The pip-installable wheel built from setup.py.  This recompiles
 #      the C sources directly into the extension module to produce a
-#      self-contained `_wigner.so` with no runtime dependency on
+#      self-contained `_wignernj.so` with no runtime dependency on
 #      libwignernj.so.  This is the canonical path for `pip install
-#      wigner` end users.
+#      wignernj` end users.
 #
 #   2. The CMake-driven build below (BUILD_PYTHON=ON).  This links
-#      `_wigner.so` dynamically against libwignernj.so so that distro
+#      `_wignernj.so` dynamically against libwignernj.so so that distro
 #      packages (Fedora, etc.) ship one copy of the C library on disk
 #      rather than embedding it inside every consumer.  Picking up
 #      BUILD_FLINT, BUILD_QUADMATH, BUILD_MPFR is automatic via the
@@ -384,15 +384,15 @@ endif()
 #
 # The Python API is identical between the two paths; the
 # `precision='float'|'double'|'longdouble'` keyword still selects the
-# C precision regardless of how `_wigner.so` was built.  The CMake
-# path additionally installs `_wigner.so` plus `wigner/__init__.py`
+# C precision regardless of how `_wignernj.so` was built.  The CMake
+# path additionally installs `_wignernj.so` plus `wignernj/__init__.py`
 # under `Python3_SITEARCH`, so the resulting RPM (or other distro
 # package) can register a `python3-wignernj` namespace package out of
 # the same build that produced `libwignernj.so`.
 if(BUILD_PYTHON)
     find_package(Python3 COMPONENTS Interpreter Development)
     if(Python3_FOUND)
-        # Linking a static libwignernj into the shared _wigner.so
+        # Linking a static libwignernj into the shared _wignernj.so
         # (the Python module) requires every object in wignernj to be
         # compiled position-independent.  When BUILD_SHARED_LIBS=ON
         # this is automatic (CMake gives shared targets PIC by
@@ -404,27 +404,27 @@ if(BUILD_PYTHON)
         set_target_properties(wignernj PROPERTIES
             POSITION_INDEPENDENT_CODE ON)
 
-        Python3_add_library(_wigner MODULE src/python/wignermodule.c)
-        target_include_directories(_wigner PRIVATE include)
-        target_link_libraries(_wigner PRIVATE wignernj)
-        set_target_properties(_wigner PROPERTIES
+        Python3_add_library(_wignernj MODULE src/python/wignernjmodule.c)
+        target_include_directories(_wignernj PRIVATE include)
+        target_link_libraries(_wignernj PRIVATE wignernj)
+        set_target_properties(_wignernj PROPERTIES
             C_STANDARD 99
             C_STANDARD_REQUIRED ON
             INTERPROCEDURAL_OPTIMIZATION ${BUILD_LTO}
-            OUTPUT_NAME "_wigner"
+            OUTPUT_NAME "_wignernj"
             LIBRARY_OUTPUT_DIRECTORY
-                ${CMAKE_CURRENT_BINARY_DIR}/wigner
+                ${CMAKE_CURRENT_BINARY_DIR}/wignernj
         )
-        configure_file(wigner/__init__.py
-            ${CMAKE_CURRENT_BINARY_DIR}/wigner/__init__.py COPYONLY)
+        configure_file(wignernj/__init__.py
+            ${CMAKE_CURRENT_BINARY_DIR}/wignernj/__init__.py COPYONLY)
 
         # Install the namespace package under Python3_SITEARCH so a
         # distro `python3-wignernj` RPM can be packaged out of this
         # build alongside the libwignernj-devel and -fortran subpackages.
-        install(TARGETS _wigner
-            LIBRARY DESTINATION ${Python3_SITEARCH}/wigner)
-        install(FILES wigner/__init__.py
-            DESTINATION ${Python3_SITEARCH}/wigner)
+        install(TARGETS _wignernj
+            LIBRARY DESTINATION ${Python3_SITEARCH}/wignernj)
+        install(FILES wignernj/__init__.py
+            DESTINATION ${Python3_SITEARCH}/wignernj)
     else()
         message(STATUS "Python3 not found -- skipping Python extension")
     endif()
@@ -447,8 +447,8 @@ install(TARGETS wignernj
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-install(FILES include/wigner.h   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(FILES include/wigner.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES include/wignernj.h   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES include/wignernj.hpp DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 # pkg-config file: libm only on Unix-like targets (MSVC bundles math
 # into the default C runtime, so an explicit -lm there would resolve

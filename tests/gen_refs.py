@@ -609,7 +609,7 @@ def emit_3j(cases):
     with open(path, "w") as f:
         f.write(SPDX.format(ver=sympy.__version__))
         f.write('#include "run_tests.h"\n')
-        f.write('#include "../include/wigner.h"\n\n')
+        f.write('#include "../include/wignernj.h"\n\n')
         f.write("typedef struct { int tj1,tj2,tj3,tm1,tm2,tm3; double val; } w3j_t;\n")
         f.write("static const w3j_t g_3j[] = {\n")
         for c in cases:
@@ -629,7 +629,7 @@ def emit_6j(cases):
     with open(path, "w") as f:
         f.write(SPDX.format(ver=sympy.__version__))
         f.write('#include "run_tests.h"\n')
-        f.write('#include "../include/wigner.h"\n\n')
+        f.write('#include "../include/wignernj.h"\n\n')
         f.write("typedef struct { int tj1,tj2,tj3,tj4,tj5,tj6; double val; } w6j_t;\n")
         f.write("static const w6j_t g_6j[] = {\n")
         for c in cases:
@@ -649,7 +649,7 @@ def emit_9j(cases):
     with open(path, "w") as f:
         f.write(SPDX.format(ver=sympy.__version__))
         f.write('#include "run_tests.h"\n')
-        f.write('#include "../include/wigner.h"\n\n')
+        f.write('#include "../include/wignernj.h"\n\n')
         f.write("typedef struct {\n")
         f.write("    int tj11,tj12,tj13,tj21,tj22,tj23,tj31,tj32,tj33;\n")
         f.write("    double val;\n} w9j_t;\n")
@@ -673,7 +673,7 @@ def emit_derived(cg_cases, racah_cases, gaunt_cases):
     with open(path, "w") as f:
         f.write(SPDX.format(ver=sympy.__version__))
         f.write('#include "run_tests.h"\n')
-        f.write('#include "../include/wigner.h"\n\n')
+        f.write('#include "../include/wignernj.h"\n\n')
         f.write("/* Clebsch-Gordan */\n")
         f.write("typedef struct{int tj1,tm1,tj2,tm2,tJ,tM;double val;}cg_t;\n")
         f.write("static const cg_t g_cg[]={\n")
@@ -726,7 +726,7 @@ def emit_gaunt_real(cases):
     with open(path, "w") as f:
         f.write(SPDX.format(ver=sympy.__version__))
         f.write('#include "run_tests.h"\n')
-        f.write('#include "../include/wigner.h"\n')
+        f.write('#include "../include/wignernj.h"\n')
         f.write('#include <math.h>\n\n')
 
         f.write("/* Hand-derived sanity checks (independent of sympy). */\n"

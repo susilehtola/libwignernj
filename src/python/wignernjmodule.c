@@ -11,7 +11,7 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <math.h>
-#include "wigner.h"
+#include "wignernj.h"
 
 /* ── half-integer argument parsing ─────────────────────────────────────── */
 
@@ -314,27 +314,42 @@ static PyObject *py_gaunt_real(PyObject *self, PyObject *args, PyObject *kwargs)
 
 /* ── module definition ─────────────────────────────────────────────────── */
 
-static PyMethodDef wigner_methods[] = {
-    {"wigner3j",       (PyCFunction)py_wigner3j,       METH_VARARGS|METH_KEYWORDS, wigner3j_doc},
-    {"wigner6j",       (PyCFunction)py_wigner6j,       METH_VARARGS|METH_KEYWORDS, wigner6j_doc},
-    {"wigner9j",       (PyCFunction)py_wigner9j,       METH_VARARGS|METH_KEYWORDS, wigner9j_doc},
-    {"clebsch_gordan", (PyCFunction)py_clebsch_gordan, METH_VARARGS|METH_KEYWORDS, clebsch_gordan_doc},
-    {"racah_w",        (PyCFunction)py_racah_w,        METH_VARARGS|METH_KEYWORDS, racah_w_doc},
-    {"fano_x",         (PyCFunction)py_fano_x,         METH_VARARGS|METH_KEYWORDS, fano_x_doc},
-    {"gaunt",          (PyCFunction)py_gaunt,          METH_VARARGS|METH_KEYWORDS, gaunt_doc},
-    {"gaunt_real",     (PyCFunction)py_gaunt_real,     METH_VARARGS|METH_KEYWORDS, gaunt_real_doc},
+/* Cast every keyword-accepting CFunction through `void (*)(void)` before the
+ * PyCFunction landing slot.  PyMethodDef stores PyCFunction (two-arg), but
+ * METH_VARARGS|METH_KEYWORDS dispatches at run-time to a three-arg
+ * PyCFunctionWithKeywords; the two-step cast is the canonical CPython
+ * idiom that silences -Wcast-function-type cleanly (gcc/clang refuse the
+ * direct cast). */
+#define KW_METHOD(name, fn, doc) \
+    {name, (PyCFunction)(void(*)(void))(fn), METH_VARARGS|METH_KEYWORDS, doc}
+
+static PyMethodDef wignernj_methods[] = {
+    KW_METHOD("wigner3j",       py_wigner3j,       wigner3j_doc),
+    KW_METHOD("wigner6j",       py_wigner6j,       wigner6j_doc),
+    KW_METHOD("wigner9j",       py_wigner9j,       wigner9j_doc),
+    KW_METHOD("clebsch_gordan", py_clebsch_gordan, clebsch_gordan_doc),
+    KW_METHOD("racah_w",        py_racah_w,        racah_w_doc),
+    KW_METHOD("fano_x",         py_fano_x,         fano_x_doc),
+    KW_METHOD("gaunt",          py_gaunt,          gaunt_doc),
+    KW_METHOD("gaunt_real",     py_gaunt_real,     gaunt_real_doc),
     {NULL, NULL, 0, NULL}
 };
 
-static struct PyModuleDef wignermodule = {
-    PyModuleDef_HEAD_INIT,
-    "_wigner",
-    "Exact Wigner 3j/6j/9j symbols and related coefficients.",
-    -1,
-    wigner_methods
+#undef KW_METHOD
+
+/* PyModuleDef has more fields than the legacy positional-init covered;
+ * use designated initializers so the trailing m_slots / m_traverse /
+ * m_clear / m_free fields default to NULL without -Wmissing-field-
+ * initializers complaining. */
+static struct PyModuleDef wignernjmodule = {
+    .m_base    = PyModuleDef_HEAD_INIT,
+    .m_name    = "_wignernj",
+    .m_doc     = "Exact Wigner 3j/6j/9j symbols and related coefficients.",
+    .m_size    = -1,
+    .m_methods = wignernj_methods,
 };
 
-PyMODINIT_FUNC PyInit__wigner(void)
+PyMODINIT_FUNC PyInit__wignernj(void)
 {
-    return PyModule_Create(&wignermodule);
+    return PyModule_Create(&wignernjmodule);
 }

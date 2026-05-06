@@ -80,7 +80,7 @@ jobs:
           name: Install build tools
           # Alpine's mpfr-dev depends only on the mpfr runtime, not on
           # gmp-dev, but mpfr.h #includes <gmp.h>; pull gmp-dev in
-          # explicitly so wigner_mpfr.h compiles.
+          # explicitly so wignernj_mpfr.h compiles.
           command: |
             apk add --no-cache \
               cmake make gcc g++ gfortran \

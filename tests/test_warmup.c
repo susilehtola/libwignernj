@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2026 Susi Lehtola
  *
- * Verify that wigner_warmup() pre-grows the calling thread's cached
+ * Verify that wignernj_warmup() pre-grows the calling thread's cached
  * scratch so that every subsequent symbol evaluation is allocation-
  * free, regardless of which symbol family is called or what angular
  * momenta are passed (within the prime-table ceiling).
@@ -12,7 +12,7 @@
  * is exactly zero.
  */
 #include "run_tests.h"
-#include "../include/wigner.h"
+#include "../include/wignernj.h"
 
 #if defined(__APPLE__) || defined(_WIN32)
 /* dlsym/RTLD_NEXT-based interception is fragile on macOS and absent on
@@ -58,7 +58,7 @@ int main(void)
      * (every call there already allocates fresh).  In that case the
      * zero-allocations assertion below would always fail, so skip it
      * with a clear note. */
-    if (!wigner_thread_local_scratch_available()) {
+    if (!wignernj_thread_local_scratch_available()) {
         printf("test_warmup: SKIP (no thread-local storage on this build)\n");
         return 0;
     }
@@ -67,7 +67,7 @@ int main(void)
      * cache.  We size the latter precisely from the call mix below
      * via the per-symbol max_factorial helpers, taking the maximum so
      * that every factorial reached by the test is pre-populated. */
-    wigner_warmup();
+    wignernj_warmup();
     {
         int N = 0, n;
         n = wigner3j_max_factorial(2,    2,    2,    0, 0, 0);    if (n > N) N = n;
@@ -83,7 +83,7 @@ int main(void)
                                          2, 2, 2);                if (n > N) N = n;
         n = gaunt_max_factorial         (4, 0, 4, 0, 8, 0);       if (n > N) N = n;
         n = gaunt_real_max_factorial    (4, 0, 4, 0, 8, 0);       if (n > N) N = n;
-        wigner_warmup_factorial_cache(N);
+        wignernj_warmup_factorial_cache(N);
     }
 
     /* Now count allocations across a representative call mix. */
@@ -117,10 +117,10 @@ int main(void)
            g_n_alloc);
     TEST_ASSERT(g_n_alloc == 0);
 
-    /* wigner_thread_cleanup() must drop both the scratch and the
+    /* wignernj_thread_cleanup() must drop both the scratch and the
      * factorial cache, so a subsequent symbol evaluation re-enters
      * the lazy-init path and allocates again. */
-    wigner_thread_cleanup();
+    wignernj_thread_cleanup();
     g_n_alloc = 0;
     g_counting = 1;
     (void)wigner3j(2, 2, 2, 0, 0, 0);

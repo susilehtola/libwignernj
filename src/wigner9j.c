@@ -26,11 +26,11 @@
  *
  * k range: max(|j11-j33|,|j21-j32|,|j12-j23|) <= k <= min(j11+j33,j21+j32,j12+j23)
  */
-#include "wigner_exact.h"
+#include "wignernj_exact.h"
 #include "pfrac.h"
 #include "primes.h"
 #include "scratch.h"
-#include "wigner.h"
+#include "wignernj.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -91,7 +91,7 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
                           int *lcm_max_idx_io,
                           bigint_t *sum_pos, bigint_t *sum_neg,
                           bigint_t *scaled,
-                          wigner_scratch_t *scratch,
+                          wignernj_scratch_t *scratch,
                           bigint_ws_t *ws)
 {
     int s, s_min, s_max, pi;
@@ -134,7 +134,7 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
 
     /* Pass 1: build each term pfrac once into the cache, find LCM */
     n_terms = s_max - s_min + 1;
-    wigner_scratch_terms_reserve(scratch, n_terms);
+    wignernj_scratch_terms_reserve(scratch, n_terms);
     for (s = s_min; s <= s_max; s++) {
         term = &scratch->terms[s - s_min];
         pfrac_zero(term);
@@ -198,10 +198,10 @@ static void racah_6j_sum(int tj1, int tj2, int tj3,
 void wigner9j_exact(int tj11, int tj12, int tj13,
                     int tj21, int tj22, int tj23,
                     int tj31, int tj32, int tj33,
-                    wigner_exact_t *out)
+                    wignernj_exact_t *out)
 {
     int tk, tk_min, tk_max, pi;
-    wigner_scratch_t *scratch;
+    wignernj_scratch_t *scratch;
     bigint_ws_t *ws;
     pfrac_t  *outer, *kdep;
     int      *global_lcm, *lcm1, *lcm2, *lcm3;
@@ -211,7 +211,7 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     int lcm1_max, lcm2_max, lcm3_max, global_lcm_max;
     size_t mw, mw_prod;
 
-    wigner_exact_reset(out);
+    wignernj_exact_reset(out);
 
     if (!selection_rules_9j(tj11,tj12,tj13,tj21,tj22,tj23,tj31,tj32,tj33)) {
         out->is_zero = 1;
@@ -238,7 +238,7 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
 
     /* Acquire the thread's cached scratch and bring every buffer up to
      * the size required by the current call. */
-    scratch       = wigner_scratch_acquire();
+    scratch       = wignernj_scratch_acquire();
     ws            = &scratch->ws;
     outer         = &scratch->pfracs[0];
     kdep          = &scratch->pfracs[1];
@@ -263,7 +263,7 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
     /* Clear the dirty prefix of every lcm array.  Note: racah_6j_sum
      * tracks its own per-call dirty bound through lcm{1,2,3}_max, so we
      * only need to handle global_lcm here. */
-    wigner_scratch_lcm_clear(scratch, 0);
+    wignernj_scratch_lcm_clear(scratch, 0);
     /* lcm{1,2,3} are zeroed inside racah_6j_sum via *lcm_max_idx_io;
      * pass in the previous call's value (if any) so it knows how much
      * of the suffix is still clean. */
@@ -387,12 +387,12 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
                                       global_lcm_max, ws);
 
     /* Update dirty bounds for next call's tail-zeroing. */
-    wigner_scratch_lcm_dirty(scratch, 0, global_lcm_max);
-    wigner_scratch_lcm_dirty(scratch, 1, lcm1_max);
-    wigner_scratch_lcm_dirty(scratch, 2, lcm2_max);
-    wigner_scratch_lcm_dirty(scratch, 3, lcm3_max);
+    wignernj_scratch_lcm_dirty(scratch, 0, global_lcm_max);
+    wignernj_scratch_lcm_dirty(scratch, 1, lcm1_max);
+    wignernj_scratch_lcm_dirty(scratch, 2, lcm2_max);
+    wignernj_scratch_lcm_dirty(scratch, 3, lcm3_max);
 
-    wigner_scratch_relinquish(scratch);
+    wignernj_scratch_relinquish(scratch);
 }
 
 /* ── public API ──────────────────────────────────────────────────────────── */
@@ -420,11 +420,11 @@ float wigner9j_f(int tj11, int tj12, int tj13,
                  int tj21, int tj22, int tj23,
                  int tj31, int tj32, int tj33)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     float result;
     wigner9j_exact(tj11,tj12,tj13, tj21,tj22,tj23, tj31,tj32,tj33, &s->exact);
-    result = wigner_exact_to_float(&s->exact);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_float(&s->exact);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
@@ -432,11 +432,11 @@ double wigner9j(int tj11, int tj12, int tj13,
                 int tj21, int tj22, int tj23,
                 int tj31, int tj32, int tj33)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     double result;
     wigner9j_exact(tj11,tj12,tj13, tj21,tj22,tj23, tj31,tj32,tj33, &s->exact);
-    result = wigner_exact_to_double(&s->exact);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_double(&s->exact);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
@@ -444,38 +444,38 @@ long double wigner9j_l(int tj11, int tj12, int tj13,
                        int tj21, int tj22, int tj23,
                        int tj31, int tj32, int tj33)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     long double result;
     wigner9j_exact(tj11,tj12,tj13, tj21,tj22,tj23, tj31,tj32,tj33, &s->exact);
-    result = wigner_exact_to_long_double(&s->exact);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_long_double(&s->exact);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
-#ifdef WIGNER_HAVE_QUADMATH
+#ifdef WIGNERNJ_HAVE_QUADMATH
 __float128 wigner9j_q(int tj11, int tj12, int tj13,
                       int tj21, int tj22, int tj23,
                       int tj31, int tj32, int tj33)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     __float128 result;
     wigner9j_exact(tj11,tj12,tj13, tj21,tj22,tj23, tj31,tj32,tj33, &s->exact);
-    result = wigner_exact_to_float128(&s->exact);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_float128(&s->exact);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 #endif
 
-#ifdef WIGNER_HAVE_MPFR
+#ifdef WIGNERNJ_HAVE_MPFR
 void wigner9j_mpfr(mpfr_t rop,
                    int tj11, int tj12, int tj13,
                    int tj21, int tj22, int tj23,
                    int tj31, int tj32, int tj33,
                    mpfr_rnd_t rnd)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     wigner9j_exact(tj11,tj12,tj13, tj21,tj22,tj23, tj31,tj32,tj33, &s->exact);
-    wigner_exact_to_mpfr(rop, &s->exact, rnd);
-    wigner_scratch_relinquish(s);
+    wignernj_exact_to_mpfr(rop, &s->exact, rnd);
+    wignernj_scratch_relinquish(s);
 }
 #endif

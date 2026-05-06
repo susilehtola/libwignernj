@@ -14,7 +14,7 @@
  * built into the generators so every accepted draw is a valid input.
  */
 #include "run_tests.h"
-#include "../include/wigner.h"
+#include "../include/wignernj.h"
 #include <stdint.h>
 #include <stdlib.h>
 

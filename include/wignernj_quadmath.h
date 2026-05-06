@@ -8,7 +8,7 @@
  * on Linux/macOS).  Microsoft Visual C++ does not provide __float128
  * and is unsupported here.
  *
- * Argument and phase conventions are identical to wigner.h: twice-j
+ * Argument and phase conventions are identical to wignernj.h: twice-j
  * integer arguments throughout, Condon--Shortley sign for Y_l^m, etc.
  *
  * The conversion from the exact prime-factorized result to __float128
@@ -19,8 +19,8 @@
  * verification harness asserts agreement within this tolerance against
  * the MPFR back-end at precision 113).
  */
-#ifndef WIGNER_QUADMATH_H
-#define WIGNER_QUADMATH_H
+#ifndef WIGNERNJ_QUADMATH_H
+#define WIGNERNJ_QUADMATH_H
 
 #include <quadmath.h>
 
@@ -55,4 +55,4 @@ __float128 gaunt_real_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 }
 #endif
 
-#endif /* WIGNER_QUADMATH_H */
+#endif /* WIGNERNJ_QUADMATH_H */

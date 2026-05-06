@@ -4,7 +4,7 @@
  * Smoke test for the C interface of an installed libwignernj. */
 #include <math.h>
 #include <stdio.h>
-#include "wigner.h"
+#include "wignernj.h"
 
 int main(void)
 {

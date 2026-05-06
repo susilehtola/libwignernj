@@ -7,6 +7,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Breaking (all bindings): public-facing names renamed `wigner` → `wignernj`
+  for naming consistency with the C library (`libwignernj`) and the Fortran
+  shared library (`libwignernj_f03`).** The C symbol names (`wigner3j`,
+  `wigner6j`, `wigner9j`, …, `gaunt_real`) keep their `wigner` prefix
+  because that prefix denotes the mathematical object, not the library;
+  every other library-namespace identifier moves:
+  - **C/C++ public headers**: `<wigner.h>` → `<wignernj.h>`,
+    `<wigner.hpp>` → `<wignernj.hpp>`, `<wigner_quadmath.h>` →
+    `<wignernj_quadmath.h>`, `<wigner_mpfr.h>` → `<wignernj_mpfr.h>`.
+    Include guards renamed in step (`WIGNER_H` → `WIGNERNJ_H`, …).
+  - **C++ namespace**: `wigner::symbol3j<>`, `wigner::cg`, …, `wigner::fanox<>`
+    → `wignernj::symbol3j<>`, `wignernj::cg`, …, `wignernj::fanox<>`.
+  - **Fortran module**: `module wigner` → `module wignernj`. Callers must
+    change `use wigner` to `use wignernj`. The shared-library name
+    (`libwignernj_f03`) is unchanged.
+  - **Python package**: `pip install wigner` / `import wigner` →
+    `pip install wignernj` / `import wignernj`. The CPython extension
+    binary moves from `_wigner.so` to `_wignernj.so`; `PyInit__wigner` →
+    `PyInit__wignernj`.
+  - **C library-namespace identifiers**: every `wigner_*` /
+    `WIGNER_*` identifier outside the mathematical-symbol functions
+    moves to `wignernj_*` / `WIGNERNJ_*`. This includes the public
+    helpers `wignernj_warmup`, `wignernj_thread_local_scratch_available`,
+    `wignernj_max_factorial_arg`; the public exact-arithmetic tuple
+    `wignernj_exact_t` plus `wignernj_exact_init`/`reset`/`free`; the
+    conversion routines `wignernj_exact_to_{float,double,long_double,
+    float128,mpfr,T}`; the internal scratch allocator
+    (`wignernj_scratch_t`, `wignernj_scratch_acquire`/`release`/…);
+    the feature macros `WIGNERNJ_HAVE_QUADMATH` / `WIGNERNJ_HAVE_MPFR`
+    (the C side now matches the Fortran side, which already used the
+    `WIGNERNJ_` spelling); and the include guards on every renamed
+    header. The internal header `src/wigner_exact.h` was renamed to
+    `src/wignernj_exact.h` in step.
+  - **Source files** (cosmetic, only the moved ones surface in build
+    rules): `src/python/wignermodule.c` → `wignernjmodule.c`,
+    `src/fortran/wigner_f90.F90` → `wignernj_f90.F90`,
+    `tests/python/test_wigner_python.py` → `test_wignernj_python.py`,
+    `tests/fortran/test_wigner_fortran.f90` → `test_wignernj_fortran.f90`,
+    `tests/fortran/test_wigner_quadmath.F90` → `test_wignernj_quadmath.F90`.
+    The `src/wigner3j.c`, `src/wigner6j.c`, `src/wigner9j.c`, and
+    `src/wigner_exact.c` source files keep their names because they reflect
+    the public C function names rather than the library namespace.
+
+  Migration is a search-and-replace at every call site:
+
+  ```sed
+  s/\bwigner\.h\b/wignernj.h/g
+  s/\bwigner\.hpp\b/wignernj.hpp/g
+  s/\bwigner_quadmath\.h\b/wignernj_quadmath.h/g
+  s/\bwigner_mpfr\.h\b/wignernj_mpfr.h/g
+  s/\bwigner::/wignernj::/g
+  s/\buse wigner\b/use wignernj/g
+  s/\bimport wigner\b/import wignernj/g
+  s/\bwigner\.\(wigner3j\|wigner6j\|wigner9j\|clebsch_gordan\|racah_w\|fano_x\|gaunt\|gaunt_real\)/wignernj.\1/g
+  s/\bwigner_\(warmup\|thread_local_scratch_available\|max_factorial_arg\|exact_\)/wignernj_\1/g
+  s/\bWIGNER_\(HAVE_\|EXACT_H\|SCRATCH_\)/WIGNERNJ_\1/g
+  ```
+
+  No code logic changes; only identifiers move.
+
 ### Fixed
 - gfortran 16's new `-Wc-binding-type` diagnostic, which fired once per
   `_q` `bind(c)` interface (`wigner3j_q`, `wigner6j_q`, `wigner9j_q`,

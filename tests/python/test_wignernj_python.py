@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026 Susi Lehtola
 #
-# pytest suite for the Python wigner extension.
+# pytest suite for the Python wignernj extension.
 # Run from the build directory after: pip install -e . --no-build-isolation
 # or after cmake --build build with PYTHONPATH set.
 
@@ -9,11 +9,11 @@ import math
 import pytest
 
 try:
-    from wigner import (wigner3j, wigner6j, wigner9j,
+    from wignernj import (wigner3j, wigner6j, wigner9j,
                         clebsch_gordan, racah_w, fano_x,
                         gaunt, gaunt_real)
 except ImportError:
-    pytest.skip("wigner extension not installed", allow_module_level=True)
+    pytest.skip("wignernj extension not installed", allow_module_level=True)
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 

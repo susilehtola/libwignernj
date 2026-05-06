@@ -6,7 +6,7 @@
  * dominant cost path of libwignernj at large j, where it lags WIGXJPF
  * by about two orders of magnitude.
  */
-#include "wigner.h"
+#include "wignernj.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -17,7 +17,7 @@ int main(int argc, char **argv)
     int tj = 2 * j;
     int i;
     volatile double acc = 0.0;
-    wigner_warmup();
+    wignernj_warmup();
     for (i = 0; i < N; i++) {
         int m = (i % (j + 1)) - j / 2;
         acc += wigner3j(tj, tj, tj, 2 * m, -2 * m, 0);

@@ -239,7 +239,7 @@ G = sqrt[(2l1+1)(2l2+1)(2l3+1) / (4π)]
 
 ## C API
 
-Include `wigner.h`.  Link with `-lwignernj -lm`.
+Include `wignernj.h`.  Link with `-lwignernj -lm`.
 
 All functions return 0 (exactly) for selection-rule violations.
 
@@ -316,7 +316,7 @@ long double gaunt_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 ### Example (C)
 
 ```c
-#include "wigner.h"
+#include "wignernj.h"
 #include <stdio.h>
 
 int main(void)
@@ -342,23 +342,23 @@ int main(void)
 
 ## C++ API
 
-Header-only; include `wigner.hpp`.  No additional linking required.
+Header-only; include `wignernj.hpp`.  No additional linking required.
 Requires C++11.
 
 ### Integer-argument form
 
 ```cpp
-#include "wigner.hpp"
+#include "wignernj.hpp"
 
 // Default precision is double
-double v3 = wigner::symbol3j<double>(2, 2, 0,  0, 0, 0);
-float  v6 = wigner::symbol6j<float> (2, 2, 2,  2, 2, 2);
-long double v9 = wigner::symbol9j<long double>(
+double v3 = wignernj::symbol3j<double>(2, 2, 0,  0, 0, 0);
+float  v6 = wignernj::symbol6j<float> (2, 2, 2,  2, 2, 2);
+long double v9 = wignernj::symbol9j<long double>(
                      2,2,2, 2,2,2, 2,2,2);
 
-double cg = wigner::cg<double>    (1, 1,  1, -1,  2, 0);
-double rw = wigner::racahw<double>(2, 2,  4,  2,  4, 4);
-double ga = wigner::gaunt<double> (2, 0,  2,  0,  4, 0);
+double cg = wignernj::cg<double>    (1, 1,  1, -1,  2, 0);
+double rw = wignernj::racahw<double>(2, 2,  4,  2,  4, 4);
+double ga = wignernj::gaunt<double> (2, 0,  2,  0,  4, 0);
 ```
 
 ### Real-valued form
@@ -368,22 +368,22 @@ Accepts integer or half-integer `double` arguments. Throws
 
 ```cpp
 // j = 1/2 written as 0.5
-double v = wigner::symbol3j(0.5, 0.5, 1.0,  0.5, -0.5, 0.0);
+double v = wignernj::symbol3j(0.5, 0.5, 1.0,  0.5, -0.5, 0.0);
 
 // Explicit precision template
-float  f = wigner::symbol3j<float>(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
+float  f = wignernj::symbol3j<float>(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
 ```
 
 ### Available functions
 
 | Function | Arguments |
 |---|---|
-| `wigner::symbol3j<T>(...)` | `(tj1,tj2,tj3, tm1,tm2,tm3)` |
-| `wigner::symbol6j<T>(...)` | `(tj1,tj2,tj3, tj4,tj5,tj6)` |
-| `wigner::symbol9j<T>(...)` | `(tj11..tj33)` row-major |
-| `wigner::cg<T>(...)` | `(tj1,tm1, tj2,tm2, tJ,tM)` |
-| `wigner::racahw<T>(...)` | `(tj1,tj2,tJ, tj3,tj12,tj23)` |
-| `wigner::gaunt<T>(...)` | `(tl1,tm1, tl2,tm2, tl3,tm3)` |
+| `wignernj::symbol3j<T>(...)` | `(tj1,tj2,tj3, tm1,tm2,tm3)` |
+| `wignernj::symbol6j<T>(...)` | `(tj1,tj2,tj3, tj4,tj5,tj6)` |
+| `wignernj::symbol9j<T>(...)` | `(tj11..tj33)` row-major |
+| `wignernj::cg<T>(...)` | `(tj1,tm1, tj2,tm2, tJ,tM)` |
+| `wignernj::racahw<T>(...)` | `(tj1,tj2,tJ, tj3,tj12,tj23)` |
+| `wignernj::gaunt<T>(...)` | `(tl1,tm1, tl2,tm2, tl3,tm3)` |
 
 `T` is `float`, `double`, or `long double`.
 
@@ -393,12 +393,12 @@ float  f = wigner::symbol3j<float>(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
 
 Build with `-DBUILD_QUADMATH=ON` (requires GCC, Clang, or Intel
 ICC/ICX with `__float128` support; not available on Apple Clang or
-MSVC).  Include `wigner_quadmath.h` in addition to `wigner.h`.  Link
+MSVC).  Include `wignernj_quadmath.h` in addition to `wignernj.h`.  Link
 with `-lwignernj -lquadmath -lm`.
 
 ```c
-#include "wigner.h"
-#include "wigner_quadmath.h"
+#include "wignernj.h"
+#include "wignernj_quadmath.h"
 
 __float128 v = wigner6j_q(4, 4, 4, 4, 4, 4);
 ```
@@ -424,7 +424,7 @@ __float128 gaunt_q     (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 __float128 gaunt_real_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 ```
 
-The Fortran `wigner` module exposes the same routines (and real-valued
+The Fortran `wignernj` module exposes the same routines (and real-valued
 convenience wrappers `w3jq`, `w6jq`, `w9jq`, `wcgq`, `wracahwq`,
 `wgauntq`, `wgaunt_realq`) returning `real(real128)`.
 
@@ -438,7 +438,7 @@ mantissa.
 ## MPFR API
 
 Build with `-DBUILD_MPFR=ON` (requires libmpfr ≥ 4).
-Include `wigner_mpfr.h` in addition to `wigner.h`.
+Include `wignernj_mpfr.h` in addition to `wignernj.h`.
 Link with `-lwignernj -lmpfr -lm`.
 
 The precision of the result is determined by the precision set on `rop`
@@ -446,8 +446,8 @@ before calling.  The rounding mode `rnd` is applied to each elementary
 floating-point operation.
 
 ```c
-#include "wigner.h"
-#include "wigner_mpfr.h"
+#include "wignernj.h"
+#include "wignernj_mpfr.h"
 
 mpfr_t v;
 mpfr_init2(v, 512);          /* 512-bit precision */
@@ -516,25 +516,25 @@ python -m pytest tests/python/
 ```
 
 ```python
-import wigner
+import wignernj
 
 # Integer 2*j form
-wigner.wigner3j(2, 2, 0,  0, 0, 0)          # -1/sqrt(3) ≈ -0.5774
-wigner.wigner6j(2, 2, 2,  2, 2, 2)
-wigner.wigner9j(2, 2, 2,  2, 2, 2,  2, 2, 2)
+wignernj.wigner3j(2, 2, 0,  0, 0, 0)          # -1/sqrt(3) ≈ -0.5774
+wignernj.wigner6j(2, 2, 2,  2, 2, 2)
+wignernj.wigner9j(2, 2, 2,  2, 2, 2,  2, 2, 2)
 
 # Real half-integer form
-wigner.wigner3j(0.5, 0.5, 1.0,  0.5, -0.5, 0.0)
+wignernj.wigner3j(0.5, 0.5, 1.0,  0.5, -0.5, 0.0)
 
 # fractions.Fraction form
 from fractions import Fraction
-wigner.wigner3j(Fraction(1,2), Fraction(1,2), 1,
+wignernj.wigner3j(Fraction(1,2), Fraction(1,2), 1,
                 Fraction(1,2), Fraction(-1,2), 0)
 
 # Clebsch-Gordan, Racah W, Gaunt
-wigner.clebsch_gordan(1, 1,  1, -1,  2, 0)
-wigner.racah_w(2, 2,  4,  2,  4, 4)
-wigner.gaunt(4, 2,  4, -2,  4, 0)
+wignernj.clebsch_gordan(1, 1,  1, -1,  2, 0)
+wignernj.racah_w(2, 2,  4,  2,  4, 4)
+wignernj.gaunt(4, 2,  4, -2,  4, 0)
 ```
 
 The optional `precision=` keyword selects the output type:
@@ -546,7 +546,7 @@ The optional `precision=` keyword selects the output type:
 | `'longdouble'` | 80/128-bit extended | ~18–33 |
 
 ```python
-wigner.gaunt(2, 1,  2, -1,  2, 0, precision='longdouble')
+wignernj.gaunt(2, 1,  2, -1,  2, 0, precision='longdouble')
 ```
 
 Returns `0.0` for selection-rule violations (not an error).
@@ -558,14 +558,14 @@ Raises `ValueError` for non-half-integer arguments.
 
 Build with `-DBUILD_FORTRAN=ON`.  Link with `-lwignernj_f03 -lwignernj -lm`.
 
-The `wigner` module provides two layers:
+The `wignernj` module provides two layers:
 
 ### Convenience wrappers (recommended)
 
 Accept `real(8)` j/m arguments directly:
 
 ```fortran
-use wigner
+use wignernj
 real(8) :: v
 
 ! Wigner 3j
@@ -598,7 +598,7 @@ Use the `2*j` integer convention directly.  Available in `float`,
 `double`, and (where supported by the compiler) `long double`:
 
 ```fortran
-use wigner
+use wignernj
 real(8) :: v
 v = wigner3j(2, 2, 0,  0, 0, 0)   ! (1 1 0; 0 0 0)
 v = wigner6j(2, 2, 2,  2, 2, 2)

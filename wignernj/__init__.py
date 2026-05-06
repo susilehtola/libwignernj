@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026 Susi Lehtola
 """
-wigner — exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization.
+wignernj — exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization.
 
 All functions accept angular momentum arguments as integers, floats
 (half-integers), or fractions.Fraction objects.  An optional keyword
@@ -24,22 +24,22 @@ Edmonds (1957) and Varshalovich et al. (1988).  The ``gaunt`` and
 ``gaunt_real`` routines assume the Condon-Shortley phase for Y_l^m;
 ``gaunt_real`` further fixes the real spherical harmonics by the
 Wikipedia/Condon-Shortley construction.  See the header comment of the
-underlying C library (``include/wigner.h``) for the explicit formulas.
+underlying C library (``include/wignernj.h``) for the explicit formulas.
 
 Example::
 
-    import wigner
-    wigner.wigner3j(1, 1, 0, 0, 0, 0)          # -1/sqrt(3) ≈ -0.5774
-    wigner.wigner3j(0.5, 0.5, 1, 0.5, -0.5, 0) # 1/sqrt(6) ≈ 0.4082
-    wigner.gaunt(2, 1, 2, -1, 2, 0)            # complex Y_l^m Gaunt
-    wigner.gaunt_real(2, 1, 2, -1, 0, 0)       # real-Y Gaunt
+    import wignernj
+    wignernj.wigner3j(1, 1, 0, 0, 0, 0)          # -1/sqrt(3) ≈ -0.5774
+    wignernj.wigner3j(0.5, 0.5, 1, 0.5, -0.5, 0) # 1/sqrt(6) ≈ 0.4082
+    wignernj.gaunt(2, 1, 2, -1, 2, 0)            # complex Y_l^m Gaunt
+    wignernj.gaunt_real(2, 1, 2, -1, 0, 0)       # real-Y Gaunt
 
 Functions exposed: ``wigner3j``, ``wigner6j``, ``wigner9j``,
 ``clebsch_gordan``, ``racah_w``, ``fano_x``, ``gaunt``, ``gaunt_real``.
 """
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
-from ._wigner import (
+from ._wignernj import (
     wigner3j,
     wigner6j,
     wigner9j,

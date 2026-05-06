@@ -3,7 +3,7 @@
  *
  * libwignernj C API demonstration.
  *
- * Calls every public symbol family exposed by wigner.h once with small,
+ * Calls every public symbol family exposed by wignernj.h once with small,
  * textbook-scale arguments and prints the result alongside an analytic
  * reference value.  The program exits 0 on success, non-zero if any
  * computed value disagrees with its reference by more than 1e-14.
@@ -15,7 +15,7 @@
  * Build (out-of-tree, against an installed libwignernj):
  *     cc -o all_symbols_c all_symbols.c -lwignernj -lm
  */
-#include "wigner.h"
+#include "wignernj.h"
 #include <math.h>
 #include <stdio.h>
 

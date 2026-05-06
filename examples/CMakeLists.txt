@@ -58,19 +58,19 @@ endif()
 
 # ── Python example ───────────────────────────────────────────────────────
 # Run only when the Python extension is built in-tree (BUILD_PYTHON=ON);
-# point PYTHONPATH at the build directory so `import wigner` finds
-# the freshly compiled _wigner module without needing an editable
+# point PYTHONPATH at the build directory so `import wignernj` finds
+# the freshly compiled _wignernj module without needing an editable
 # install.  When BUILD_PYTHON is off the Python example still ships in
 # the source tree but is not exercised by ctest.
-if(BUILD_PYTHON AND TARGET _wigner)
+if(BUILD_PYTHON AND TARGET _wignernj)
     find_package(Python3 COMPONENTS Interpreter)
     if(Python3_Interpreter_FOUND)
         add_test(NAME example_python
             COMMAND ${Python3_EXECUTABLE}
                     ${CMAKE_CURRENT_SOURCE_DIR}/python/all_symbols.py)
-        # The compiled _wigner extension lands in the build root; the
-        # Python source tree (`wigner/__init__.py`) lives at the project
-        # root.  Both paths must be on PYTHONPATH for `import wigner`
+        # The compiled _wignernj extension lands in the build root; the
+        # Python source tree (`wignernj/__init__.py`) lives at the project
+        # root.  Both paths must be on PYTHONPATH for `import wignernj`
         # to resolve to the just-built extension.
         set_tests_properties(example_python PROPERTIES
             ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}")
