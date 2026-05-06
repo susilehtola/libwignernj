@@ -253,8 +253,15 @@ per-language examples: [docs/reference.md](docs/reference.md).
   consumed by `tests/test_3j.c`, `test_6j.c`, etc.
 - `tests/cmake_downstream/` — minimal out-of-tree project demonstrating
   consumption via `find_package(wignernj REQUIRED COMPONENTS Fortran)`
-- `benchmarks/` — `bench_compare.c` and Makefile for reproducing the
-  comparison against WIGXJPF and GSL
+- `benchmarks/` — library-versioning microbenches and profile drivers
+  (`bench_term_cache.c`, `bench_sweep.c`, `bench_mul.c`, `bench_div128.c`,
+  `profile_3j_4000.c`, …) used to validate libwignernj changes against
+  prior versions; see `benchmarks/README.md`. Comparative benchmarks
+  against external libraries (WIGXJPF, GSL) are published with the
+  paper as supplementary material rather than living in this repo.
+- `examples/` — single-file demonstrations of every public symbol in
+  C, C++, Fortran, and Python; built and run as ctest tests when
+  `BUILD_EXAMPLES=ON` (the default).
 - `tools/` — prime-table and source-list generators run at build time
 - `docs/` — extended reference and the descriptor paper
 

@@ -1,7 +1,6 @@
 *.o
 
 # Compiled bench / profile binaries (named after their .c source).
-bench_compare
 bench_div128
 bench_div128_gm
 bench_mul
@@ -11,6 +10,8 @@ profile_3j_4000
 profile_6j_9j
 
 # Paper-scope harness binaries (kept local; their .c sources are not in
-# the repo because they link against WIGXJPF/GSL).
+# the repo because they link against WIGXJPF/GSL and ship with the
+# paper as supplementary material instead).
+bench_compare
 maxerr_3j
 sweep_3j_j100

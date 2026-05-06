@@ -27,3 +27,12 @@ Makefile
 *.swp
 *.swo
 *~
+
+# Stray bench / profile / latex artifacts that occasionally land at
+# the repo root when a contributor builds them with the default
+# `gcc bench.c -o bench` invocation (no `-o /tmp/...` redirect).
+# benchmarks/.gitignore catches the same names inside benchmarks/;
+# this catches them at the repo root.
+/bench_*
+/profile_*
+texput.log
