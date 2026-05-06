@@ -32,6 +32,21 @@ typedef unsigned __int128 bigint_u128_t;
 #  define BIGINT_HAVE_UINT128 0
 #endif
 
+/* True when bigint_div128 dispatches to inline-asm hardware divq.
+ * Mirrors the conditional inside bigint_div128 below.  Used by
+ * bigint_div_u64 to decide whether the Möller-Granlund reciprocal-based
+ * limb sweep is worth the per-call setup cost: it isn't on this path,
+ * because divq's variable-latency fast path for sub-64-bit divisors
+ * already runs at ~2.3 ns/limb and beats GM's mul-add-mul body once
+ * the per-call recip_init divq is folded in. */
+#if defined(__x86_64__) && (defined(__GNUC__) || defined(__clang__)) \
+    && !defined(BIGINT_FORCE_PORTABLE) \
+    && !defined(BIGINT_NO_DIVQ)
+#  define BIGINT_HAVE_DIVQ_INLINE 1
+#else
+#  define BIGINT_HAVE_DIVQ_INLINE 0
+#endif
+
 /* {*plo, *phi} = a * b */
 static inline void bigint_mul64x64(uint64_t a, uint64_t b,
                                     uint64_t *plo, uint64_t *phi)
@@ -271,6 +286,138 @@ static inline uint64_t bigint_div128(uint64_t hi, uint64_t lo,
         return bigint_div128_alg_d(hi, lo, d, rem);
     }
 #endif
+}
+
+/* ── Möller-Granlund "improved division by invariant integers" ──────────────
+ *
+ * Reference: Niels Möller and Torbjörn Granlund, "Improved division by
+ * invariant integers", IEEE Trans. Comput. 60(2), pp. 165-175 (2011),
+ * doi:10.1109/TC.2010.143.
+ *
+ * Used by bigint_div_u64 when the dividend has more than one limb, so that
+ * the per-call reciprocal precompute (one bigint_div128 call plus a
+ * leading-zero count) amortises across the limb sweep.  Per-limb work is
+ * one 64x64->128 mul-high, one 128-bit add, one 64x64->64 mul, and a pair
+ * of conditional fixups -- about 6-8 cycles on x86-64 and aarch64, vs
+ * ~22 cycles for hardware divq on x86-64 or ~30-50 cycles for the
+ * Algorithm-D fallback above.
+ *
+ * On the pure-C99 path (no __uint128_t), the existing two-step 64/32 long
+ * division in bigint_div128 is faster than Möller-Granlund whenever
+ * d < 2^32 (the common case for prime-power scalars), so the reciprocal
+ * carries a `use_gm` flag and bigint_div128_recip dispatches accordingly.
+ */
+
+typedef struct {
+    uint64_t v;        /* floor((B^2 - 1) / d_norm) - B,  B = 2^64       */
+    uint64_t d_norm;   /* d << s  (top bit of d_norm is set)             */
+    int      s;        /* leading-zero count of d, in [0, 63]            */
+    int      use_gm;   /* 1 = Möller-Granlund, 0 = portable d<2^32 path  */
+} bigint_recip64_t;
+
+/* Count leading zeros of a non-zero 64-bit value. */
+static inline int bigint_clz64(uint64_t x)
+{
+#if defined(__GNUC__) || defined(__clang__)
+    return __builtin_clzll(x);
+#else
+    int n = 0;
+    if ((x >> 32) == 0) { n += 32; x <<= 32; }
+    if ((x >> 48) == 0) { n += 16; x <<= 16; }
+    if ((x >> 56) == 0) { n +=  8; x <<=  8; }
+    if ((x >> 60) == 0) { n +=  4; x <<=  4; }
+    if ((x >> 62) == 0) { n +=  2; x <<=  2; }
+    if ((x >> 63) == 0) { n +=  1; }
+    return n;
+#endif
+}
+
+/* Build a reciprocal of d for use by bigint_div128_recip.  d must be > 0.
+ * The returned struct is independent of dividend, so one call before the
+ * limb sweep is sufficient. */
+static inline bigint_recip64_t bigint_recip64_init(uint64_t d)
+{
+    bigint_recip64_t r;
+    uint64_t rem;
+    r.s      = bigint_clz64(d);
+    r.d_norm = d << r.s;
+
+    /* Pure-C99 portable path keeps its tight 64/32 fast-path for small
+     * divisors -- the Möller-Granlund mul-add-mul body is slightly more
+     * arithmetic on that backend than the two-step long division, so
+     * for d < 2^32 we tell bigint_div128_recip to fall through to
+     * bigint_div128 on every limb.  On the hardware-divq and
+     * __uint128_t backends, GM is at-least-as-fast as divq even for
+     * small d, so the flag is set unconditionally. */
+#if !BIGINT_HAVE_UINT128
+    if (d < (1ULL << 32)) {
+        r.v      = 0;
+        r.use_gm = 0;
+        return r;
+    }
+#endif
+    /* v = ((B - d_norm) * B + (B - 1)) / d_norm
+     *   = bigint_div128(~0 - d_norm, ~0, d_norm)
+     * (hi = ~0 - d_norm < d_norm because d_norm has its MSB set, so the
+     * bigint_div128 hi<d precondition holds). */
+    r.v      = bigint_div128(~(uint64_t)0 - r.d_norm, ~(uint64_t)0,
+                              r.d_norm, &rem);
+    r.use_gm = 1;
+    (void)rem;
+    return r;
+}
+
+/* Divide [hi:lo] by d using a precomputed reciprocal.  hi < d required.
+ * Returns the 64-bit quotient and writes the remainder (< d) to *rem. */
+static inline uint64_t bigint_div128_recip(uint64_t hi, uint64_t lo,
+                                            uint64_t d, bigint_recip64_t r,
+                                            uint64_t *rem)
+{
+    uint64_t u1, u0, q1, q0, r_n, carry;
+
+    if (!r.use_gm) {
+        /* Pure-C99 fallback: defer to the two-step 64/32 long division
+         * inside bigint_div128, which beats Möller-Granlund for the
+         * d < 2^32 regime on this backend. */
+        return bigint_div128(hi, lo, d, rem);
+    }
+
+    /* Renormalise dividend by the same shift applied to the divisor.
+     * After shifting, the (logical) 128-bit dividend has u1 < d_norm. */
+    if (r.s == 0) {
+        u1 = hi;
+        u0 = lo;
+    } else {
+        u1 = (hi << r.s) | (lo >> (64 - r.s));
+        u0 = lo << r.s;
+    }
+
+    /* Möller-Granlund Algorithm 4 step on normalised inputs:
+     *   {q1, q0} = v * u1
+     *   {q1, q0} += {u1, u0}
+     *   q1 += 1
+     *   r_n = u0 - q1 * d_norm
+     *   if r_n > q0: q1 -= 1; r_n += d_norm
+     *   if r_n >= d_norm: q1 += 1; r_n -= d_norm  (rare, prob ~2^-64)
+     */
+    bigint_mul64x64(r.v, u1, &q0, &q1);
+    q0  = bigint_addc(q0, u0, 0,    &carry);
+    q1  = bigint_addc(q1, u1, carry, &carry);
+    (void)carry;
+    q1 += 1;
+    r_n = u0 - q1 * r.d_norm;
+    if (r_n > q0) {
+        q1  -= 1;
+        r_n += r.d_norm;
+    }
+    if (r_n >= r.d_norm) {
+        q1  += 1;
+        r_n -= r.d_norm;
+    }
+
+    /* Denormalise the remainder. */
+    *rem = r_n >> r.s;
+    return q1;
 }
 
 #endif /* BIGINT_ARITH_H */

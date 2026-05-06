@@ -406,8 +406,34 @@ void bigint_div_u64(bigint_t *r, const bigint_t *a, uint64_t b)
     uint64_t rem = 0;
     if (a->size == 0) { bigint_set_zero(r); return; }
     bigint_ensure(r, a->size);
+#if BIGINT_HAVE_DIVQ_INLINE
+    /* Hardware-divq path: keep the tight per-limb loop.  The Möller-
+     * Granlund reciprocal-based sweep is a net regression here because
+     * divq's variable-latency fast path for sub-64-bit divisors already
+     * runs at ~2.3 ns/limb, and the per-call recip_init (one divq +
+     * shifts) amortises poorly across the small (m <= ~30) limb counts
+     * that arise in libwignernj's Racah sums. */
     for (i = a->size; i-- > 0;)
         r->words[i] = bigint_div128(rem, a->words[i], b, &rem);
+#else
+    /* No hardware divq (Algorithm-D fallback).  Precompute a Möller-
+     * Granlund reciprocal once per call and sweep limbs with mul-high
+     * + adjustment -- 1.5-5x faster per limb than the trial-quotient
+     * Algorithm D used by bigint_div128 on this backend.  Threshold
+     * profile-tuned: at m <= 2 the recip_init cost (one bigint_div128
+     * + a leading-zero count) is comparable to the per-limb work it
+     * saves; only at m >= 3 does the precompute amortise into a clean
+     * win (1.13x on tiny d, 1.61x on full 64-bit d, climbing to 5.8x
+     * by m = 250). */
+    if (a->size <= 2) {
+        for (i = a->size; i-- > 0;)
+            r->words[i] = bigint_div128(rem, a->words[i], b, &rem);
+    } else {
+        bigint_recip64_t recip = bigint_recip64_init(b);
+        for (i = a->size; i-- > 0;)
+            r->words[i] = bigint_div128_recip(rem, a->words[i], b, recip, &rem);
+    }
+#endif
     r->size = a->size;
     bigint_trim(r);
 }

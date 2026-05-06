@@ -172,6 +172,47 @@ int main(void)
         bigint_free(&two_to_96); bigint_free(&one);
     }
 
+    /* bigint_div_u64 across the Möller-Granlund reciprocal-based limb
+     * sweep used when a->size >= 2.  Reconstruct the dividend by
+     * mul-then-divide for a range of divisors that cover the path
+     * dispatch: d=1 (recip falls through), d=2 (single-bit, s=63),
+     * d slightly under 2^32 (portable-fast-path edge), d slightly over
+     * 2^32 (engages GM on every backend), and d=2^64-1 (saturation
+     * path).  Use a multi-word product so the sweep actually exercises
+     * the reciprocal path. */
+    {
+        const uint64_t divisors[] = {
+            1ULL,
+            2ULL,
+            0xFFFFFFFFULL,
+            0x100000001ULL,
+            0xDEADBEEFCAFEBABEULL,
+            0xFFFFFFFFFFFFFFFFULL,
+        };
+        size_t k;
+        for (k = 0; k < sizeof(divisors)/sizeof(divisors[0]); k++) {
+            bigint_set_u64(&a, divisors[k]);
+            bigint_mul_u64(&a, &a, 0x123456789ABCDEFULL);
+            bigint_mul_u64(&a, &a, 0xFEDCBA9876543210ULL);   /* a is multi-word */
+            bigint_div_u64(&r, &a, divisors[k]);
+            bigint_mul_u64(&b, &r, divisors[k]);
+            TEST_ASSERT(bigint_cmp(&a, &b) == 0);
+        }
+    }
+
+    /* Single-limb dispatch: a->size == 1 takes the special-case branch
+     * in bigint_div_u64 (no reciprocal precompute).  Cover the
+     * 0/1-limb edge cases for both small and large divisors. */
+    {
+        bigint_set_u64(&a, 0xDEADBEEFCAFEBABEULL);
+        bigint_div_u64(&r, &a, 0xDEADBEEFCAFEBABEULL);
+        TEST_ASSERT(bigint_to_double(&r) == 1.0);
+
+        bigint_set_u64(&a, 12345);
+        bigint_div_u64(&r, &a, 7);
+        TEST_ASSERT(bigint_to_double(&r) == (double)(uint64_t)(12345u / 7u));
+    }
+
     /* bigint_copy */
     bigint_set_u64(&a, 9999999999ULL);
     bigint_copy(&r, &a);
