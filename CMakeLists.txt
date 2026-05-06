@@ -22,6 +22,7 @@ option(BUILD_MPFR         "Build MPFR arbitrary-precision interface" OFF)
 option(BUILD_QUADMATH     "Build libquadmath / __float128 interface"  OFF)
 option(BUILD_FLINT        "Use FLINT/GMP/MPFR for the bigint backend"  OFF)
 option(BUILD_TESTS        "Build test suite"             ON)
+option(BUILD_EXAMPLES     "Build language-binding examples" ON)
 option(BUILD_CXX_TESTS    "Build C++ header tests"      ON)
 option(BUILD_LTO          "Enable link-time optimisation (LTO/IPO)"  ON)
 
@@ -394,6 +395,11 @@ endif()
 if(BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+if(BUILD_EXAMPLES)
+    enable_testing()
+    add_subdirectory(examples)
 endif()
 
 # Installation
