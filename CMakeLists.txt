@@ -344,39 +344,47 @@ endif()
 
 # Python extension (optional)
 #
-# The Python extension recompiles the C sources directly into the
-# extension module rather than linking against libwignernj, so the
-# resulting `_wigner.so` is a self-contained shared object.  The
-# pip-installable wheel built from setup.py is the canonical Python
-# distribution path and uses the in-tree schoolbook bigint with no
-# system-library dependencies.
+# Two distribution paths exist for the Python extension:
 #
-# The CMake-driven Python build (BUILD_PYTHON=ON) honours the
-# BUILD_FLINT switch and propagates the FLINT bigint backend
-# (together with its FLINT/MPFR/GMP runtime dependencies) into
-# `_wigner.so`.  This is purely an internal speedup: the Python API
-# is unchanged, but the underlying bigint multiplication uses
-# FLINT's sub-quadratic algorithms, which is observable as a faster
-# wall-clock at very large angular momenta.  BUILD_QUADMATH and
-# BUILD_MPFR are not propagated because the Python wrapper does not
-# expose `__float128` or `mpfr_t` return types -- exposing those
-# would require additional CPython glue (e.g. a string return or a
-# gmpy2 bridge) and is left for a future release.
+#   1. The pip-installable wheel built from setup.py.  This recompiles
+#      the C sources directly into the extension module to produce a
+#      self-contained `_wigner.so` with no runtime dependency on
+#      libwignernj.so.  This is the canonical path for `pip install
+#      wigner` end users.
+#
+#   2. The CMake-driven build below (BUILD_PYTHON=ON).  This links
+#      `_wigner.so` dynamically against libwignernj.so so that distro
+#      packages (Fedora, etc.) ship one copy of the C library on disk
+#      rather than embedding it inside every consumer.  Picking up
+#      BUILD_FLINT, BUILD_QUADMATH, BUILD_MPFR is automatic via the
+#      transitive link to the wignernj target -- no separate switches
+#      needed here.
+#
+# The Python API is identical between the two paths; the
+# `precision='float'|'double'|'longdouble'` keyword still selects the
+# C precision regardless of how `_wigner.so` was built.  The CMake
+# path additionally installs `_wigner.so` plus `wigner/__init__.py`
+# under `Python3_SITEARCH`, so the resulting RPM (or other distro
+# package) can register a `python3-wignernj` namespace package out of
+# the same build that produced `libwignernj.so`.
 if(BUILD_PYTHON)
     find_package(Python3 COMPONENTS Interpreter Development)
     if(Python3_FOUND)
-        Python3_add_library(_wigner MODULE
-            src/python/wignermodule.c
-            ${LIB_SOURCES}
-        )
-        target_include_directories(_wigner PRIVATE src include)
-        if(BUILD_FLINT)
-            target_compile_definitions(_wigner PRIVATE WIGNERNJ_USE_FLINT)
-            target_include_directories(_wigner PRIVATE
-                ${FLINT_INC} ${MPFR_INC} ${GMP_INC})
-            target_link_libraries(_wigner PRIVATE
-                ${FLINT_LIB} ${MPFR_LIB} ${GMP_LIB})
-        endif()
+        # Linking a static libwignernj into the shared _wigner.so
+        # (the Python module) requires every object in wignernj to be
+        # compiled position-independent.  When BUILD_SHARED_LIBS=ON
+        # this is automatic (CMake gives shared targets PIC by
+        # default); when BUILD_SHARED_LIBS=OFF, we have to set the
+        # property explicitly or the link fails with "relocation
+        # R_X86_64_PC32 ... can not be used when making a shared
+        # object; recompile with -fPIC".  Setting the property
+        # unconditionally is cheap (no-op when already shared).
+        set_target_properties(wignernj PROPERTIES
+            POSITION_INDEPENDENT_CODE ON)
+
+        Python3_add_library(_wigner MODULE src/python/wignermodule.c)
+        target_include_directories(_wigner PRIVATE include)
+        target_link_libraries(_wigner PRIVATE wignernj)
         set_target_properties(_wigner PROPERTIES
             C_STANDARD 99
             C_STANDARD_REQUIRED ON
@@ -387,6 +395,14 @@ if(BUILD_PYTHON)
         )
         configure_file(wigner/__init__.py
             ${CMAKE_CURRENT_BINARY_DIR}/wigner/__init__.py COPYONLY)
+
+        # Install the namespace package under Python3_SITEARCH so a
+        # distro `python3-wignernj` RPM can be packaged out of this
+        # build alongside the libwignernj-devel and -fortran subpackages.
+        install(TARGETS _wigner
+            LIBRARY DESTINATION ${Python3_SITEARCH}/wigner)
+        install(FILES wigner/__init__.py
+            DESTINATION ${Python3_SITEARCH}/wigner)
     else()
         message(STATUS "Python3 not found -- skipping Python extension")
     endif()
