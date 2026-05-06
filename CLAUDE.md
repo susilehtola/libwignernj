@@ -93,3 +93,33 @@ Clebsch-Gordan and Racah W are thin wrappers over the Wigner symbols. Gaunt has 
 - **`bigint_to_double` rounding**: extracts `DBL_MANT_DIG` bits with round-to-nearest-even using explicit round/sticky bits; `bigint_to_long_double` uses `LDBL_MANT_DIG` (80-bit extended: 64 on x86-64; double-equiv: 53 on MSVC/ARM; 128-bit quad: 113 on aarch64/POWER); `bigint_to_float128` Horner-evaluates the top three 64-bit words in `__float128` (192 input bits feeding a 113-bit mantissa), good to within 2 ulp at quad precision.
 - **Factorial arguments as integers**: because the triangle condition forces `tj1+tj2+tj3` even, all `(tja ± tjb ± tmc)/2` expressions in the Racah sum are guaranteed integers. No runtime checks needed.
 - **SPDX headers**: every source file begins with `SPDX-License-Identifier: BSD-3-Clause` and `Copyright (c) 2026 Susi Lehtola` in the appropriate comment syntax.
+
+## Project policy
+
+These constraints apply to every change, not just to typical edits.
+
+- **Semantic versioning.** The library follows [Semantic Versioning 2.0.0](https://semver.org). The project version (set by the top-level `project(wignernj VERSION ...)` declaration in `CMakeLists.txt`) is `MAJOR.MINOR.PATCH`:
+  - **PATCH** (x.y.Z): backwards-compatible bug fixes — corrected results, performance improvements that don't change observable behaviour, internal refactoring with no public-API impact.
+  - **MINOR** (x.Y.z): backwards-compatible additions — new symbol families, new precision variants, new build options, new public functions; no removals or signature changes.
+  - **MAJOR** (X.y.z): incompatible API changes — removed functions, changed signatures, behavioural changes that break existing callers.
+
+  The library is currently 0.x.y, i.e. pre-1.0; per the semver convention, public-API stability is not yet guaranteed and any minor bump may break compatibility. Callers should pin to a specific minor version until 1.0.0 ships. Bumping the version is part of the change that introduces the new behaviour, not a separate later commit.
+
+- **Clean-room implementation.** libwignernj is BSD-3-Clause and depends on no GPL/LGPL competitor source. Do not read the source of WIGXJPF, FASTWIGXJ, or any other GPL/LGPL coupling-coefficient library — the library is to remain a derivation from the published Johansson–Forssén algorithm and other openly described methods, never from competitor code.
+
+- **Out of scope: intra-call threading.** OpenMP, pthreads, threaded BLAS, and any other multi-threading inside one library call are excluded by the embeddability mandate (single-threaded callers, host-managed thread pools, and language bindings whose own threading model is unknown all need to be able to use the library without surprise multi-threading). Per-thread caches and `wigner_warmup` make concurrent calls from a host thread pool safe and scale well — that is the right threading-related work. Don't propose intra-call parallelism.
+
+- **MAX_FACTORIAL_ARG extensibility.** The default-build prime-table ceiling (MAX_FACTORIAL_ARG = 20020 derived from the sieve limit) is one configuration; consumers regenerate `src/prime_table.inc` with a larger sieve when they need higher j. Optimisations must scale to that — don't bake "fits in uint64", "fits in 32 bits", or "valuation ≤ 127" assumptions tied only to the default ceiling unless they're guarded by a `#error` or `_Static_assert` that fires at build time when the bound is exceeded.
+
+- **CI path coverage on every architecture.** The `-DBIGINT_NO_DIVQ` and `-DBIGINT_FORCE_PORTABLE` cells on x86-64 are *smoke tests* for the alternative dispatch arms — they exercise the same code paths the library selects in production on aarch64, ppc64le, MSVC, etc. They are not a substitute for testing on the native architecture where each path is selected. Any conditional code path needs CI coverage on every architecture where it can be selected.
+
+- **Bench-driven optimisation.** Every performance-relevant change must be benched against the parent commit using paired alternating runs (alternate the variant under test with main on each iteration to control for thermal/frequency drift), and the headline numbers go in the commit message. Single-shot timings at small j are noise-dominated; use either many-trial microbenchmarks (`bench_term_cache.c`) or longer-budget paired sweeps (`bench_sweep.c`).
+
+- **Library-versioning benchmarks belong in the repo; comparative benches against external libraries don't.** The `benchmarks/` directory hosts library-versioning microbenches and profile drivers — `bench_term_cache.c`, `bench_sweep.c`, `bench_mul.c`, `bench_div128.c`, `profile_*.c`, etc. — used to validate libwignernj changes against prior versions of libwignernj itself.  They have no external dependencies and are part of the project's bench-driven optimisation methodology.  Head-to-head benches against WIGXJPF, GSL, or FLINT belong with the paper they support (as supplementary material), not in this repo: they pull in dependency surface libwignernj itself doesn't have, and they exist to publish a comparison rather than to develop the library.
+
+- **Known dead-end optimisations.** The following have all been implemented end-to-end, paired-benched, and reverted as net-negative on libwignernj's typical operating range (j ≤ 500); see `docs/optimization_notes.md` for the bench data and the underlying mechanism in each case. Do not re-propose them without new methodology that addresses the failure modes recorded there.
+  - **Toom-3 multiplication** for the in-tree bigint backend. Asymptotic crossover with Karatsuba is past where libwignernj operates; the additional code size pollutes icache for the rest of the binary and slows the typical-j hot path. FLINT covers the very-large-j case.
+  - **Compressed `pfrac_t.exp` / factorial-cache rows** (split int8/int16/int32 tier on the prime index). The hot-path dispatch cost (extra struct dereferences, two loops instead of one) outweighs the cache-pressure savings at j ≤ 500.
+  - **Small-bigint specialisation** for Pass 2 (stack-allocated `uint64_t scaled[N]` + static-inline `bigint_mul_u64_small` etc., dispatching on the seed size). LTO is already inlining the existing primitives; the duplicate code path bloats icache and regresses the typical-j workload.
+
+  The shape of optimisations that *did* work (Möller-Granlund division, Gaunt Pass-2 ratio recurrence, Gaunt Pass-1 cache skip) was different: each one *removed work* (replaced an O(n²) per-term sweep with an O(n) recurrence, gated a slow path behind a faster alternative on backends without hardware divq). They didn't add code complexity to the per-call hot path. Optimisation proposals should match this shape.
