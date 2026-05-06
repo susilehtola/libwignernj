@@ -1,70 +1,61 @@
-# Comparative benchmarks
+# Benchmarks
 
-This directory contains the benchmark code used in
-[doc/paper.tex](../docs/paper.tex), Section "Benchmarks", to compare
-`libwignernj` against the GNU Scientific Library (GSL) and the
-prime-factorization reference implementation
-[WIGXJPF](https://fy.chalmers.se/subatom/wigxjpf/).
+Library-versioning benchmarks for `libwignernj`.  These harnesses
+measure libwignernj against prior versions of itself, supporting the
+paired-alternating-runs methodology described in
+[../docs/optimization_notes.md](../docs/optimization_notes.md).
+None of them require external libraries; building requires only
+`libwignernj` itself.
 
-## What is measured
+## What's here
 
-`bench_compare.c` evaluates each of three symbols on a sweep of
-**all-equal-*j*** inputs over a wide range of *j*:
-
-| Symbol | Input |
+| File | Measures |
 |---|---|
-| 3*j* | $(j,j,j;\,m,-m,0)$  with $m$ swept over $-j,\ldots,+j$ |
-| 6*j* | $\{j,j,j;\,j,j,j\}$ (single fixed input per *j*) |
-| 9*j* | $\{j,j,j;\,j,j,j;\,j,j,j\}$ (single fixed input per *j*) |
+| `bench_term_cache.c` | per-symbol microbench (3j, 6j, 9j; small-to-medium *j*; min-of-trials) |
+| `bench_sweep.c`      | logarithmic *j* sweep for one symbol family at a time (3j, 6j, 9j, gaunt) |
+| `bench_mul.c`        | `bigint_mul_ws` primitive at sweeping *m* (limb count) |
+| `bench_div128.c`     | `bigint_div128` primitive across all three dispatch arms |
+| `bench_div128_gm.c`  | Möller-Granlund vs hardware `divq`, swept over divisor classes and *m* |
+| `profile_3j_4000.c`  | single-driver loop for `perf record` at the j=4000 hot point |
+| `profile_6j_9j.c`    | same shape for 6j/9j |
 
-Reported per evaluation: wall-clock time in nanoseconds, plus the
-floating-point sum of the returned values across the inner loop as
-a sanity check that the libraries agree on the numerical result.
+## Building and running
 
-## Reproducibility
-
-For a fair comparison, all three libraries should be built with the
-**same compile flags**.  The paper's published numbers used the
-default Fedora optimization flags, which on a Fedora-derived system
-can be queried directly with
+Each bench compiles standalone against the libwignernj static
+library.  From the repository root:
 
 ```sh
-rpm -E %optflags
+cmake -B build -DBUILD_SHARED_LIBS=OFF
+cmake --build build --parallel
+
+# example: 3j sweep up to j=4000, 0.5s budget per j, 60s ceiling per call
+gcc -O3 -DNDEBUG -Iinclude benchmarks/bench_sweep.c \
+    -o /tmp/bs build/libwignernj.a -lm
+/tmp/bs 3j 4000 0.5 60
 ```
 
-The Makefile in this directory takes its default `CFLAGS` from
-`rpm -E %optflags` when `rpm` is available, and falls back to a
-verbatim copy of the same flag string otherwise.  Override on the
-command line if needed (e.g.\ `make CFLAGS="-O2 -march=native"`).
-
-The same `CFLAGS` should be used to rebuild WIGXJPF
-(`make -C $WIGXJPF_DIR CFLAGS="$(rpm -E %optflags) -fPIC -I inc/ -I cfg/ -I gen/"`)
-and `libwignernj` (`cmake -DCMAKE_C_FLAGS="$(rpm -E %optflags)"`).
-GSL is typically installed as a system package; on Fedora it is
-already built with these flags.
-
-## Build & run
+For paired-alternating bench against a prior commit, build twice (once
+on each git ref), keep both binaries, and alternate runs to control
+for thermal/frequency drift on consumer hardware:
 
 ```sh
-# 1. Build libwignernj normally (it picks up CFLAGS through CMake)
-cmake -B ../build -DBUILD_TESTS=OFF
-cmake --build ../build
-
-# 2. Build WIGXJPF (https://fy.chalmers.se/subatom/wigxjpf/)
-tar xfz wigxjpf-1.13.tar.gz
-make -C wigxjpf-1.13
-
-# 3. Build and run the benchmark
-make WIGXJPF_DIR=/path/to/wigxjpf-1.13 \
-     WIGNERNJ_DIR=/path/to/lib3j/build \
-     run
+for run in 1 2 3; do
+  /tmp/bs_HEAD       3j 4000 0.5 60 > /tmp/sw_head_r$run.dat
+  /tmp/bs_PARENT     3j 4000 0.5 60 > /tmp/sw_parent_r$run.dat
+done
 ```
 
-For best repeatability, run on a quiet machine with the CPU
-frequency governor pinned to `performance`.  The benchmark loop
-does not flush caches or randomize the input order; it is intended
-for an order-of-magnitude comparison, not a microbenchmark down to
-the cycle level.
+Take the minimum-across-runs at each j when comparing.
+
+## Comparative benchmarks against external libraries
+
+Head-to-head comparisons of `libwignernj` against
+[WIGXJPF](https://fy.chalmers.se/subatom/wigxjpf/) and the GNU
+Scientific Library (GSL) -- the data behind the published timing and
+accuracy tables -- are not included in this directory.  That harness
+links against WIGXJPF and GSL, which are outside `libwignernj`'s own
+dependency surface; it is published as supplementary material with
+the corresponding paper.
 
 ## License
 
