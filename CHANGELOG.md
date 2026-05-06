@@ -44,11 +44,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   header is not on the C compiler's default search path (Clang/Linux): a
   fallback probe queries `gcc -print-file-name=include` and propagates the
   directory to consumers.
-- Per-term accuracy benchmark drivers (`benchmarks/maxerr_3j.c`,
-  `benchmarks/sweep_3j_j100.c`, `benchmarks/sweep_3j_j100_reference.py`)
-  that compare libwignernj/WIGXJPF/GSL term by term across the full
-  `m`-range, replacing the cancellation-prone loop sum used by
-  `bench_compare`.
+- Library-versioning microbench harnesses and profile drivers in
+  `benchmarks/` (`bench_term_cache.c`, `bench_sweep.c`, `bench_mul.c`,
+  `bench_div128.c`, `bench_div128_gm.c`, `profile_3j_4000.c`,
+  `profile_6j_9j.c`) used to validate libwignernj changes against
+  prior versions of itself.  Comparative benchmarks against external
+  libraries (`bench_compare.c`, `maxerr_3j.c`, `sweep_3j_j100.c`,
+  and the corresponding Makefile) were moved out of the repo and
+  ship with the paper as supplementary material instead, since they
+  link against WIGXJPF and GSL and exist to publish a comparison
+  rather than to develop the library.
+- `examples/` directory with a single-file demonstration of every
+  public symbol in C, C++, Fortran, and Python; built and run as
+  ctest tests when `BUILD_EXAMPLES=ON` (the default).
 - Microsoft Windows build via the MSVC toolchain (C, C++, and Python
   interfaces), exercised on every push by the `windows-latest` GitHub
   Actions runner. The Fortran 90 wrapper, the libquadmath back-end, and
