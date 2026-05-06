@@ -10,10 +10,10 @@
 // compiled in) for the resulting program to link.
 //
 // Usage:
-//   #include "wigner.hpp"
-//   double v = wigner::symbol3j<double>(2, 2, 0, 0, 0, 0);
-//   double v = wigner::symbol3j(1.0, 1.0, 0.0, 0.0, 0.0, 0.0); // real-valued
-//   float  v = wigner::symbol3j<float>(0.5, 0.5, 1.0, 0.5, -0.5, 0.0);
+//   #include "wignernj.hpp"
+//   double v = wignernj::symbol3j<double>(2, 2, 0, 0, 0, 0);
+//   double v = wignernj::symbol3j(1.0, 1.0, 0.0, 0.0, 0.0, 0.0); // real-valued
+//   float  v = wignernj::symbol3j<float>(0.5, 0.5, 1.0, 0.5, -0.5, 0.0);
 //
 // Throws std::invalid_argument if a real-valued argument is not a half-integer.
 // Returns 0 silently for symbols that vanish by selection rules.
@@ -24,17 +24,17 @@
 // the Condon-Shortley sign of Edmonds and Varshalovich.  The Gaunt and real-
 // Gaunt routines assume the Condon-Shortley phase for Y_l^m, with the real
 // spherical harmonics defined by the Wikipedia/Condon-Shortley construction.
-// See include/wigner.h for the explicit formulas.
+// See include/wignernj.h for the explicit formulas.
 
-#ifndef WIGNER_HPP
-#define WIGNER_HPP
+#ifndef WIGNERNJ_HPP
+#define WIGNERNJ_HPP
 
-#include "wigner.h"
+#include "wignernj.h"
 #include <stdexcept>
 #include <cmath>
 #include <string>
 
-namespace wigner {
+namespace wignernj {
 
 // ── integer-argument API (primary templates, explicit specialisations) ─────
 
@@ -222,6 +222,6 @@ inline T gauntreal(double l1, double m1, double l2, double m2,
                         detail::to_two_j(l3,"l3"), detail::to_two_j(m3,"m3"));
 }
 
-} // namespace wigner
+} // namespace wignernj
 
-#endif /* WIGNER_HPP */
+#endif /* WIGNERNJ_HPP */

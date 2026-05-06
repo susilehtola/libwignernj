@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2026 Susi Lehtola */
 #include "pfrac.h"
-#include "wigner.h"
+#include "wignernj.h"
 #include "wignernj_tls.h"
 #include "xalloc.h"
 #include <stdlib.h>
@@ -10,7 +10,7 @@
 
 /* Public accessor: absolute compile-time ceiling on factorial arguments.
  * Determined by the prime sieve in src/prime_table.inc. */
-int wigner_max_factorial_arg(void) { return MAX_FACTORIAL_ARG; }
+int wignernj_max_factorial_arg(void) { return MAX_FACTORIAL_ARG; }
 
 /* ── factorial-decomposition cache ────────────────────────────────────────────
  *
@@ -77,7 +77,7 @@ static const int *fact_cache_get(int n)
     return row;
 }
 
-void wigner_warmup_factorial_cache(int N_max)
+void wignernj_warmup_factorial_cache(int N_max)
 {
     int n;
     if (N_max < 1) return;
@@ -94,7 +94,7 @@ void wigner_warmup_factorial_cache(int N_max)
  * next pfrac_mul_factorial / pfrac_div_factorial call in this thread
  * starts fresh (re-allocates the table on first use, rebuilds rows
  * on demand). */
-void wigner_factorial_cache_release(void)
+void wignernj_factorial_cache_release(void)
 {
     int n;
     if (!g_fact_cache) return;
@@ -107,7 +107,7 @@ void wigner_factorial_cache_release(void)
 
 #else  /* !WIGNERNJ_HAVE_TLS */
 
-void wigner_warmup_factorial_cache(int N_max)
+void wignernj_warmup_factorial_cache(int N_max)
 {
     /* No persistent cache to populate -- the no-TLS path already
      * computes legendre_valuation per call.  No-op for source
@@ -115,7 +115,7 @@ void wigner_warmup_factorial_cache(int N_max)
     (void)N_max;
 }
 
-void wigner_factorial_cache_release(void)
+void wignernj_factorial_cache_release(void)
 {
     /* No persistent cache; nothing to free. */
 }

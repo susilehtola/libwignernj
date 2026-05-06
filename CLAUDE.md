@@ -51,11 +51,11 @@ cmake -B build -DBUILD_FLINT=ON && cmake --build build
 Every public symbol function follows the same pipeline:
 
 1. **Selection rules** — return `is_zero=1` immediately if violated.
-2. **`wigner*_exact()`** (internal, in `src/wigner3j.c` etc.) — produces a `wigner_exact_t`:
+2. **`wigner*_exact()`** (internal, in `src/wigner3j.c` etc.) — produces a `wignernj_exact_t`:
    - Builds the outer sqrt-factor as a `pfrac_t` (prime-factored rational representing the argument under the outer square root — triangle Δ coefficients and m-dependent factorials for 3j; four triangle Δ's for 6j).
    - Two-pass Racah sum: pass 1 finds `lcm_exp[i]` (max Legendre valuation per prime across all sum terms); pass 2 converts each term to a `bigint_t` scaled integer and accumulates the signed sum.
    - Calls `pfrac_to_sqrt_rational()` to split the outer pfrac into `int_num`, `int_den`, `sqrt_num`, `sqrt_den` bigints.
-3. **`wigner_exact_to_{float,double,long_double,float128}()`** (in `src/wigner_exact.c`) — the only floating-point step: `sign * sum * int_num / int_den * sqrt(sqrt_num / sqrt_den)`. The `_float128` variant is gated on `WIGNER_HAVE_QUADMATH` (set by `-DBUILD_QUADMATH=ON`).
+3. **`wignernj_exact_to_{float,double,long_double,float128}()`** (in `src/wigner_exact.c`) — the only floating-point step: `sign * sum * int_num / int_den * sqrt(sqrt_num / sqrt_den)`. The `_float128` variant is gated on `WIGNERNJ_HAVE_QUADMATH` (set by `-DBUILD_QUADMATH=ON`).
 
 The 9j symbol is implemented as a sum over the intermediate quantum number `k` of products of three 6j exact-path evaluations. At each `k` the three k-dependent Δ factors each appear twice (making them Δ² = rational), and the six k-independent Δ factors form the outer sqrt(C). This enables the same `sqrt(C) × exact_integer` structure as 3j and 6j.
 
@@ -66,11 +66,11 @@ Clebsch-Gordan and Racah W are thin wrappers over the Wigner symbols. Gaunt has 
 | File | Role |
 |------|------|
 | `src/primes.c` | `legendre_valuation(n, pi)` = v_p(n!) via Legendre's formula. The prime list is hard-coded into the compiled library by `#include "prime_table.inc"`, generated at build time by `tools/gen_prime_table.py` (the runtime sieve was removed in 0.2.0) |
-| `src/bigint.c` | Default in-tree backend: unsigned multiword integer (little-endian `uint64_t` words) + sign; schoolbook multiplication below `KARATSUBA_THRESHOLD` (default 32 limbs), Karatsuba above; `bigint_to_{float,double,long_double}` with correct IEEE 754 round-to-nearest, plus `bigint_to_float128` / `bigint_frexp_q` (gated on `WIGNER_HAVE_QUADMATH`) using top-3-words Horner-style binary128 evaluation |
+| `src/bigint.c` | Default in-tree backend: unsigned multiword integer (little-endian `uint64_t` words) + sign; schoolbook multiplication below `KARATSUBA_THRESHOLD` (default 32 limbs), Karatsuba above; `bigint_to_{float,double,long_double}` with correct IEEE 754 round-to-nearest, plus `bigint_to_float128` / `bigint_frexp_q` (gated on `WIGNERNJ_HAVE_QUADMATH`) using top-3-words Horner-style binary128 evaluation |
 | `src/bigint_flint.c` | Optional FLINT backend (gated on `BUILD_FLINT`): the same bigint API delegated to FLINT's `fmpz_t`. Floating-point conversions go through MPFR for correct rounding; binary128 uses `mpfr_get_float128`. Replaces (does not augment) `bigint.c` when enabled |
 | `src/bigint_arith.h` | 64-bit arithmetic primitives (mul/add/sub/div with carry); native `__uint128_t` path on GCC/Clang/ICC, pure-C99 fallback (32×32 partial products, 64/32 long division) on other compilers including MSVC. `-DBIGINT_FORCE_PORTABLE` forces the fallback. |
 | `src/pfrac.c` | Prime-factored rational: signed `int exp[]` indexed by prime table index; `pfrac_mul_factorial` / `pfrac_div_factorial`; `pfrac_to_sqrt_rational` |
-| `src/wigner_exact.c` | `wigner_exact_t` struct and `wigner_exact_to_*` conversion |
+| `src/wigner_exact.c` | `wignernj_exact_t` struct and `wignernj_exact_to_*` conversion |
 | `src/wigner3j.c` | `wigner3j_exact()` + public `wigner3j_f/wigner3j/wigner3j_l` (and `wigner3j_q` when built with `BUILD_QUADMATH=ON`) |
 | `src/wigner6j.c` | `wigner6j_exact()` + public variants |
 | `src/wigner9j.c` | `wigner9j_exact()` (sum over k of three 6j exact-path products) + public variants |
@@ -78,18 +78,18 @@ Clebsch-Gordan and Racah W are thin wrappers over the Wigner symbols. Gaunt has 
 | `src/racah.c` | `racah_w*`: Racah W via 6j, formula `(-1)^(j1+j2+J+j3) * 6j{j1,j2,j12;j3,J,j23}` |
 | `src/fano_x.c` | `fano_x*`: Fano X via 9j, formula `sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] * 9j{j1,j2,j12;j3,j4,j34;j13,j24,J}` |
 | `src/gaunt.c` | `gaunt*`: own exact pipeline — combined pfrac for [Δ]²·factorials·normalization, two Racah sums multiplied as bigints, then `÷sqrt(π)` at float step |
-| `include/wigner.h` | Public C API — all functions, `_f`/`/`_l` precisions |
-| `include/wigner_quadmath.h` | libquadmath API — requires `BUILD_QUADMATH=ON`; declares `_q` (`__float128`) variant of every public symbol |
-| `include/wigner_mpfr.h` | MPFR API — requires `BUILD_MPFR=ON`; set precision on `rop` before calling |
-| `include/wigner.hpp` | C++11 header-only wrapper (links `wignernj`): `wigner::symbol3j<T>()`, real-valued overloads, `std::invalid_argument` for non-half-integer inputs |
-| `src/fortran/wigner_f90.F90` | Fortran module `wigner`: raw `bind(c)` interfaces + `w3j/w6j/w9j/wcg/wracahw/wfanox/wgaunt/wgaunt_real` real-valued wrappers; `_q` interfaces and `w3jq`/etc.\ wrappers gated on `WIGNERNJ_HAVE_QUADMATH` |
-| `src/python/wignermodule.c` | CPython extension `_wigner`: parses int/float/Fraction, `precision=` kwarg |
-| `wigner/__init__.py` | Re-exports from `_wigner` |
+| `include/wignernj.h` | Public C API — all functions, `_f`/`/`_l` precisions |
+| `include/wignernj_quadmath.h` | libquadmath API — requires `BUILD_QUADMATH=ON`; declares `_q` (`__float128`) variant of every public symbol |
+| `include/wignernj_mpfr.h` | MPFR API — requires `BUILD_MPFR=ON`; set precision on `rop` before calling |
+| `include/wignernj.hpp` | C++11 header-only wrapper (links `wignernj`): `wignernj::symbol3j<T>()`, real-valued overloads, `std::invalid_argument` for non-half-integer inputs |
+| `src/fortran/wignernj_f90.F90` | Fortran module `wignernj`: raw `bind(c)` interfaces + `w3j/w6j/w9j/wcg/wracahw/wfanox/wgaunt/wgaunt_real` real-valued wrappers; `_q` interfaces and `w3jq`/etc.\ wrappers gated on `WIGNERNJ_HAVE_QUADMATH` |
+|  `src/python/wignernjmodule.c` | CPython extension `_wignernj`: parses int/float/Fraction, `precision=` kwarg |
+| `wignernj/__init__.py` | Re-exports from `_wignernj` |
 
 ## Key conventions
 
 - **`exp[]` storage in `pfrac_t`**: exponent of prime `p_i` in the *argument* of the outer sqrt is stored directly as `exp[i] = v_p(numerator) - v_p(denominator)`. For the rational sum terms (no sqrt), exponents are exact integers stored as-is. The split is: even `exp[i]` → `p_i^(exp[i]/2)` goes into `int_num`/`int_den`; odd `exp[i]` → remaining `sqrt(p_i)` goes into `sqrt_num`/`sqrt_den`.
-- **`wigner_exact_t` value**: `sign * sum * int_num / int_den * sqrt(sqrt_num / sqrt_den)` where `int_den` absorbs both the outer-sqrt integer denominator and the Racah sum LCM.
+- **`wignernj_exact_t` value**: `sign * sum * int_num / int_den * sqrt(sqrt_num / sqrt_den)` where `int_den` absorbs both the outer-sqrt integer denominator and the Racah sum LCM.
 - **`bigint_to_double` rounding**: extracts `DBL_MANT_DIG` bits with round-to-nearest-even using explicit round/sticky bits; `bigint_to_long_double` uses `LDBL_MANT_DIG` (80-bit extended: 64 on x86-64; double-equiv: 53 on MSVC/ARM; 128-bit quad: 113 on aarch64/POWER); `bigint_to_float128` Horner-evaluates the top three 64-bit words in `__float128` (192 input bits feeding a 113-bit mantissa), good to within 2 ulp at quad precision.
 - **Factorial arguments as integers**: because the triangle condition forces `tj1+tj2+tj3` even, all `(tja ± tjb ± tmc)/2` expressions in the Racah sum are guaranteed integers. No runtime checks needed.
 - **SPDX headers**: every source file begins with `SPDX-License-Identifier: BSD-3-Clause` and `Copyright (c) 2026 Susi Lehtola` in the appropriate comment syntax.
@@ -107,7 +107,7 @@ These constraints apply to every change, not just to typical edits.
 
 - **Clean-room implementation.** libwignernj is BSD-3-Clause and depends on no GPL/LGPL competitor source. Do not read the source of WIGXJPF, FASTWIGXJ, or any other GPL/LGPL coupling-coefficient library — the library is to remain a derivation from the published Johansson–Forssén algorithm and other openly described methods, never from competitor code.
 
-- **Out of scope: intra-call threading.** OpenMP, pthreads, threaded BLAS, and any other multi-threading inside one library call are excluded by the embeddability mandate (single-threaded callers, host-managed thread pools, and language bindings whose own threading model is unknown all need to be able to use the library without surprise multi-threading). Per-thread caches and `wigner_warmup` make concurrent calls from a host thread pool safe and scale well — that is the right threading-related work. Don't propose intra-call parallelism.
+- **Out of scope: intra-call threading.** OpenMP, pthreads, threaded BLAS, and any other multi-threading inside one library call are excluded by the embeddability mandate (single-threaded callers, host-managed thread pools, and language bindings whose own threading model is unknown all need to be able to use the library without surprise multi-threading). Per-thread caches and `wignernj_warmup` make concurrent calls from a host thread pool safe and scale well — that is the right threading-related work. Don't propose intra-call parallelism.
 
 - **MAX_FACTORIAL_ARG extensibility.** The default-build prime-table ceiling (MAX_FACTORIAL_ARG = 20020 derived from the sieve limit) is one configuration; consumers regenerate `src/prime_table.inc` with a larger sieve when they need higher j. Optimisations must scale to that — don't bake "fits in uint64", "fits in 32 bits", or "valuation ≤ 127" assumptions tied only to the default ceiling unless they're guarded by a `#error` or `_Static_assert` that fires at build time when the bound is exceeded.
 

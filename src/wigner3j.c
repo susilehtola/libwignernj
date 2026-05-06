@@ -14,11 +14,11 @@
  *
  * Delta(a,b,c) = sqrt[(a+b-c)!(a-b+c)!(-a+b+c)! / (a+b+c+1)!]
  */
-#include "wigner_exact.h"
+#include "wignernj_exact.h"
 #include "pfrac.h"
 #include "primes.h"
 #include "scratch.h"
-#include "wigner.h"
+#include "wignernj.h"
 #include <stdlib.h>      /* abs */
 
 /* ── selection rules ─────────────────────────────────────────────────────── */
@@ -102,10 +102,10 @@ static void build_outer_sqrt_3j(pfrac_t *outer,
 
 void wigner3j_exact(int tj1, int tj2, int tj3,
                     int tm1, int tm2, int tm3,
-                    wigner_exact_t *out)
+                    wignernj_exact_t *out)
 {
     int s, s_min, s_max, pi;
-    wigner_scratch_t *scratch;
+    wignernj_scratch_t *scratch;
     bigint_ws_t *ws;
     pfrac_t  *outer, *term;
     int      *lcm_exp;
@@ -115,10 +115,10 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     int n_terms;
 
     /* Reset (rather than init) `out`: callers always pass a previously-
-     * initialised wigner_exact_t (either freshly allocated or held in
+     * initialised wignernj_exact_t (either freshly allocated or held in
      * the cached scratch).  Reset preserves the bigint capacities so
      * subsequent reserves are no-ops once they have been sized once. */
-    wigner_exact_reset(out);
+    wignernj_exact_reset(out);
 
     if (!selection_rules_3j(tj1, tj2, tj3, tm1, tm2, tm3)) {
         out->is_zero = 1;
@@ -138,7 +138,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
     /* Acquire the thread's cached scratch and bring every buffer up to
      * the size required by the current call (no-op if it is already
      * big enough from a prior, larger call). */
-    scratch  = wigner_scratch_acquire();
+    scratch  = wignernj_scratch_acquire();
     ws       = &scratch->ws;
     outer    = &scratch->pfracs[0];
     lcm_exp  =  scratch->lcm_exp[0];
@@ -148,7 +148,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
 
     bigint_ws_reserve(ws, mw);
     pfrac_zero(outer);
-    wigner_scratch_lcm_clear(scratch, 0);
+    wignernj_scratch_lcm_clear(scratch, 0);
     bigint_set_zero(sum_pos);
     bigint_set_zero(sum_neg);
     bigint_set_zero(scaled);
@@ -161,7 +161,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
 
     /* ── Pass 1: build each term pfrac once into the cache, find LCM ── */
     n_terms = s_max - s_min + 1;
-    wigner_scratch_terms_reserve(scratch, n_terms);
+    wignernj_scratch_terms_reserve(scratch, n_terms);
     lcm_max_idx = 0;
     for (s = s_min; s <= s_max; s++) {
         /* Build denominator pfrac for term s:
@@ -183,7 +183,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
         }
         if (term->max_idx > lcm_max_idx) lcm_max_idx = term->max_idx;
     }
-    wigner_scratch_lcm_dirty(scratch, 0, lcm_max_idx);
+    wignernj_scratch_lcm_dirty(scratch, 0, lcm_max_idx);
 
     /* ── Pass 2: incremental walk of LCM-scaled term values ──
      *
@@ -278,7 +278,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
 
     pfrac_bigint_mul_prime_pow_array(&out->int_den, lcm_exp, lcm_max_idx, ws);
 
-    wigner_scratch_relinquish(scratch);
+    wignernj_scratch_relinquish(scratch);
 }
 
 /* ── public API ──────────────────────────────────────────────────────────── */
@@ -293,62 +293,62 @@ int wigner3j_max_factorial(int tj1, int tj2, int tj3,
     return (tj1 + tj2 + tj3) / 2 + 1;
 }
 
-/* The public wrappers compute through the cached wigner_exact_t held in
+/* The public wrappers compute through the cached wignernj_exact_t held in
  * the thread's scratch.  wigner3j_exact resets it (preserving bigint
  * capacities) before each call, so on every call after the first the
  * output bigints reuse their previously-allocated buffers and no
- * allocation happens.  wigner_exact_free is therefore not called -- the
+ * allocation happens.  wignernj_exact_free is therefore not called -- the
  * scratch's destructor takes care of it on thread exit. */
 
 float wigner3j_f(int tj1, int tj2, int tj3, int tm1, int tm2, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     float result;
     wigner3j_exact(tj1, tj2, tj3, tm1, tm2, tm3, &s->exact);
-    result = wigner_exact_to_float(&s->exact);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_float(&s->exact);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
 double wigner3j(int tj1, int tj2, int tj3, int tm1, int tm2, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     double result;
     wigner3j_exact(tj1, tj2, tj3, tm1, tm2, tm3, &s->exact);
-    result = wigner_exact_to_double(&s->exact);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_double(&s->exact);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
 long double wigner3j_l(int tj1, int tj2, int tj3, int tm1, int tm2, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     long double result;
     wigner3j_exact(tj1, tj2, tj3, tm1, tm2, tm3, &s->exact);
-    result = wigner_exact_to_long_double(&s->exact);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_long_double(&s->exact);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 
-#ifdef WIGNER_HAVE_QUADMATH
+#ifdef WIGNERNJ_HAVE_QUADMATH
 __float128 wigner3j_q(int tj1, int tj2, int tj3, int tm1, int tm2, int tm3)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     __float128 result;
     wigner3j_exact(tj1, tj2, tj3, tm1, tm2, tm3, &s->exact);
-    result = wigner_exact_to_float128(&s->exact);
-    wigner_scratch_relinquish(s);
+    result = wignernj_exact_to_float128(&s->exact);
+    wignernj_scratch_relinquish(s);
     return result;
 }
 #endif
 
-#ifdef WIGNER_HAVE_MPFR
+#ifdef WIGNERNJ_HAVE_MPFR
 void wigner3j_mpfr(mpfr_t rop, int tj1, int tj2, int tj3,
                                int tm1, int tm2, int tm3, mpfr_rnd_t rnd)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     wigner3j_exact(tj1, tj2, tj3, tm1, tm2, tm3, &s->exact);
-    wigner_exact_to_mpfr(rop, &s->exact, rnd);
-    wigner_scratch_relinquish(s);
+    wignernj_exact_to_mpfr(rop, &s->exact, rnd);
+    wignernj_scratch_relinquish(s);
 }
 #endif

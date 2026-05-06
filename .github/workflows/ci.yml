@@ -456,14 +456,14 @@ jobs:
 
       - name: Python tests
         # Run pytest against the Python extension that BUILD_PYTHON+BUILD_COVERAGE
-        # already produced under build/wigner/, rather than letting setuptools
+        # already produced under build/wignernj/, rather than letting setuptools
         # build a second uninstrumented copy.  Python's import order puts the
-        # cwd ahead of PYTHONPATH, so the source-tree wigner/__init__.py is
+        # cwd ahead of PYTHONPATH, so the source-tree wignernj/__init__.py is
         # what actually loads -- we just need to drop the CMake-built
-        # _wigner.so next to it so the package's relative import succeeds.
+        # _wignernj.so next to it so the package's relative import succeeds.
         run: |
           pip install pytest
-          ln -sf "$PWD/build/wigner/_wigner.so" wigner/_wigner.so
+          ln -sf "$PWD/build/wignernj/_wignernj.so" wignernj/_wignernj.so
           python -m pytest tests/python/ -v
 
       - name: Collect coverage

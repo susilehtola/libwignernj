@@ -34,8 +34,8 @@
  * harmonics used by gaunt_real follow the Wikipedia/Condon–Shortley
  * construction; see the comment block above gaunt_real() below.
  */
-#ifndef WIGNER_H
-#define WIGNER_H
+#ifndef WIGNERNJ_H
+#define WIGNERNJ_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -156,7 +156,7 @@ long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
  * fallback is thread-safe by construction (each call owns its own
  * scratch) but pays the historical per-call allocation cost.
  *
- * `wigner_warmup` is an optional convenience that pre-allocates the
+ * `wignernj_warmup` is an optional convenience that pre-allocates the
  * calling thread's cached scratch for the absolute default-build maximum
  * (j1+j2+j3 ≤ 20019 for 3j/6j/CG/Racah W/Gaunt; equal-j ≤ 5004 for 9j and
  * Fano X).  After it returns, every subsequent symbol evaluation in this
@@ -171,14 +171,14 @@ long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
  * is purely an optimisation; correctness is unchanged whether or not it
  * is called, and it is harmless to call it more than once.
  *
- * On a toolchain without thread-local storage, `wigner_warmup` is a
+ * On a toolchain without thread-local storage, `wignernj_warmup` is a
  * no-op: there is no persistent scratch to pre-grow, so the call returns
  * immediately and subsequent symbol evaluations continue to allocate
- * per-call.  Use `wigner_thread_local_scratch_available()` to detect at
+ * per-call.  Use `wignernj_thread_local_scratch_available()` to detect at
  * runtime whether the cache is in effect; it returns 1 when the per-
  * thread cache is active and 0 when each call allocates fresh. */
-void wigner_warmup(void);
-int  wigner_thread_local_scratch_available(void);
+void wignernj_warmup(void);
+int  wignernj_thread_local_scratch_available(void);
 
 /* ── Optional factorial-decomposition cache ─────────────────────────────────
  *
@@ -193,10 +193,10 @@ int  wigner_thread_local_scratch_available(void);
  *
  * Memory cost: one int per prime <= N per cached row, which sums to
  * about 80 MB at the absolute default-build ceiling
- * (wigner_max_factorial_arg() = 20000) and is much smaller for
+ * (wignernj_max_factorial_arg() = 20000) and is much smaller for
  * realistic inputs.
  *
- * `wigner_warmup_factorial_cache(N_max)` pre-populates the cache for
+ * `wignernj_warmup_factorial_cache(N_max)` pre-populates the cache for
  * factorial arguments 2..N_max so subsequent symbol evaluations whose
  * factorials stay within that bound are guaranteed allocation-free.
  * Pass 0 to populate up to the absolute prime-table ceiling.  No-op
@@ -207,12 +207,12 @@ int  wigner_thread_local_scratch_available(void);
  * inputs.  Use them to size the warmup precisely:
  *
  *   int N = wigner3j_max_factorial(tj1, tj2, tj3, tm1, tm2, tm3);
- *   wigner_warmup_factorial_cache(N);
+ *   wignernj_warmup_factorial_cache(N);
  *
  * To cover an entire workload, take the maximum across calls or pass
- * the absolute ceiling via wigner_max_factorial_arg(). */
-void wigner_warmup_factorial_cache(int N_max);
-int  wigner_max_factorial_arg(void);
+ * the absolute ceiling via wignernj_max_factorial_arg(). */
+void wignernj_warmup_factorial_cache(int N_max);
+int  wignernj_max_factorial_arg(void);
 
 /* Release every per-thread cache held by the calling thread (the
  * scratch buffers used by the per-symbol Racah pipelines and the
@@ -228,7 +228,7 @@ int  wigner_max_factorial_arg(void);
  * unaffected.  Each thread can call it independently; threads other
  * than the caller are not affected.  No-op on toolchains without
  * thread-local storage (there is no persistent state to release). */
-void wigner_thread_cleanup(void);
+void wignernj_thread_cleanup(void);
 
 int wigner3j_max_factorial      (int tj1, int tj2, int tj3,
                                  int tm1, int tm2, int tm3);
@@ -253,4 +253,4 @@ int gaunt_real_max_factorial    (int tl1, int tm1, int tl2, int tm2,
 }
 #endif
 
-#endif /* WIGNER_H */
+#endif /* WIGNERNJ_H */

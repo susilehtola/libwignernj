@@ -924,7 +924,7 @@ double bigint_to_double(const bigint_t *a)
     return ldexp((double)m, exp2);
 }
 
-#ifdef WIGNER_HAVE_QUADMATH
+#ifdef WIGNERNJ_HAVE_QUADMATH
 /*
  * Build the float128 value by Horner-style evaluation of the top up to
  * three 64-bit words: r = w[size-1]*2^128 + w[size-2]*2^64 + w[size-3], scaled
@@ -964,7 +964,7 @@ __float128 bigint_frexp_q(const bigint_t *a, int *out_exp)
     *out_exp = e + e2;
     return mant;
 }
-#endif /* WIGNER_HAVE_QUADMATH */
+#endif /* WIGNERNJ_HAVE_QUADMATH */
 
 long double bigint_to_long_double(const bigint_t *a)
 {
@@ -990,7 +990,7 @@ long double bigint_to_long_double(const bigint_t *a)
 
 /* ── MPFR conversion ─────────────────────────────────────────────────────── */
 
-#ifdef WIGNER_HAVE_MPFR
+#ifdef WIGNERNJ_HAVE_MPFR
 void bigint_to_mpfr(mpfr_t rop, const bigint_t *a, mpfr_rnd_t rnd)
 {
     size_t i;

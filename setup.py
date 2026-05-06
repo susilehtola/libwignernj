@@ -5,7 +5,7 @@ import sys
 from setuptools import setup, Extension
 
 sources = [
-    "src/python/wignermodule.c",
+    "src/python/wignernjmodule.c",
     "src/xalloc.c",
     "src/primes.c",
     "src/bigint.c",
@@ -33,7 +33,7 @@ else:
     libraries = ["m"]
 
 ext = Extension(
-    name="wigner._wigner",
+    name="wignernj._wignernj",
     sources=sources,
     include_dirs=["src", "include"],
     extra_compile_args=extra_compile_args,
@@ -41,10 +41,10 @@ ext = Extension(
 )
 
 setup(
-    name="wigner",
-    version="0.2.0",
+    name="wignernj",
+    version="0.3.0",
     description="Exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization",
-    packages=["wigner"],
+    packages=["wignernj"],
     ext_modules=[ext],
     python_requires=">=3.7",
 )

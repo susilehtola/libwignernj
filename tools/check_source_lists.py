@@ -6,7 +6,7 @@ Verify that the C source lists in CMakeLists.txt and setup.py stay in sync.
 
 The CMake build (LIB_SOURCES in CMakeLists.txt) and the Python extension
 build (sources in setup.py) compile the same library twice, with the
-Python build adding one extra file: src/python/wignermodule.c, the CPython
+Python build adding one extra file: src/python/wignernjmodule.c, the CPython
 entry point.  When a new file is added to LIB_SOURCES but not to setup.py
 the Python extension links with an undefined-symbol error at import time,
 which manifests in CI as "0 tests collected" rather than a clear link
@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-PYTHON_ENTRY_POINT = "src/python/wignermodule.c"
+PYTHON_ENTRY_POINT = "src/python/wignernjmodule.c"
 
 
 def parse_cmake_lib_sources(text: str) -> list[str]:

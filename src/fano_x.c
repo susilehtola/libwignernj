@@ -19,20 +19,20 @@
  * Arguments are passed as twice their value (tj = 2*j); the four
  * (2j+1) factors above appear in the exact pipeline as (tj12+1),
  * (tj34+1), (tj13+1), and (tj24+1) and are folded into the existing
- * wigner_exact_t in the same way the (2J+1) factor is folded into the
+ * wignernj_exact_t in the same way the (2J+1) factor is folded into the
  * Clebsch--Gordan coefficient (see src/clebsch.c).
  */
-#include "wigner_exact.h"
+#include "wignernj_exact.h"
 #include "primes.h"
 #include "scratch.h"
-#include "wigner.h"
+#include "wignernj.h"
 
 /*
  * Internal: compute the exact Fano X coefficient.  The 9j symbol is
  * computed exactly by the existing wigner9j_exact pipeline; the four
  * (2j+1) factors above are then folded in by factoring each of them
  * into prime powers and distributing those prime powers over the
- * int_num and sqrt_num bigints of the wigner_exact_t:
+ * int_num and sqrt_num bigints of the wignernj_exact_t:
  *
  *   even prime power p^(2k) -> p^k into int_num
  *   odd  prime power p^(2k+1) -> p^k into int_num, p into sqrt_num
@@ -44,7 +44,7 @@
 static void fano_x_exact(int tj1, int tj2, int tj12,
                          int tj3, int tj4, int tj34,
                          int tj13, int tj24, int tJ,
-                         wigner_exact_t *out)
+                         wignernj_exact_t *out)
 {
     int factors[4];
     int f;
@@ -95,11 +95,11 @@ float fano_x_f(int tj1, int tj2, int tj12,
                int tj3, int tj4, int tj34,
                int tj13, int tj24, int tJ)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     float r;
     fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &s->exact);
-    r = wigner_exact_to_float(&s->exact);
-    wigner_scratch_relinquish(s);
+    r = wignernj_exact_to_float(&s->exact);
+    wignernj_scratch_relinquish(s);
     return r;
 }
 
@@ -107,11 +107,11 @@ double fano_x(int tj1, int tj2, int tj12,
               int tj3, int tj4, int tj34,
               int tj13, int tj24, int tJ)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     double r;
     fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &s->exact);
-    r = wigner_exact_to_double(&s->exact);
-    wigner_scratch_relinquish(s);
+    r = wignernj_exact_to_double(&s->exact);
+    wignernj_scratch_relinquish(s);
     return r;
 }
 
@@ -119,39 +119,39 @@ long double fano_x_l(int tj1, int tj2, int tj12,
                      int tj3, int tj4, int tj34,
                      int tj13, int tj24, int tJ)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     long double r;
     fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &s->exact);
-    r = wigner_exact_to_long_double(&s->exact);
-    wigner_scratch_relinquish(s);
+    r = wignernj_exact_to_long_double(&s->exact);
+    wignernj_scratch_relinquish(s);
     return r;
 }
 
-#ifdef WIGNER_HAVE_QUADMATH
+#ifdef WIGNERNJ_HAVE_QUADMATH
 __float128 fano_x_q(int tj1, int tj2, int tj12,
                     int tj3, int tj4, int tj34,
                     int tj13, int tj24, int tJ)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     __float128 r;
     fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &s->exact);
-    r = wigner_exact_to_float128(&s->exact);
-    wigner_scratch_relinquish(s);
+    r = wignernj_exact_to_float128(&s->exact);
+    wignernj_scratch_relinquish(s);
     return r;
 }
 #endif
 
-#ifdef WIGNER_HAVE_MPFR
-#include "wigner_mpfr.h"
+#ifdef WIGNERNJ_HAVE_MPFR
+#include "wignernj_mpfr.h"
 void fano_x_mpfr(mpfr_t rop,
                  int tj1, int tj2, int tj12,
                  int tj3, int tj4, int tj34,
                  int tj13, int tj24, int tJ,
                  mpfr_rnd_t rnd)
 {
-    wigner_scratch_t *s = wigner_scratch_acquire();
+    wignernj_scratch_t *s = wignernj_scratch_acquire();
     fano_x_exact(tj1, tj2, tj12, tj3, tj4, tj34, tj13, tj24, tJ, &s->exact);
-    wigner_exact_to_mpfr(rop, &s->exact, rnd);
-    wigner_scratch_relinquish(s);
+    wignernj_exact_to_mpfr(rop, &s->exact, rnd);
+    wignernj_scratch_relinquish(s);
 }
 #endif

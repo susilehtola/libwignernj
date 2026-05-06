@@ -68,7 +68,7 @@ void bigint_reserve(bigint_t *a, size_t cap)
 int bigint_cmp(const bigint_t *a, const bigint_t *b)
 {
     /* The schoolbook variant compares unsigned magnitudes.  In
-     * libwignernj all bigints stored in wigner_exact_t are
+     * libwignernj all bigints stored in wignernj_exact_t are
      * non-negative, so a signed compare is equivalent.  Normalise
      * to {-1, 0, +1}. */
     int c = fmpz_cmp(a->v, b->v);
@@ -263,7 +263,7 @@ long double bigint_to_long_double(const bigint_t *a)
  * overflow IEEE 754 binary64).  Going through bigint_to_<T> first would
  * collapse these to infinity; instead we extract a normalised
  * mantissa-exponent pair via MPFR (which has unbounded exponent
- * range) and let wigner_exact_to_<T> recombine the exponents in
+ * range) and let wignernj_exact_to_<T> recombine the exponents in
  * integer arithmetic. */
 static double frexp_via_mpfr(const bigint_t *a, mpfr_prec_t prec,
                              int *out_exp)
@@ -299,7 +299,7 @@ long double bigint_frexpl(const bigint_t *a, int *out_exp)
     if (fmpz_is_zero(a->v)) { *out_exp = 0; return 0.0L; }
     /* mpfr_get_ld_2exp expects MPFR with at least LDBL_MANT_DIG bits;
      * fall back to the double path's mantissa, scaled to long double,
-     * since wigner_exact_to_long_double recombines the exponents
+     * since wignernj_exact_to_long_double recombines the exponents
      * separately and only needs a normalised mantissa. */
     mpz_t m;
     mpz_init(m);
@@ -317,7 +317,7 @@ long double bigint_frexpl(const bigint_t *a, int *out_exp)
 
 /* ── binary128 conversion (when the compiler provides __float128) ────────── */
 
-#ifdef WIGNER_HAVE_QUADMATH
+#ifdef WIGNERNJ_HAVE_QUADMATH
 /* mpfr_get_float128 is available in MPFR ≥ 4.1.0, but only when MPFR
  * was configured with --enable-float128 (Ubuntu's libmpfr-dev is not).
  * Avoid the dependency entirely by extracting the rounded 113-bit
@@ -375,7 +375,7 @@ __float128 bigint_frexp_q(const bigint_t *a, int *out_exp)
 
 /* ── MPFR conversion (when the user requests the MPFR back-end) ──────────── */
 
-#ifdef WIGNER_HAVE_MPFR
+#ifdef WIGNERNJ_HAVE_MPFR
 void bigint_to_mpfr(mpfr_t rop, const bigint_t *a, mpfr_rnd_t rnd)
 {
     bigint_to_mpfr_internal(rop, a, rnd);

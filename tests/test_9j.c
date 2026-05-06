@@ -5,7 +5,7 @@
  * Reference values computed with sympy 1.14.0.
  */
 #include "run_tests.h"
-#include "../include/wigner.h"
+#include "../include/wignernj.h"
 
 typedef struct {
     int tj11,tj12,tj13,tj21,tj22,tj23,tj31,tj32,tj33;

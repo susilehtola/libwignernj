@@ -10,7 +10,7 @@
 
 program test_wigner_quadmath
 #ifdef WIGNERNJ_HAVE_QUADMATH
-  use wigner
+  use wignernj
   use iso_fortran_env, only: real128
   implicit none
 

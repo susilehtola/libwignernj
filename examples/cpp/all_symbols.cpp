@@ -3,7 +3,7 @@
 //
 // libwignernj C++ API demonstration.
 //
-// Calls every public symbol family exposed by wigner.hpp once with small,
+// Calls every public symbol family exposed by wignernj.hpp once with small,
 // textbook-scale arguments and prints the result alongside an analytic
 // reference value.  The program exits 0 on success, non-zero if any
 // computed value disagrees with its reference by more than 1e-14.
@@ -18,7 +18,7 @@
 //
 // Build (out-of-tree, against an installed libwignernj):
 //     c++ -std=c++11 -o all_symbols_cpp all_symbols.cpp -lwignernj -lm
-#include "wigner.hpp"
+#include "wignernj.hpp"
 
 #include <cmath>
 #include <cstdio>
@@ -50,50 +50,50 @@ int main()
     std::printf("---------------------------------------------------------------\n");
 
     // 1. Wigner 3j symbol.   Real-valued overload: pass j directly.
-    failed |= check("wigner::symbol3j(1,1,0; 0,0,0)",
-                    wigner::symbol3j<double>(1.0, 1.0, 0.0,
+    failed |= check("wignernj::symbol3j(1,1,0; 0,0,0)",
+                    wignernj::symbol3j<double>(1.0, 1.0, 0.0,
                                               0.0, 0.0, 0.0),
                     -1.0 / std::sqrt(3.0));
 
     // 2. Wigner 6j symbol.
-    failed |= check("wigner::symbol6j{1,1,1; 1,1,1}",
-                    wigner::symbol6j<double>(1.0, 1.0, 1.0,
+    failed |= check("wignernj::symbol6j{1,1,1; 1,1,1}",
+                    wignernj::symbol6j<double>(1.0, 1.0, 1.0,
                                               1.0, 1.0, 1.0),
                     1.0 / 6.0);
 
     // 3. Wigner 9j symbol.
-    failed |= check("wigner::symbol9j{1,1,0; 1,1,0; 0,0,0}",
-                    wigner::symbol9j<double>(1.0, 1.0, 0.0,
+    failed |= check("wignernj::symbol9j{1,1,0; 1,1,0; 0,0,0}",
+                    wignernj::symbol9j<double>(1.0, 1.0, 0.0,
                                               1.0, 1.0, 0.0,
                                               0.0, 0.0, 0.0),
                     1.0 / 3.0);
 
     // 4. Clebsch-Gordan coefficient.
-    failed |= check("wigner::cg(1,0; 1,0 | 2,0)",
-                    wigner::cg<double>(1.0, 0.0,  1.0, 0.0,  2.0, 0.0),
+    failed |= check("wignernj::cg(1,0; 1,0 | 2,0)",
+                    wignernj::cg<double>(1.0, 0.0,  1.0, 0.0,  2.0, 0.0),
                     std::sqrt(2.0 / 3.0));
 
     // 5. Racah W coefficient.
-    failed |= check("wigner::racahw(1,1,1,1; 1,1)",
-                    wigner::racahw<double>(1.0, 1.0, 1.0,
+    failed |= check("wignernj::racahw(1,1,1,1; 1,1)",
+                    wignernj::racahw<double>(1.0, 1.0, 1.0,
                                             1.0, 1.0, 1.0),
                     1.0 / 6.0);
 
     // 6. Fano X coefficient.
-    failed |= check("wigner::fanox(1,1,1; 1,1,1; 1,1,2)",
-                    wigner::fanox<double>(1.0, 1.0, 1.0,
+    failed |= check("wignernj::fanox(1,1,1; 1,1,1; 1,1,2)",
+                    wignernj::fanox<double>(1.0, 1.0, 1.0,
                                            1.0, 1.0, 1.0,
                                            1.0, 1.0, 2.0),
                     0.5);
 
     // 7. Gaunt coefficient (complex Y_l^m).
-    failed |= check("wigner::gaunt(1,0; 1,0; 2,0)",
-                    wigner::gaunt<double>(1.0, 0.0,  1.0, 0.0,  2.0, 0.0),
+    failed |= check("wignernj::gaunt(1,0; 1,0; 2,0)",
+                    wignernj::gaunt<double>(1.0, 0.0,  1.0, 0.0,  2.0, 0.0),
                     1.0 / std::sqrt(5.0 * M_PI));
 
     // 8. Gaunt over real spherical harmonics.
-    failed |= check("wigner::gauntreal(1,0; 1,0; 2,0)",
-                    wigner::gauntreal<double>(1.0, 0.0,  1.0, 0.0,  2.0, 0.0),
+    failed |= check("wignernj::gauntreal(1,0; 1,0; 2,0)",
+                    wignernj::gauntreal<double>(1.0, 0.0,  1.0, 0.0,  2.0, 0.0),
                     1.0 / std::sqrt(5.0 * M_PI));
 
     if (!failed)

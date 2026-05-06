@@ -14,8 +14,8 @@
  * analytic value, the quad result has at least as many correct bits as
  * the long-double result.
  */
-#include "../include/wigner.h"
-#include "../include/wigner_quadmath.h"
+#include "../include/wignernj.h"
+#include "../include/wignernj_quadmath.h"
 #include <quadmath.h>
 #include <float.h>
 #include <stdio.h>

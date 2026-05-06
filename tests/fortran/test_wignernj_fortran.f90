@@ -3,7 +3,7 @@
 !
 ! Fortran test program for the wigner module convenience wrappers.
 program test_wigner_fortran
-  use wigner
+  use wignernj
   use iso_c_binding, only: c_double, c_int
   implicit none
 

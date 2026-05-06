@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2026 Susi Lehtola */
-#include "wigner_exact.h"
+#include "wignernj_exact.h"
 #include <math.h>
 
-void wigner_exact_init(wigner_exact_t *e)
+void wignernj_exact_init(wignernj_exact_t *e)
 {
     bigint_init(&e->sum);
     bigint_init(&e->int_num);
@@ -16,12 +16,12 @@ void wigner_exact_init(wigner_exact_t *e)
 }
 
 /*
- * Reset an already-initialized wigner_exact_t to its "freshly built"
+ * Reset an already-initialized wignernj_exact_t to its "freshly built"
  * state without freeing or reallocating its bigint buffers.  Used by
- * the cached-scratch path where the same wigner_exact_t is reused
+ * the cached-scratch path where the same wignernj_exact_t is reused
  * across many public-API calls.
  */
-void wigner_exact_reset(wigner_exact_t *e)
+void wignernj_exact_reset(wignernj_exact_t *e)
 {
     bigint_set_zero(&e->sum);
     bigint_set_zero(&e->int_num);
@@ -33,7 +33,7 @@ void wigner_exact_reset(wigner_exact_t *e)
     e->is_zero  = 0;
 }
 
-void wigner_exact_free(wigner_exact_t *e)
+void wignernj_exact_free(wignernj_exact_t *e)
 {
     if (e->is_zero) return;
     bigint_free(&e->sum);
@@ -105,7 +105,7 @@ static long double apply_sqrt_exp_l(long double m, int sqrt_diff, int *iexp)
     return m;
 }
 
-float wigner_exact_to_float(const wigner_exact_t *e)
+float wignernj_exact_to_float(const wignernj_exact_t *e)
 {
     int es, en, ed, esn, esd, iexp;
     float ms, mn, md, msn, msd, m;
@@ -126,7 +126,7 @@ float wigner_exact_to_float(const wigner_exact_t *e)
     return (float)(e->sign * e->sum_sign) * ldexpf(m, iexp);
 }
 
-double wigner_exact_to_double(const wigner_exact_t *e)
+double wignernj_exact_to_double(const wignernj_exact_t *e)
 {
     int es, en, ed, esn, esd, iexp;
     double ms, mn, md, msn, msd, m;
@@ -147,7 +147,7 @@ double wigner_exact_to_double(const wigner_exact_t *e)
     return (double)(e->sign * e->sum_sign) * ldexp(m, iexp);
 }
 
-#ifdef WIGNER_HAVE_QUADMATH
+#ifdef WIGNERNJ_HAVE_QUADMATH
 static __float128 apply_sqrt_exp_q(__float128 m, int sqrt_diff, int *iexp)
 {
     if (sqrt_diff & 1) {
@@ -164,7 +164,7 @@ static __float128 apply_sqrt_exp_q(__float128 m, int sqrt_diff, int *iexp)
     return m;
 }
 
-__float128 wigner_exact_to_float128(const wigner_exact_t *e)
+__float128 wignernj_exact_to_float128(const wignernj_exact_t *e)
 {
     int es, en, ed, esn, esd, iexp;
     __float128 ms, mn, md, msn, msd, m;
@@ -186,7 +186,7 @@ __float128 wigner_exact_to_float128(const wigner_exact_t *e)
 }
 #endif
 
-long double wigner_exact_to_long_double(const wigner_exact_t *e)
+long double wignernj_exact_to_long_double(const wignernj_exact_t *e)
 {
     int es, en, ed, esn, esd, iexp;
     long double ms, mn, md, msn, msd, m;
@@ -209,8 +209,8 @@ long double wigner_exact_to_long_double(const wigner_exact_t *e)
 
 /* ── MPFR conversion ─────────────────────────────────────────────────────── */
 
-#ifdef WIGNER_HAVE_MPFR
-void wigner_exact_to_mpfr(mpfr_t rop, const wigner_exact_t *e, mpfr_rnd_t rnd)
+#ifdef WIGNERNJ_HAVE_MPFR
+void wignernj_exact_to_mpfr(mpfr_t rop, const wignernj_exact_t *e, mpfr_rnd_t rnd)
 {
     mpfr_prec_t prec = mpfr_get_prec(rop);
     mpfr_t tmp, aux;

@@ -5,7 +5,7 @@
  * Reference values computed with sympy 1.14.0.
  */
 #include "run_tests.h"
-#include "../include/wigner.h"
+#include "../include/wignernj.h"
 #include <float.h>
 
 /* Clebsch-Gordan */

@@ -10,9 +10,9 @@
  * scaled with the angular-momentum input.  At small j (j <~ 10) this
  * allocation overhead dominated the wall-clock cost.
  *
- * Design: every public entry point fetches a wigner_scratch_t via
- * wigner_scratch_acquire(), uses it, and returns it via
- * wigner_scratch_relinquish().  Two implementations of this acquire /
+ * Design: every public entry point fetches a wignernj_scratch_t via
+ * wignernj_scratch_acquire(), uses it, and returns it via
+ * wignernj_scratch_relinquish().  Two implementations of this acquire /
  * relinquish pair coexist:
  *
  *   - When the compiler provides thread-local storage (essentially
@@ -43,20 +43,20 @@
 
 #include "bigint.h"
 #include "pfrac.h"
-#include "wigner_exact.h"
+#include "wignernj_exact.h"
 
 /* Slot counts sized for the most demanding caller in each category
  * (wigner9j for bigints, lcm_exp, and pfracs). */
-#define WIGNER_SCRATCH_BIGINTS  10
-#define WIGNER_SCRATCH_PFRACS    2
-#define WIGNER_SCRATCH_LCMEXP    4
+#define WIGNERNJ_SCRATCH_BIGINTS  10
+#define WIGNERNJ_SCRATCH_PFRACS    2
+#define WIGNERNJ_SCRATCH_LCMEXP    4
 
 typedef struct {
     bigint_ws_t      ws;
-    bigint_t         bigints[WIGNER_SCRATCH_BIGINTS];
-    pfrac_t          pfracs [WIGNER_SCRATCH_PFRACS];
-    int             *lcm_exp[WIGNER_SCRATCH_LCMEXP];
-    int              lcm_max_dirty[WIGNER_SCRATCH_LCMEXP];
+    bigint_t         bigints[WIGNERNJ_SCRATCH_BIGINTS];
+    pfrac_t          pfracs [WIGNERNJ_SCRATCH_PFRACS];
+    int             *lcm_exp[WIGNERNJ_SCRATCH_LCMEXP];
+    int              lcm_max_dirty[WIGNERNJ_SCRATCH_LCMEXP];
     /* Variable-sized cache of per-Racah-sum-term pfracs.  Lazy-grown to
      * the largest sum a given thread has seen.  Each Racah-sum loop
      * builds its term pfracs into [0, n_terms) once during pass 1, then
@@ -65,34 +65,34 @@ typedef struct {
      * to be pfrac_zero'd by the caller. */
     pfrac_t         *terms;
     int              terms_cap;
-    /* Cached wigner_exact_t reused across calls.  Lifecycle: init'd
+    /* Cached wignernj_exact_t reused across calls.  Lifecycle: init'd
      * once at scratch creation, the public wrappers reset it before
      * each call, and it is destroyed when the scratch is released. */
-    wigner_exact_t   exact;
-} wigner_scratch_t;
+    wignernj_exact_t   exact;
+} wignernj_scratch_t;
 
 /* Acquire a scratch for the duration of one public-API call.  Always
  * returns a valid pointer.  Pair every acquire with one relinquish. */
-wigner_scratch_t *wigner_scratch_acquire(void);
-void              wigner_scratch_relinquish(wigner_scratch_t *s);
+wignernj_scratch_t *wignernj_scratch_acquire(void);
+void              wignernj_scratch_relinquish(wignernj_scratch_t *s);
 
 /* Helpers: zero only the dirty prefix of lcm_exp[idx], and update the
  * dirty bound when a new caller writes further than the last one. */
-void wigner_scratch_lcm_clear(wigner_scratch_t *s, int idx);
-void wigner_scratch_lcm_dirty(wigner_scratch_t *s, int idx, int new_max);
+void wignernj_scratch_lcm_clear(wignernj_scratch_t *s, int idx);
+void wignernj_scratch_lcm_dirty(wignernj_scratch_t *s, int idx, int new_max);
 
 /* Ensure the scratch's term-pfrac cache holds at least n_terms slots,
  * growing in place if necessary.  Newly created slots are pfrac_init'd
  * (caller is responsible for pfrac_zero before use).  Capacity persists
  * across calls; this is how Racah-sum loops avoid rebuilding the
  * per-term pfrac in pass 2. */
-void wigner_scratch_terms_reserve(wigner_scratch_t *s, int n_terms);
+void wignernj_scratch_terms_reserve(wignernj_scratch_t *s, int n_terms);
 
 /* Test-only.  In the TLS-cached build, drops the calling thread's
  * cached scratch so the next acquire goes through the lazy-init path
  * again -- needed by test_oom for malloc-failure injection.  In the
  * no-TLS fallback every acquire already reallocates, so this is a
  * no-op. */
-void wigner_scratch_release(void);
+void wignernj_scratch_release(void);
 
 #endif /* WIGNERNJ_SCRATCH_H */

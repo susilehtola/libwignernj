@@ -58,7 +58,7 @@ paths produce bit-identical output.
 ## C API
 
 ```c
-#include "wigner.h"
+#include "wignernj.h"
 
 /* Wigner 3j:  ( j1  j2  j3 ) */
 /*             ( m1  m2  m3 ) */
@@ -99,7 +99,7 @@ double      gaunt_real(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 Each function is available in three precisions: `double` (no suffix), `float`
 (`_f`), and `long double` (`_l`).  When the library is built with
 `-DBUILD_QUADMATH=ON`, an additional `_q` variant returning `__float128`
-is exposed in `wigner_quadmath.h` (see below).  Functions return 0 for
+is exposed in `wignernj_quadmath.h` (see below).  Functions return 0 for
 symbols that vanish by selection rules; selection-rule violations are not
 errors.
 
@@ -109,13 +109,13 @@ Linking: `pkg-config --libs libwignernj` or `-lwignernj -lm`.
 
 Build with `-DBUILD_QUADMATH=ON` (requires a compiler with `__float128`
 support: GCC, Clang, or Intel ICC/ICX on Linux/macOS; not Apple Clang or
-MSVC).  Include `wigner_quadmath.h` in addition to `wigner.h`.  Each public
+MSVC).  Include `wignernj_quadmath.h` in addition to `wignernj.h`.  Each public
 symbol gains a `_q` variant returning `__float128` (IEEE 754 binary128,
 113-bit mantissa):
 
 ```c
-#include "wigner.h"
-#include "wigner_quadmath.h"
+#include "wignernj.h"
+#include "wignernj_quadmath.h"
 
 __float128 v = wigner6j_q(4, 4, 4, 4, 4, 4);
 ```
@@ -127,15 +127,15 @@ convenience wrappers `w3jq`, `w6jq`, `w9jq`, `wcgq`, `wracahwq`, `wgauntq`,
 
 ## MPFR API
 
-Build with `-DBUILD_MPFR=ON` (requires libmpfr).  Include `wigner_mpfr.h` in
-addition to `wigner.h`.  Set the output precision on `rop` via `mpfr_init2`
+Build with `-DBUILD_MPFR=ON` (requires libmpfr).  Include `wignernj_mpfr.h` in
+addition to `wignernj.h`.  Set the output precision on `rop` via `mpfr_init2`
 before calling; the rounding mode is the last argument and may be any of the
 standard MPFR modes (`MPFR_RNDN`, `MPFR_RNDZ`, `MPFR_RNDD`, `MPFR_RNDU`,
 `MPFR_RNDA`).
 
 ```c
-#include "wigner.h"
-#include "wigner_mpfr.h"
+#include "wignernj.h"
+#include "wignernj_mpfr.h"
 
 mpfr_t v;
 mpfr_init2(v, 256);   /* 256-bit precision */
@@ -155,21 +155,21 @@ Link with `-lwignernj -lmpfr -lm`.
 
 ## C++ API
 
-The header-only wrapper `wigner.hpp` provides a template interface that accepts
+The header-only wrapper `wignernj.hpp` provides a template interface that accepts
 either `2*j` integers or real-valued doubles (half-integers).  The wrapper has
 no separate translation unit, but every function forwards to a C symbol in
 `libwignernj`, so you still need to link the C library (`-lwignernj -lm`):
 
 ```cpp
-#include "wigner.hpp"
+#include "wignernj.hpp"
 
 // Integer 2*j form
-double v = wigner::symbol3j<double>(2, 2, 0,  0, 0, 0);
-float  f = wigner::symbol6j<float> (2, 2, 2,  2, 2, 2);
+double v = wignernj::symbol3j<double>(2, 2, 0,  0, 0, 0);
+float  f = wignernj::symbol6j<float> (2, 2, 2,  2, 2, 2);
 
 // Real-valued form (throws std::invalid_argument if not a half-integer)
-double v = wigner::symbol3j(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
-double c = wigner::cg(0.5, 0.5, 0.5, -0.5, 1.0, 0.0);
+double v = wignernj::symbol3j(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
+double c = wignernj::cg(0.5, 0.5, 0.5, -0.5, 1.0, 0.0);
 
 // Available functions: symbol3j, symbol6j, symbol9j, cg, racahw, gaunt, gauntreal
 ```
@@ -183,16 +183,17 @@ pip install -e .                    # build and install in-place
 ```
 
 ```python
-import wigner
+import wignernj
 
-wigner.wigner3j(1, 1, 0, 0, 0, 0)             # integer 2*j form
-wigner.wigner3j(0.5, 0.5, 1, 0.5, -0.5, 0)   # real half-integer form
-wigner.wigner6j(1, 1, 2, 1, 1, 2)
-wigner.wigner9j(1, 1, 2, 1, 1, 2, 2, 2, 4)
-wigner.clebsch_gordan(1, 1, 1, -1, 2, 0)
-wigner.racah_w(1, 1, 2, 1, 2, 2)
-wigner.gaunt(2, 1, 2, -1, 2, 0, precision='longdouble')
-wigner.gaunt_real(2, 1, 2, -1, 0, 0)
+wignernj.wigner3j(1, 1, 0, 0, 0, 0)             # integer 2*j form
+wignernj.wigner3j(0.5, 0.5, 1, 0.5, -0.5, 0)   # real half-integer form
+wignernj.wigner6j(1, 1, 2, 1, 1, 2)
+wignernj.wigner9j(1, 1, 2, 1, 1, 2, 2, 2, 4)
+wignernj.clebsch_gordan(1, 1, 1, -1, 2, 0)
+wignernj.racah_w(1, 1, 2, 1, 2, 2)
+wignernj.fano_x(1, 1, 2,  1, 1, 2,  2, 2, 4)
+wignernj.gaunt(2, 1, 2, -1, 2, 0, precision='longdouble')
+wignernj.gaunt_real(2, 1, 2, -1, 0, 0)
 ```
 
 The optional `precision=` keyword selects `'float'`, `'double'` (default), or
@@ -200,12 +201,12 @@ The optional `precision=` keyword selects `'float'`, `'double'` (default), or
 
 ## Fortran API
 
-The `wigner` module provides real-valued wrappers `w3j`, `w6j`, `w9j`, `wcg`,
+The `wignernj` module provides real-valued wrappers `w3j`, `w6j`, `w9j`, `wcg`,
 `wracahw`, `wfanox`, `wgaunt`, and `wgaunt_real` that accept double-precision
 real arguments:
 
 ```fortran
-use wigner
+use wignernj
 real(8) :: v
 v = w3j(1.0d0, 1.0d0, 0.0d0,  0.0d0, 0.0d0, 0.0d0)
 v = w6j(1.0d0, 1.0d0, 2.0d0,  1.0d0, 1.0d0, 2.0d0)

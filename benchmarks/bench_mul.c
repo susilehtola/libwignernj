@@ -14,7 +14,7 @@
  */
 #include "bigint.h"
 #include "scratch.h"
-#include "wigner.h"
+#include "wignernj.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

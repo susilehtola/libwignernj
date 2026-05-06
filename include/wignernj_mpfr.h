@@ -3,14 +3,14 @@
  *
  * MPFR arbitrary-precision interface for libwignernj.
  *
- * Include this header (in addition to wigner.h) when MPFR output is needed.
+ * Include this header (in addition to wignernj.h) when MPFR output is needed.
  * The library must have been built with -DBUILD_MPFR=ON.
  *
  * Convention: rop is the first argument; set its precision before calling.
  * rnd is the MPFR rounding mode applied to each elementary operation.
  *
  * Phase conventions: identical to the floating-point API; see the header
- * comment of wigner.h.  In short, 3j/6j/9j/CG/Racah W are convention-free
+ * comment of wignernj.h.  In short, 3j/6j/9j/CG/Racah W are convention-free
  * SU(2) algebraic objects (CG signs use Condon–Shortley); the Gaunt and
  * real-Gaunt routines assume the Condon–Shortley phase for Y_l^m.
  *
@@ -20,11 +20,11 @@
  *   wigner3j_mpfr(v, 2, 2, 0,  0, 0, 0,  MPFR_RNDN);
  *   mpfr_clear(v);
  */
-#ifndef WIGNER_MPFR_H
-#define WIGNER_MPFR_H
+#ifndef WIGNERNJ_MPFR_H
+#define WIGNERNJ_MPFR_H
 
 #include <mpfr.h>
-#include "wigner.h"
+#include "wignernj.h"
 
 /* Wigner 3j */
 void wigner3j_mpfr(mpfr_t rop,
@@ -79,4 +79,4 @@ void gaunt_real_mpfr(mpfr_t rop,
                      int tl3, int tm3,
                      mpfr_rnd_t rnd);
 
-#endif /* WIGNER_MPFR_H */
+#endif /* WIGNERNJ_MPFR_H */

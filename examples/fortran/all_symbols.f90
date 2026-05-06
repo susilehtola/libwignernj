@@ -3,7 +3,7 @@
 !
 ! libwignernj Fortran API demonstration.
 !
-! Calls every public symbol family exposed by the wigner module once
+! Calls every public symbol family exposed by the wignernj module once
 ! with small, textbook-scale arguments and prints the result alongside
 ! an analytic reference value.  The program exits with a non-zero
 ! status if any computed value disagrees with its reference by more
@@ -22,7 +22,7 @@
 program all_symbols
   use, intrinsic :: iso_c_binding, only: c_double
   use, intrinsic :: iso_fortran_env, only: error_unit
-  use wigner
+  use wignernj
   implicit none
 
   real(c_double), parameter :: pi  = 3.14159265358979323846264338327950288_c_double
