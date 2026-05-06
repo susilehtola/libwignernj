@@ -95,7 +95,6 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
 {
     int s, s_min, s_max, pi;
     int lcm_max = 0;
-    int n_terms;
     pfrac_t *term;
 
     gaunt_racah_bounds(tj1, tj2, tj3, tm1, tm2, &s_min, &s_max);
@@ -110,11 +109,35 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
     bigint_set_zero(sum_pos);
     bigint_set_zero(sum_neg);
 
-    /* Pass 1: build each term pfrac once into the cache, find LCM */
-    n_terms = s_max - s_min + 1;
-    wigner_scratch_terms_reserve(scratch, n_terms);
-    for (s = s_min; s <= s_max; s++) {
-        term = &scratch->terms[s - s_min];
+    /* Pass 1: build each term pfrac, fold into LCM.  Pass 2 uses the
+     * incremental ratio recurrence and only consults the pfrac cache
+     * once (as a seed for s = s_min), so two slots suffice: slot 0
+     * holds the s_min term and slot 1 is a single rolling scratch
+     * reused for every s > s_min.  The first iteration is peeled
+     * explicitly so the inner loop's term pointer is loop-invariant
+     * (a conditional `term = &scratch->terms[s == s_min ? 0 : 1]`
+     * inside the loop body measurably regressed small-j calls on the
+     * x86-64 divq backend, where per-call overhead is otherwise
+     * minimal). */
+    wigner_scratch_terms_reserve(scratch, 2);
+
+    /* Peeled iteration s = s_min, written to slot 0 (Pass-2 seed). */
+    term = &scratch->terms[0];
+    pfrac_zero(term);
+    pfrac_mul_factorial(term, s_min);
+    pfrac_mul_factorial(term, (tj1 + tj2 - tj3) / 2 - s_min);
+    pfrac_mul_factorial(term, (tj1 - tm1) / 2 - s_min);
+    pfrac_mul_factorial(term, (tj2 + tm2) / 2 - s_min);
+    pfrac_mul_factorial(term, (tj3 - tj2 + tm1) / 2 + s_min);
+    pfrac_mul_factorial(term, (tj3 - tj1 - tm2) / 2 + s_min);
+    for (pi = 0; pi < term->max_idx; pi++) {
+        if (term->exp[pi] > lcm_exp[pi]) lcm_exp[pi] = term->exp[pi];
+    }
+    if (term->max_idx > lcm_max) lcm_max = term->max_idx;
+
+    /* Remaining iterations s = s_min+1 .. s_max, all overwriting slot 1. */
+    term = &scratch->terms[1];
+    for (s = s_min + 1; s <= s_max; s++) {
         pfrac_zero(term);
         pfrac_mul_factorial(term, s);
         pfrac_mul_factorial(term, (tj1 + tj2 - tj3) / 2 - s);
