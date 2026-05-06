@@ -18,7 +18,7 @@
  * limit, g_primes[2263] of int (~9 kB) plus g_pi_table[20012] of
  * short (~40 kB) totals ~49 kB on a typical 64-bit target, while
  * still admitting angular momenta well beyond what most application
- * domains require (j <= 6666 for 3j/6j and j <= 4999 for 9j; see
+ * domains require (j <= 6673 for 3j/6j and j <= 5004 for 9j; see
  * below).  The table can be regenerated for a larger sieve limit at
  * the cost of a proportionally larger compiled-in table.
  *

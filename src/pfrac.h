@@ -26,7 +26,8 @@
  * i >= max_idx are guaranteed to be zero, so loops over the pfrac may
  * iterate to max_idx instead of g_nprimes.  For angular momenta well below
  * MAX_FACTORIAL_ARG this is a substantial reduction (max_idx ~ pi(j) for
- * moderate j, vs g_nprimes ~ 2263 for the full table).
+ * moderate j, vs g_nprimes = MAX_PRIME_COUNT ~ 2.3k for the default
+ * sieve limit).
  */
 typedef struct {
     int *exp;     /* exp[i] = exponent of g_primes[i]; len = g_nprimes */
@@ -45,7 +46,7 @@ void pfrac_mul_factorial(pfrac_t *f, int n);
 void pfrac_div_factorial(pfrac_t *f, int n);
 
 /* Multiply the rational by the positive integer k.
- * k must have no prime factor exceeding PRIME_SIEVE_LIMIT (20011). */
+ * k must have no prime factor exceeding PRIME_SIEVE_LIMIT. */
 void pfrac_mul_int(pfrac_t *f, int k);
 
 /*

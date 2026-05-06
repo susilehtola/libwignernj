@@ -158,7 +158,7 @@ long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
  *
  * `wigner_warmup` is an optional convenience that pre-allocates the
  * calling thread's cached scratch for the absolute default-build maximum
- * (j1+j2+j3 ≤ 19999 for 3j/6j/CG/Racah W/Gaunt; equal-j ≤ 4999 for 9j and
+ * (j1+j2+j3 ≤ 20019 for 3j/6j/CG/Racah W/Gaunt; equal-j ≤ 5004 for 9j and
  * Fano X).  After it returns, every subsequent symbol evaluation in this
  * thread is guaranteed allocation-free, provided the cache is available.
  * Useful in benchmarks where the first-call lazy-init cost would
