@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] – 2026-05-07
+
 ### Changed
 - **Breaking (all bindings): public-facing names renamed `wigner` → `wignernj`
   for naming consistency with the C library (`libwignernj`) and the Fortran
@@ -335,7 +337,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CPython extension module exposing the same routines.
 - BSD 3-Clause licence.
 
-[Unreleased]: https://github.com/susilehtola/libwignernj/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/susilehtola/libwignernj/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/susilehtola/libwignernj/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/susilehtola/libwignernj/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/susilehtola/libwignernj/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/susilehtola/libwignernj/releases/tag/v0.1.0
