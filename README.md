@@ -184,7 +184,11 @@ Link with `-lwignernj -lm` (and `-lmpfr` if `BUILD_MPFR=ON`).
 ## Python API
 
 ```sh
-pip install -e .                    # build and install in-place
+pip install wignernj                  # from PyPI (pre-built wheels for
+                                      # Linux x86_64/aarch64, macOS arm64,
+                                      # and Windows x86_64; sdist fallback
+                                      # for any other target)
+pip install -e .                      # or build from a checkout
 ```
 
 ```python
