@@ -223,6 +223,61 @@ inline T gauntreal(double l1, double m1, double l2, double m2,
                         detail::to_two_j(l3,"l3"), detail::to_two_j(m3,"m3"));
 }
 
+// ── per-thread cache control ──────────────────────────────────────────────
+//
+// Thin inline forwarders to the C entry points; see include/wignernj.h for
+// the rationale.  Useful in benchmarks and hot loops to pre-grow the
+// per-thread caches and to release them when a worker thread is done.
+
+inline void warmup_to(int N_max) { ::wignernj_warmup_to(N_max); }
+inline void thread_cleanup()     { ::wignernj_thread_cleanup(); }
+inline int  max_factorial_arg()  { return ::wignernj_max_factorial_arg(); }
+
+// ── per-symbol max-factorial helpers ──────────────────────────────────────
+//
+// Compute the largest factorial argument that the corresponding symbol
+// would reference for a given input, so that warmup_to() can be sized
+// precisely:
+//
+//   int N = wignernj::max_factorial_3j(2, 2, 2, 0, 0, 0);
+//   wignernj::warmup_to(N);
+
+inline int max_factorial_3j(int tj1,int tj2,int tj3,
+                            int tm1,int tm2,int tm3)
+{ return ::wigner3j_max_factorial(tj1,tj2,tj3,tm1,tm2,tm3); }
+
+inline int max_factorial_6j(int tj1,int tj2,int tj3,
+                            int tj4,int tj5,int tj6)
+{ return ::wigner6j_max_factorial(tj1,tj2,tj3,tj4,tj5,tj6); }
+
+inline int max_factorial_9j(int tj11,int tj12,int tj13,
+                            int tj21,int tj22,int tj23,
+                            int tj31,int tj32,int tj33)
+{ return ::wigner9j_max_factorial(tj11,tj12,tj13,
+                                  tj21,tj22,tj23,
+                                  tj31,tj32,tj33); }
+
+inline int max_factorial_cg(int tj1,int tm1,int tj2,int tm2,
+                            int tJ, int tM)
+{ return ::clebsch_gordan_max_factorial(tj1,tm1,tj2,tm2,tJ,tM); }
+
+inline int max_factorial_racahw(int tj1,int tj2,int tJ,
+                                int tj3,int tj12,int tj23)
+{ return ::racah_w_max_factorial(tj1,tj2,tJ,tj3,tj12,tj23); }
+
+inline int max_factorial_fanox(int tj1,int tj2,int tj12,
+                               int tj3,int tj4,int tj34,
+                               int tj13,int tj24,int tJ)
+{ return ::fano_x_max_factorial(tj1,tj2,tj12,tj3,tj4,tj34,tj13,tj24,tJ); }
+
+inline int max_factorial_gaunt(int tl1,int tm1,int tl2,int tm2,
+                               int tl3,int tm3)
+{ return ::gaunt_max_factorial(tl1,tm1,tl2,tm2,tl3,tm3); }
+
+inline int max_factorial_gauntreal(int tl1,int tm1,int tl2,int tm2,
+                                   int tl3,int tm3)
+{ return ::gaunt_real_max_factorial(tl1,tm1,tl2,tm2,tl3,tm3); }
+
 } // namespace wignernj
 
 #endif /* WIGNERNJ_HPP */

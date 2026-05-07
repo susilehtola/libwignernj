@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2026 Susi Lehtola
  *
- * Verify that wignernj_warmup() pre-grows the calling thread's cached
+ * Verify that wignernj_warmup_to(0) pre-grows the calling thread's cached
  * scratch so that every subsequent symbol evaluation is allocation-
  * free, regardless of which symbol family is called or what angular
  * momenta are passed (within the prime-table ceiling).
@@ -13,6 +13,7 @@
  */
 #include "run_tests.h"
 #include "../include/wignernj.h"
+#include "../src/scratch.h"
 
 #if defined(__APPLE__) || defined(_WIN32)
 /* dlsym/RTLD_NEXT-based interception is fragile on macOS and absent on
@@ -67,7 +68,7 @@ int main(void)
      * cache.  We size the latter precisely from the call mix below
      * via the per-symbol max_factorial helpers, taking the maximum so
      * that every factorial reached by the test is pre-populated. */
-    wignernj_warmup();
+    /* warmup happens via wignernj_warmup_to(N) below */
     {
         int N = 0, n;
         n = wigner3j_max_factorial(2,    2,    2,    0, 0, 0);    if (n > N) N = n;
@@ -83,7 +84,7 @@ int main(void)
                                          2, 2, 2);                if (n > N) N = n;
         n = gaunt_max_factorial         (4, 0, 4, 0, 8, 0);       if (n > N) N = n;
         n = gaunt_real_max_factorial    (4, 0, 4, 0, 8, 0);       if (n > N) N = n;
-        wignernj_warmup_factorial_cache(N);
+        wignernj_warmup_to(N);
     }
 
     /* Now count allocations across a representative call mix. */

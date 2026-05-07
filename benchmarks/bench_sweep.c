@@ -94,7 +94,7 @@ int main(int argc, char **argv)
     else if (strcmp(sym, "gaunt") == 0) bench = benchgaunt;
     else { fprintf(stderr, "symbol must be 3j, 6j, 9j, or gaunt\n"); return 1; }
 
-    wignernj_warmup();
+    wignernj_warmup_to(0);
 
     /* Build j list. */
     int j_list[5000];

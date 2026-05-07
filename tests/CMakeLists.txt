@@ -57,7 +57,7 @@ endif()
 
 # ── Warmup / zero-allocation verification ─────────────────────────────────────
 # Wraps glibc malloc/calloc/realloc via dlsym(RTLD_NEXT, ...) and asserts
-# that wignernj_warmup() makes every subsequent symbol evaluation
+# that wignernj_warmup_to() makes every subsequent symbol evaluation
 # allocation-free.  Built only on Linux (glibc + dlsym semantics required).
 #
 # Skipped under:

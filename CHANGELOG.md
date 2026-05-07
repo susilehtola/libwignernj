@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Public warmup API consolidated.**  The two warmup entry points
+  `wignernj_warmup(void)` (sized to the absolute prime-table ceiling)
+  and `wignernj_warmup_factorial_cache(int N_max)` (factorial cache
+  only) are replaced by a single `wignernj_warmup_to(int N_max)`
+  that grows both per-thread caches---the Racah-pipeline scratch and
+  the factorial-decomposition cache---to fit factorial arguments up
+  to `N_max`.  Pass `0` to size to the absolute prime-table ceiling
+  (equivalent to the old `wignernj_warmup()`); pass the result of a
+  per-symbol `wigner*_max_factorial(...)` helper to size precisely
+  for a workload.  Combined with the existing helpers, callers no
+  longer have to issue both a `wignernj_warmup()` (for scratch) and
+  a `wignernj_warmup_factorial_cache(N)` (for the factorial cache)
+  to pre-allocate ahead of a hot loop.  This is a breaking
+  source-level change; rename `wignernj_warmup()` to
+  `wignernj_warmup_to(0)` and `wignernj_warmup_factorial_cache(N)`
+  to `wignernj_warmup_to(N)` in caller code.  No wrappers are
+  kept---the library is still pre-1.0, so a small public-API rename
+  is preferable to deprecated shims.
+
+### Removed
+- **`wignernj_thread_local_scratch_available()` demoted to internal.**
+  The runtime introspection helper had a single in-tree caller
+  (`tests/test_warmup.c`) and no production use case; the same
+  answer is available at compile time as the `WIGNERNJ_HAVE_TLS`
+  macro from the internal `src/wignernj_tls.h`.  The prototype
+  moved to `src/scratch.h`; the test now includes the internal
+  header directly.  Not exposed in the C++ or Fortran bindings.
+
+### Added
+- **C++ and Fortran cache-control bindings.**  The C++ wrapper
+  (`include/wignernj.hpp`) gains
+  `wignernj::warmup_to`, `wignernj::thread_cleanup`,
+  `wignernj::max_factorial_arg`, and the eight per-symbol
+  `wignernj::max_factorial_*` helpers.  The Fortran 90 module
+  (`src/fortran/wignernj_f90.F90`) gains the same set as `bind(c)`
+  interfaces.  Both bindings now have full access to the per-thread
+  cache-control surface that was previously C-only.  The Python
+  binding deliberately does not expose these (Python callers do not
+  typically pre-warm hot loops at the C extension level).
+
 ## [0.4.3] – 2026-05-07
 
 ### Added

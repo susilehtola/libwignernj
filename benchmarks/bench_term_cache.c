@@ -59,7 +59,7 @@ int main(void)
         {200,    3000,     200,       0},
     };
     size_t k;
-    wignernj_warmup();
+    wignernj_warmup_to(0);
     printf("%-6s %12s %12s %12s\n", "j", "3j ns", "6j ns", "9j ns");
     for (k = 0; k < sizeof(cases)/sizeof(cases[0]); k++) {
         int tj = cases[k].tj;

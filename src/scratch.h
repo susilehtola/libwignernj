@@ -95,4 +95,12 @@ void wignernj_scratch_terms_reserve(wignernj_scratch_t *s, int n_terms);
  * no-op. */
 void wignernj_scratch_release(void);
 
+/* Internal.  Returns 1 when the calling thread has access to the
+ * per-thread scratch cache (TLS path) and 0 when each public-API
+ * call allocates fresh (no-TLS fallback).  The build-time macro
+ * WIGNERNJ_HAVE_TLS in src/wignernj_tls.h is the same answer at
+ * compile time; this runtime accessor exists for tests that want to
+ * branch without a preprocessor guard. */
+int wignernj_thread_local_scratch_available(void);
+
 #endif /* WIGNERNJ_SCRATCH_H */

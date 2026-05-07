@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
     char k = (argc > 3) ? argv[3][0] : '6';
     int tj = 2*j, i;
     volatile double acc = 0;
-    wignernj_warmup();
+    wignernj_warmup_to(0);
     for (i = 0; i < N; i++) {
         if (k == '6') acc += wigner6j(tj, tj, tj, tj, tj, tj);
         else          acc += wigner9j(tj, tj, tj, tj, tj, tj, tj, tj, tj);

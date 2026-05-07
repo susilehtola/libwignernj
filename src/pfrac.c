@@ -77,11 +77,12 @@ static const int *fact_cache_get(int n)
     return row;
 }
 
-void wignernj_warmup_factorial_cache(int N_max)
+/* Internal: invoked by wignernj_warmup_to() in src/scratch.c.
+ * N_max <= 0 means "use the absolute prime-table ceiling". */
+void wignernj_factorial_cache_fill(int N_max)
 {
     int n;
-    if (N_max < 1) return;
-    if (N_max > MAX_FACTORIAL_ARG) N_max = MAX_FACTORIAL_ARG;
+    if (N_max <= 0 || N_max > MAX_FACTORIAL_ARG) N_max = MAX_FACTORIAL_ARG;
     fact_cache_ensure_table();
     for (n = 2; n <= N_max; n++) {
         if (!g_fact_cache[n])
@@ -107,7 +108,7 @@ void wignernj_factorial_cache_release(void)
 
 #else  /* !WIGNERNJ_HAVE_TLS */
 
-void wignernj_warmup_factorial_cache(int N_max)
+void wignernj_factorial_cache_fill(int N_max)
 {
     /* No persistent cache to populate -- the no-TLS path already
      * computes legendre_valuation per call.  No-op for source

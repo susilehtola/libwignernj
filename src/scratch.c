@@ -132,20 +132,30 @@ void wignernj_scratch_release(void)
 
 /* ── public warmup ──────────────────────────────────────────────────────── */
 
-void wignernj_warmup(void)
+/* Internal: pre-fill the factorial-decomposition cache for arguments
+ * 2..N_max.  Implemented in src/pfrac.c.  Not part of the public API. */
+extern void wignernj_factorial_cache_fill(int N_max);
+
+void wignernj_warmup_to(int N_max)
 {
 #if WIGNERNJ_HAVE_TLS
-    /* Pre-grow every cached buffer to the absolute default-build maximum.
-     * The dominant factor is mw = bigint_words_for_factorial(MAX_FACTORIAL_ARG),
-     * which is the size of the largest factorial the prime table can index.
-     * 9j and Gaunt size their long-lived bigints to mw_prod = 5*mw to cover
-     * triple-product cross terms; we use that as the universal upper bound.
+    /* Pre-grow every cached buffer to fit factorial arguments up to
+     * N_max.  Pass 0 to size to the absolute prime-table ceiling.
      *
-     * After this call, every subsequent symbol evaluation in the calling
-     * thread is allocation-free, regardless of the symbol family or input
-     * angular momenta (within the prime-table ceiling). */
+     * The dominant factor is mw = bigint_words_for_factorial(N), which
+     * is the size of the largest factorial the request will index.
+     * 9j and Gaunt size their long-lived bigints to mw_prod = 5*mw to
+     * cover triple-product cross terms; we use that as the universal
+     * upper bound.
+     *
+     * After this call, every subsequent symbol evaluation in the
+     * calling thread whose worst-case factorial argument is <= N is
+     * allocation-free in this thread, regardless of which symbol
+     * family is invoked. */
+    int N = (N_max <= 0 || N_max > MAX_FACTORIAL_ARG)
+            ? MAX_FACTORIAL_ARG : N_max;
     wignernj_scratch_t *s = wignernj_scratch_acquire();
-    size_t mw      = bigint_words_for_factorial(MAX_FACTORIAL_ARG);
+    size_t mw      = bigint_words_for_factorial(N);
     size_t mw_prod = 5 * mw;
     int i;
 
@@ -158,25 +168,30 @@ void wignernj_warmup(void)
     bigint_reserve(&s->exact.sqrt_num, mw_prod);
     bigint_reserve(&s->exact.sqrt_den, mw_prod);
 
-    /* Term-pfrac cache: the longest Racah sum any symbol can produce
-     * within the prime-table ceiling has at most MAX_FACTORIAL_ARG+1
-     * terms (the 6j sum range, bounded by half the sum of four j's).
-     * Pre-allocating that many pfrac_t slots costs ~g_nprimes ints per
-     * slot; at the absolute ceiling this is the largest single per-thread
-     * memory commitment of the warmup. */
-    wignernj_scratch_terms_reserve(s, MAX_FACTORIAL_ARG + 1);
+    /* Term-pfrac cache: the longest Racah sum any symbol with
+     * factorials bounded by N can produce has at most N+1 terms (the
+     * 6j sum range, bounded by half the sum of four j's).  Pre-
+     * allocating that many pfrac_t slots costs ~g_nprimes ints per
+     * slot. */
+    wignernj_scratch_terms_reserve(s, N + 1);
 
-    /* lcm_exp arrays are already sized to g_nprimes ints in scratch_init,
-     * which is the worst-case for the prime table.  Pfracs are similarly
-     * sized once on the first pfrac_mul_factorial call. */
+    /* lcm_exp arrays are already sized to g_nprimes ints in
+     * scratch_init, which is the worst-case for the prime table.
+     * Pfracs are similarly sized once on the first
+     * pfrac_mul_factorial call. */
 
     wignernj_scratch_relinquish(s);
+
+    /* Pre-fill the factorial-decomposition cache, the second
+     * per-thread cache that the public-API call path consults. */
+    wignernj_factorial_cache_fill(N_max);
 #else
     /* No-TLS fallback: every public-API call already allocates a fresh
      * scratch and frees it on return, so there is no persistent state
      * for the warmup to populate.  The function is therefore a no-op on
      * toolchains without thread-local storage; correctness is unaffected,
      * but the caller will continue to pay the per-call allocation cost. */
+    (void)N_max;
 #endif
 }
 
