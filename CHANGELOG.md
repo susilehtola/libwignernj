@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Five new bullets in the `## Project policy` section of `CLAUDE.md`,
+  codifying conventions that had been operating only as session-level
+  rules until now: **code and documentation must stay consistent**,
+  **run a full repository consistency audit before tagging a release**,
+  **amend `CHANGELOG.md` as part of every pull request**, **every
+  commit must build without warnings**, and a `Workflow` umbrella
+  bullet covering amend-don't-stack fixups, CircleCI off-load over
+  Cirrus, and `export VAR=val` for shell env vars in CI recipes.
+  The "What this library is" opening section also gains a one-sentence
+  note that `wignernj` is the uniform name across every binding (the
+  surviving `wigner`-prefixed C symbols are the math-symbol functions,
+  not library-namespace identifiers).
+
 ### Fixed
 - Documentation consistency audit covering attribution, public-symbol
   enumeration, default-build numeric ceilings, the build-options table,
