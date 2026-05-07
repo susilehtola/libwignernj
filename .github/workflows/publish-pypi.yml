@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2
+        uses: pypa/cibuildwheel@v3.4
         env:
           # Match the Python matrix already exercised by the
           # per-push CI in ci.yml: 3.9, 3.11, 3.13.  cibuildwheel's
