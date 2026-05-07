@@ -3,13 +3,19 @@
 ## Overview
 
 **libwignernj** computes Wigner 3j, 6j, and 9j symbols, Clebsch-Gordan
-coefficients, Racah W-coefficients, and Gaunt coefficients.  All intermediate
-arithmetic is exact integer arithmetic using a prime-factorization
-representation; floating-point conversion happens only at the final step.
-Results are accurate to the last bit of the chosen output precision.
+coefficients, Racah W-coefficients, Fano X-coefficients, and Gaunt
+coefficients.  All intermediate arithmetic is exact integer arithmetic
+using a prime-factorization representation; floating-point conversion
+happens only at the final step.  Results are accurate to the last bit
+of the chosen output precision.
 
-Algorithm: Johansson & Forssén, *SIAM J. Sci. Comput.* **38**(1), A376–A384,
-2016. [doi:10.1137/15M1021908](https://doi.org/10.1137/15M1021908)
+Algorithm: prime factorization of factorials (Dodds & Wiechers, *Comput.
+Phys. Commun.* **4**, 268, 1972;
+[doi:10.1016/0010-4655(72)90019-7](https://doi.org/10.1016/0010-4655(72)90019-7);
+refined in subsequent work) combined with the multiword-integer Racah
+sum of Johansson & Forssén, *SIAM J. Sci. Comput.* **38**(1),
+A376–A384, 2016
+([doi:10.1137/15M1021908](https://doi.org/10.1137/15M1021908)).
 
 ---
 
@@ -42,10 +48,13 @@ python -m pytest tests/python/
 | `BUILD_FORTRAN` | `ON` | Fortran 90 interface (`libwignernj_f03`) |
 | `BUILD_TESTS` | `ON` | C and Fortran test suite |
 | `BUILD_CXX_TESTS` | `ON` | C++ header tests |
+| `BUILD_EXAMPLES` | `ON` | Build and run the language-binding example programs as ctest tests |
+| `BUILD_LTO` | `ON` | Link-time optimisation; auto-disabled if the toolchain does not support it (and on MSVC, where it conflicts with `WINDOWS_EXPORT_ALL_SYMBOLS`) |
+| `BUILD_PYTHON` | `OFF` | CPython extension module (dynamically linked against `libwignernj`) |
 | `BUILD_QUADMATH` | `OFF` | libquadmath / IEEE 754 binary128 (`__float128`) interface (requires GCC, Clang, or Intel ICC/ICX on Linux/macOS) |
 | `BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface (requires libmpfr) |
-| `BUILD_FLINT` | `OFF` | FLINT/GMP/MPFR bigint backend (sub-quadratic multiplication; replaces the in-tree schoolbook bigint, requires libflint, libgmp, and libmpfr) |
-| `BUILD_PYTHON` | `OFF` | CPython extension module |
+| `BUILD_FLINT` | `OFF` | FLINT/GMP/MPFR bigint backend (sub-quadratic multiplication; replaces the in-tree schoolbook + Karatsuba bigint, requires libflint, libgmp, and libmpfr) |
+| `BUILD_COVERAGE` | `OFF` | Build with `--coverage -O0` for lcov / Codecov (gcc, clang) |
 
 ### Linking
 
@@ -338,6 +347,71 @@ int main(void)
 }
 ```
 
+### Per-thread caches and warmup
+
+By default, every symbol evaluation lazily allocates a small set of
+per-thread caches on first use: a `bigint_t` scratch for the multiword
+sums, and a per-`N` factorial-decomposition table that records the
+prime exponents of every `N!` referenced.  Subsequent calls in the
+same thread reuse both, so the steady-state cost of a hot loop is
+allocation-free.  The caches require thread-local storage (one of
+`__thread`, `_Thread_local`, or MSVC `__declspec(thread)`); on a
+toolchain that exposes none of these, libwignernj falls back to
+allocating fresh scratch on every call.
+
+The header exposes four small helpers for explicit cache control:
+
+```c
+void wignernj_warmup(void);
+int  wignernj_thread_local_scratch_available(void);
+void wignernj_warmup_factorial_cache(int N_max);
+int  wignernj_max_factorial_arg(void);
+void wignernj_thread_cleanup(void);
+```
+
+- **`wignernj_warmup()`** pre-allocates the calling thread's cached
+  scratch up to the absolute default-build ceiling (j1+j2+j3 ≤ 20019
+  for 3j/6j/CG/Racah W/Gaunt; equal-j ≤ 5004 for 9j and Fano X), so
+  every subsequent symbol evaluation on this thread is guaranteed
+  allocation-free.  Memory cost: ~6 MB per thread.  No-op when
+  thread-local storage is unavailable.
+- **`wignernj_thread_local_scratch_available()`** returns 1 when the
+  per-thread cache is active and 0 when each call allocates fresh
+  (the no-TLS fallback).  Useful for benchmarks that need to know
+  which path is in effect.
+- **`wignernj_warmup_factorial_cache(N_max)`** pre-populates the
+  factorial-decomposition cache for arguments `2..N_max` so any
+  subsequent evaluation whose factorial arguments stay within that
+  bound runs allocation-free.  Pass `0` to populate up to the
+  absolute prime-table ceiling.  Memory cost: up to ~80 MB per
+  thread at the absolute ceiling (`wignernj_max_factorial_arg()`),
+  much less for realistic `N_max`.
+- **`wignernj_max_factorial_arg()`** returns the absolute ceiling
+  (the largest `N` for which `N!` can be factored against the
+  compiled-in prime table).  Equal to `MAX_FACTORIAL_ARG` from
+  `src/prime_table_macros.h`.
+- **`wignernj_thread_cleanup()`** releases every per-thread cache
+  held by the calling thread.  After this call, the next symbol
+  evaluation in this thread re-enters the lazy-init path.  Useful
+  in worker-pool architectures where a thread may spend long
+  intervals not computing symbols and the caches occupy memory
+  that should be released.
+
+The eight per-symbol companions
+`wigner3j_max_factorial`, `wigner6j_max_factorial`, …,
+`gaunt_real_max_factorial` return the largest factorial argument
+that the corresponding symbol would reference for a given set of
+inputs, so a workload-specific warmup can be sized exactly:
+
+```c
+int N = wigner3j_max_factorial(tj1, tj2, tj3, tm1, tm2, tm3);
+wignernj_warmup_factorial_cache(N);
+```
+
+Calling these helpers is purely an optimisation; correctness is
+unchanged whether or not they are called, and they are harmless to
+call more than once.
+
 ---
 
 ## C++ API
@@ -531,9 +605,10 @@ from fractions import Fraction
 wignernj.wigner3j(Fraction(1,2), Fraction(1,2), 1,
                 Fraction(1,2), Fraction(-1,2), 0)
 
-# Clebsch-Gordan, Racah W, Gaunt
+# Clebsch-Gordan, Racah W, Fano X, Gaunt
 wignernj.clebsch_gordan(1, 1,  1, -1,  2, 0)
 wignernj.racah_w(2, 2,  4,  2,  4, 4)
+wignernj.fano_x(1, 1, 2,  1, 1, 2,  2, 2, 4)
 wignernj.gaunt(4, 2,  4, -2,  4, 0)
 ```
 
@@ -695,7 +770,7 @@ each elementary bigint operation costs O(j).  The resulting end-to-end cost
 per symbol is
 
 - **3j, 6j, CG, Racah W, complex / real Gaunt:** O(j²)
-- **9j:** O(j⁴) (each k step contains three multiplications of size-O(j²) bigints)
+- **9j, Fano X:** O(j⁴) (each k step contains three multiplications of size-O(j²) bigints; Fano X delegates to the 9j pipeline)
 
 Approximate wall-clock times on a modern single core:
 

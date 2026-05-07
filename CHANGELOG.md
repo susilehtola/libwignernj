@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Documentation consistency audit covering attribution, public-symbol
+  enumeration, default-build numeric ceilings, the build-options table,
+  and the warmup/cache API:
+  - **Attribution.** The prime-factorization technique was attributed
+    solely to Johansson & Forssén in `README.md`, `docs/reference.md`,
+    `CLAUDE.md`, and the source comments of `src/wigner3j.c` and
+    `src/wigner6j.c`.  Prime factorization for the angular-momentum
+    coefficients was introduced earlier by Dodds & Wiechers (*Comput.
+    Phys. Commun.* **4**, 268 (1972)) and refined in subsequent work;
+    Johansson & Forssén's specific contribution is the multiword-integer
+    Racah sum.  Every site now credits both lineages; the Dodds &
+    Wiechers DOI is hyperlinked in `README.md` and `docs/reference.md`.
+    The `CHANGELOG.md` `[0.1.0]` historical entry is intentionally not
+    rewritten.
+  - **Fano X-coefficient.** Added to the public-symbol family list in
+    six places that had been missed when Fano X landed in 0.3.0: the
+    "wrappers over the Wigner symbols" paragraph in `CLAUDE.md`, the
+    phase-conventions paragraph in `include/wignernj.h`,
+    `include/wignernj.hpp`, `src/fortran/wignernj_f90.F90`, and
+    `wignernj/__init__.py`, the j-limit and performance-scaling
+    comments in `src/primes.h`, the Python-section example block and
+    performance scaling row in `docs/reference.md`, and the Fortran
+    wrapper-list comment in `src/fortran/wignernj_f90.F90` (which had
+    been missing both `wfanox` and `wgaunt_real`).
+  - **Default-build ceiling.**  Stale `MAX_FACTORIAL_ARG = 20000`
+    references in `src/wigner3j.c`, `src/pfrac.c`, and
+    `include/wignernj.h` updated to `20020`, matching the value
+    derived from `PRIME_SIEVE_LIMIT` in `src/prime_table_macros.h`.
+  - **Build-options table.**  `docs/reference.md` was missing
+    `BUILD_LTO`, `BUILD_EXAMPLES`, and `BUILD_COVERAGE`, all of
+    which landed in 0.3.0/0.4.0.  Added them so the table now matches
+    `CMakeLists.txt` and the `README.md` table.
+  - **Warmup / cache API.**  `wignernj_warmup`,
+    `wignernj_thread_local_scratch_available`,
+    `wignernj_warmup_factorial_cache`, `wignernj_max_factorial_arg`,
+    `wignernj_thread_cleanup`, and the eight per-symbol
+    `wigner*_max_factorial` companions are public since 0.3.0 but
+    were undocumented in `docs/reference.md`.  Added a
+    "Per-thread caches and warmup" subsection to the C API chapter
+    that covers each function with its semantics, memory cost, and
+    no-TLS fallback behaviour.
+
+  No code or behaviour change; this PR amends documentation only.
+
 ## [0.4.0] – 2026-05-07
 
 ### Changed

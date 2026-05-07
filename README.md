@@ -7,8 +7,13 @@ All intermediate arithmetic is exact integer arithmetic using a prime-factorizat
 representation; floating-point conversion happens only at the final step.  Results
 are accurate to the last bit of the chosen output precision.
 
-Algorithm: Johansson & Forssén, SIAM J. Sci. Comput. 38(1), A376–A384, 2016.
-doi:[10.1137/15M1021908](https://doi.org/10.1137/15M1021908)
+Algorithm: prime factorization of factorials (Dodds & Wiechers,
+Comput. Phys. Commun. **4**, 268, 1972;
+doi:[10.1016/0010-4655(72)90019-7](https://doi.org/10.1016/0010-4655(72)90019-7);
+refined in subsequent work) combined with the multiword-integer
+Racah sum of Johansson & Forssén, SIAM J. Sci. Comput. **38**(1),
+A376–A384, 2016
+(doi:[10.1137/15M1021908](https://doi.org/10.1137/15M1021908)).
 
 Language interfaces: C (primary), C++ (header-only wrapper, links against `libwignernj`), Python (CPython extension),
 Fortran 90 (iso_c_binding).

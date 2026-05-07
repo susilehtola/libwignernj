@@ -14,8 +14,9 @@
  *
  * Phase conventions
  * -----------------
- * The Wigner 3j, 6j, and 9j symbols, the Clebsch–Gordan coefficient, and
- * the Racah W coefficient are pure algebraic SU(2) objects.  Their values
+ * The Wigner 3j, 6j, and 9j symbols, the Clebsch–Gordan coefficient, the
+ * Racah W coefficient, and the Fano X-coefficient are pure algebraic
+ * SU(2) objects.  Their values
  * are fixed entirely by the Racah/Wigner combinatorial formulas; no
  * spherical-harmonic phase convention enters anywhere.  The Clebsch–Gordan
  * coefficient is defined with the Condon–Shortley sign convention used by
@@ -193,7 +194,7 @@ int  wignernj_thread_local_scratch_available(void);
  *
  * Memory cost: one int per prime <= N per cached row, which sums to
  * about 80 MB at the absolute default-build ceiling
- * (wignernj_max_factorial_arg() = 20000) and is much smaller for
+ * (wignernj_max_factorial_arg() = 20020) and is much smaller for
  * realistic inputs.
  *
  * `wignernj_warmup_factorial_cache(N_max)` pre-populates the cache for
