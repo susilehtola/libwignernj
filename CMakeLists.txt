@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026 Susi Lehtola
 cmake_minimum_required(VERSION 3.16)
-project(wignernj VERSION 0.4.0 LANGUAGES C)
+project(wignernj VERSION 0.4.1 LANGUAGES C)
 
 # Default to an optimised build when the consumer hasn't picked a
 # CMAKE_BUILD_TYPE (e.g. plain `cmake -B build`).  libwignernj is
