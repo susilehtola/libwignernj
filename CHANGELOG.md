@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] – 2026-05-07
+
 ### Changed
 - **Public warmup API consolidated.**  The two warmup entry points
   `wignernj_warmup(void)` (sized to the absolute prime-table ceiling)
@@ -47,10 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cache-control surface that was previously C-only.  The Python
   binding deliberately does not expose these (Python callers do not
   typically pre-warm hot loops at the C extension level).
-
-## [0.4.3] – 2026-05-07
-
-### Added
 - **Closed-form fast path for the all-$m$-zero 3j symbol.**
   `wigner3j_exact` now detects the $(m_1,m_2,m_3) = (0,0,0)$ case
   and short-circuits the Racah single sum with the closed form
@@ -61,13 +59,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   $j = 2,4,10,50,100,200$.  Paired bench against the parent commit
   on a 12th-gen Intel Core i5-1235U: speedup of $\sim 22\times$ at
   $j = 5$, $\sim 45\times$ at $j = 200$, and $\sim 190\times$ at
-  $j = 1000$ for the $(j\,j\,j; 0\,0\,0)$ family.  The Gaunt
-  coefficient inherits the speedup automatically since one of the
-  two 3j evaluations it performs is always the $(\ell\,\ell\,\ell;
-  0\,0\,0)$ case.  `tests/gen_refs.py` gains a deterministic
-  $m=(0,0,0)$ block at $2j \in \{12, 20, 24, 40, 60, 100, 200, 300,
-  400\}$ so the regression suite exercises the new path at
-  moderate-to-large $j$.
+  $j = 1000$ for the $(j\,j\,j; 0\,0\,0)$ family.  `tests/gen_refs.py`
+  gains a deterministic $m=(0,0,0)$ block at $2j \in \{12, 20, 24,
+  40, 60, 100, 200, 300, 400\}$ so the regression suite exercises
+  the new path at moderate-to-large $j$.
+- **Closed-form fast path for the all-$m$-zero sub-3j inside Gaunt.**
+  `gaunt_3j_racah_sum` is called twice from `gaunt_exact` (and from
+  `gaunt_real_exact` via the same back-end): once with
+  $(m_1,m_2)=(0,0)$ for the $\Delta$-only 3j, and once with the
+  actual $(m_1,m_2,m_3)$ for the $m$-dependent 3j.  The first call
+  is the all-$m$-zero case, where the Racah single sum collapses to
+  $S_{3j}(0,0,0) = (-1)^{g-j_1+j_2}\, g!/[j_1! j_2! j_3!
+  (g-j_1)! (g-j_2)! (g-j_3)!]$ with $g=(j_1+j_2+j_3)/2$.  Gaunt does
+  not call `wigner3j_exact`, so the closed-form path added above is
+  not inherited automatically; this commit ports the same
+  short-circuit to `gaunt_3j_racah_sum`.  Paired bench
+  for `gaunt(l, +2, l, -2, l, 0)`: $1.2\times$ at $\ell=2$ growing
+  to $\sim 1.6\times$ at $\ell=80$--$200$.  The speedup is bounded
+  by the cost of the remaining $(m_1,m_2,m_3)$ sub-sum which
+  Gaunt still evaluates via the full Racah loop.
 
 ## [0.4.2] – 2026-05-07
 
@@ -516,7 +526,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CPython extension module exposing the same routines.
 - BSD 3-Clause licence.
 
-[Unreleased]: https://github.com/susilehtola/libwignernj/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/susilehtola/libwignernj/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/susilehtola/libwignernj/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/susilehtola/libwignernj/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/susilehtola/libwignernj/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/susilehtola/libwignernj/compare/v0.3.0...v0.4.0
