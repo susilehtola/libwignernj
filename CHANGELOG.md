@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- PyPI project metadata in `pyproject.toml`: `readme = "README.md"`
+  for the long-form description shown on the project page;
+  `authors` for the sidebar; a `[project.urls]` block with
+  Homepage, Repository, Documentation, Changelog, and Issues
+  links; an expanded keyword list (wigner, clebsch-gordan, racah,
+  fano, gaunt, spherical-harmonics, angular-momentum,
+  exact-arithmetic, prime-factorization, …); and a fuller
+  classifier set including `Development Status :: 5 -
+  Production/Stable`, `Intended Audience :: Science/Research`, the
+  per-version Python classifiers `3.9`–`3.13`, the per-OS
+  classifiers, and additional `Topic :: Scientific/Engineering`
+  sub-categories.  After this lands, the PyPI sidebar at
+  https://pypi.org/p/wignernj will display the complete metadata
+  starting with the next published release.
+
 ### Changed
+- `requires-python` raised from `>=3.7` to `>=3.9` in both
+  `pyproject.toml` and `setup.py`, matching the `CIBW_BUILD` set
+  in the publish workflow (CPython 3.9..3.13) and the per-push
+  Python CI matrix.  Python 3.7 reached end-of-life in 2023 and
+  3.8 in 2024.
 - Expanded the Python C extension's per-function docstrings.  Each
   of the eight public Python functions (`wigner3j`, `wigner6j`,
   `wigner9j`, `clebsch_gordan`, `racah_w`, `fano_x`, `gaunt`,

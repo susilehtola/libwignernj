@@ -7,16 +7,56 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "wignernj"
 version = "0.4.1"
-description = "Exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization"
-requires-python = ">=3.7"
+description = "Exact Wigner 3j/6j/9j, Clebsch-Gordan, Racah W, Fano X, and Gaunt coefficients via prime factorization"
+readme = "README.md"
+requires-python = ">=3.9"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
+authors = [
+    { name = "Susi Lehtola", email = "susi.lehtola@gmail.com" },
+]
+keywords = [
+    "wigner",
+    "wigner-3j",
+    "wigner-6j",
+    "wigner-9j",
+    "clebsch-gordan",
+    "racah",
+    "fano",
+    "gaunt",
+    "spherical-harmonics",
+    "angular-momentum",
+    "exact-arithmetic",
+    "prime-factorization",
+    "physics",
+    "quantum-mechanics",
+]
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
     "Programming Language :: C",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+    "Topic :: Scientific/Engineering :: Mathematics",
 ]
+
+[project.urls]
+Homepage      = "https://github.com/susilehtola/libwignernj"
+Repository    = "https://github.com/susilehtola/libwignernj"
+Documentation = "https://github.com/susilehtola/libwignernj/blob/main/docs/reference.md"
+Changelog     = "https://github.com/susilehtola/libwignernj/blob/main/CHANGELOG.md"
+Issues        = "https://github.com/susilehtola/libwignernj/issues"
 
 [project.optional-dependencies]
 test = ["pytest", "sympy"]
