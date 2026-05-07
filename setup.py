@@ -46,5 +46,5 @@ setup(
     description="Exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization",
     packages=["wignernj"],
     ext_modules=[ext],
-    python_requires=">=3.7",
+    python_requires=">=3.9",
 )
