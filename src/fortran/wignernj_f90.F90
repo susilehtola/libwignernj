@@ -289,6 +289,82 @@ module wignernj
     end function
 #endif
 
+    ! --- per-thread cache control ---
+    subroutine wignernj_warmup_to(n_max) bind(c,name='wignernj_warmup_to')
+      import c_int
+      integer(c_int), value :: n_max
+    end subroutine
+
+    subroutine wignernj_thread_cleanup() bind(c,name='wignernj_thread_cleanup')
+    end subroutine
+
+    function wignernj_max_factorial_arg() &
+        bind(c,name='wignernj_max_factorial_arg')
+      import c_int
+      integer(c_int) :: wignernj_max_factorial_arg
+    end function
+
+    ! --- per-symbol max-factorial helpers ---
+    function wigner3j_max_factorial(tj1,tj2,tj3,tm1,tm2,tm3) &
+        bind(c,name='wigner3j_max_factorial')
+      import c_int
+      integer(c_int), value :: tj1, tj2, tj3, tm1, tm2, tm3
+      integer(c_int) :: wigner3j_max_factorial
+    end function
+
+    function wigner6j_max_factorial(tj1,tj2,tj3,tj4,tj5,tj6) &
+        bind(c,name='wigner6j_max_factorial')
+      import c_int
+      integer(c_int), value :: tj1, tj2, tj3, tj4, tj5, tj6
+      integer(c_int) :: wigner6j_max_factorial
+    end function
+
+    function wigner9j_max_factorial(tj11,tj12,tj13,tj21,tj22,tj23, &
+                                    tj31,tj32,tj33) &
+        bind(c,name='wigner9j_max_factorial')
+      import c_int
+      integer(c_int), value :: tj11, tj12, tj13, tj21, tj22, tj23, &
+                               tj31, tj32, tj33
+      integer(c_int) :: wigner9j_max_factorial
+    end function
+
+    function clebsch_gordan_max_factorial(tj1,tm1,tj2,tm2,tJ,tM) &
+        bind(c,name='clebsch_gordan_max_factorial')
+      import c_int
+      integer(c_int), value :: tj1, tm1, tj2, tm2, tJ, tM
+      integer(c_int) :: clebsch_gordan_max_factorial
+    end function
+
+    function racah_w_max_factorial(tj1,tj2,tJ,tj3,tj12,tj23) &
+        bind(c,name='racah_w_max_factorial')
+      import c_int
+      integer(c_int), value :: tj1, tj2, tJ, tj3, tj12, tj23
+      integer(c_int) :: racah_w_max_factorial
+    end function
+
+    function fano_x_max_factorial(tj1,tj2,tj12,tj3,tj4,tj34, &
+                                  tj13,tj24,tJ) &
+        bind(c,name='fano_x_max_factorial')
+      import c_int
+      integer(c_int), value :: tj1, tj2, tj12, tj3, tj4, tj34, &
+                               tj13, tj24, tJ
+      integer(c_int) :: fano_x_max_factorial
+    end function
+
+    function gaunt_max_factorial(tl1,tm1,tl2,tm2,tl3,tm3) &
+        bind(c,name='gaunt_max_factorial')
+      import c_int
+      integer(c_int), value :: tl1, tm1, tl2, tm2, tl3, tm3
+      integer(c_int) :: gaunt_max_factorial
+    end function
+
+    function gaunt_real_max_factorial(tl1,tm1,tl2,tm2,tl3,tm3) &
+        bind(c,name='gaunt_real_max_factorial')
+      import c_int
+      integer(c_int), value :: tl1, tm1, tl2, tm2, tl3, tm3
+      integer(c_int) :: gaunt_real_max_factorial
+    end function
+
   end interface
 
 contains

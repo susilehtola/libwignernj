@@ -157,62 +157,40 @@ long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
  * fallback is thread-safe by construction (each call owns its own
  * scratch) but pays the historical per-call allocation cost.
  *
- * `wignernj_warmup` is an optional convenience that pre-allocates the
- * calling thread's cached scratch for the absolute default-build maximum
- * (j1+j2+j3 ≤ 20019 for 3j/6j/CG/Racah W/Gaunt; equal-j ≤ 5004 for 9j and
- * Fano X).  After it returns, every subsequent symbol evaluation in this
- * thread is guaranteed allocation-free, provided the cache is available.
+ * `wignernj_warmup_to(N_max)` is an optional convenience that pre-
+ * grows both per-thread caches---the Racah-pipeline scratch buffers
+ * and the factorial-decomposition cache---to fit any symbol evaluation
+ * whose worst-case factorial argument is bounded by `N_max`.  After it
+ * returns, every subsequent symbol evaluation in this thread within
+ * that bound is guaranteed allocation-free.  Pass `N_max = 0` to size
+ * the caches to the absolute prime-table ceiling
+ * (`wignernj_max_factorial_arg() = 20020` in the default build, with
+ * a memory cost of ~6 MB scratch + ~80 MB factorial cache per thread).
  * Useful in benchmarks where the first-call lazy-init cost would
- * otherwise be observed, in hot loops where allocation overhead matters,
- * or in applications that prefer predictable up-front memory usage to
- * lazy growth.
- *
- * Memory cost: ~6 MB per thread at the absolute ceiling.  The function is
- * thread-safe and only touches the calling thread's scratch.  Calling it
- * is purely an optimisation; correctness is unchanged whether or not it
- * is called, and it is harmless to call it more than once.
- *
- * On a toolchain without thread-local storage, `wignernj_warmup` is a
- * no-op: there is no persistent scratch to pre-grow, so the call returns
- * immediately and subsequent symbol evaluations continue to allocate
- * per-call.  Use `wignernj_thread_local_scratch_available()` to detect at
- * runtime whether the cache is in effect; it returns 1 when the per-
- * thread cache is active and 0 when each call allocates fresh. */
-void wignernj_warmup(void);
-int  wignernj_thread_local_scratch_available(void);
-
-/* ── Optional factorial-decomposition cache ─────────────────────────────────
- *
- * Every public symbol evaluation factors several N! into prime exponents
- * via Legendre's formula.  By default these decompositions are cached
- * lazily in a per-thread table indexed by N, so each N is decomposed
- * only once across the lifetime of the calling thread.  Subsequent
- * calls that reference the same N are served from the cache, replacing
- * the per-call divide loop with a vector lookup-and-add.  This is the
- * dominant optimisation at small to moderate j, where the bigint
- * arithmetic does not yet dominate the wall-clock.
- *
- * Memory cost: one int per prime <= N per cached row, which sums to
- * about 80 MB at the absolute default-build ceiling
- * (wignernj_max_factorial_arg() = 20020) and is much smaller for
- * realistic inputs.
- *
- * `wignernj_warmup_factorial_cache(N_max)` pre-populates the cache for
- * factorial arguments 2..N_max so subsequent symbol evaluations whose
- * factorials stay within that bound are guaranteed allocation-free.
- * Pass 0 to populate up to the absolute prime-table ceiling.  No-op
- * on toolchains without thread-local storage.
+ * otherwise be observed, in hot loops where allocation overhead
+ * matters, or in applications that prefer predictable up-front memory
+ * usage to lazy growth.
  *
  * The wigner*_max_factorial helpers below return the largest factorial
  * argument that the corresponding symbol would reference for the given
  * inputs.  Use them to size the warmup precisely:
  *
  *   int N = wigner3j_max_factorial(tj1, tj2, tj3, tm1, tm2, tm3);
- *   wignernj_warmup_factorial_cache(N);
+ *   wignernj_warmup_to(N);
  *
  * To cover an entire workload, take the maximum across calls or pass
- * the absolute ceiling via wignernj_max_factorial_arg(). */
-void wignernj_warmup_factorial_cache(int N_max);
+ * 0 to populate up to the absolute prime-table ceiling.
+ *
+ * The function is thread-safe and only touches the calling thread's
+ * caches.  Calling it is purely an optimisation; correctness is
+ * unchanged whether or not it is called, and it is harmless to call
+ * more than once (subsequent calls grow only what is missing).
+ *
+ * On a toolchain without thread-local storage, `wignernj_warmup_to` is
+ * a no-op: there is no persistent scratch to pre-grow, so the call
+ * returns immediately and subsequent symbol evaluations continue to
+ * allocate per-call. */
+void wignernj_warmup_to(int N_max);
 int  wignernj_max_factorial_arg(void);
 
 /* Release every per-thread cache held by the calling thread (the

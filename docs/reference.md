@@ -359,33 +359,26 @@ allocation-free.  The caches require thread-local storage (one of
 toolchain that exposes none of these, libwignernj falls back to
 allocating fresh scratch on every call.
 
-The header exposes four small helpers for explicit cache control:
+The header exposes three small helpers for explicit cache control:
 
 ```c
-void wignernj_warmup(void);
-int  wignernj_thread_local_scratch_available(void);
-void wignernj_warmup_factorial_cache(int N_max);
+void wignernj_warmup_to(int N_max);
 int  wignernj_max_factorial_arg(void);
 void wignernj_thread_cleanup(void);
 ```
 
-- **`wignernj_warmup()`** pre-allocates the calling thread's cached
-  scratch up to the absolute default-build ceiling (j1+j2+j3 ≤ 20019
-  for 3j/6j/CG/Racah W/Gaunt; equal-j ≤ 5004 for 9j and Fano X), so
-  every subsequent symbol evaluation on this thread is guaranteed
-  allocation-free.  Memory cost: ~6 MB per thread.  No-op when
-  thread-local storage is unavailable.
-- **`wignernj_thread_local_scratch_available()`** returns 1 when the
-  per-thread cache is active and 0 when each call allocates fresh
-  (the no-TLS fallback).  Useful for benchmarks that need to know
-  which path is in effect.
-- **`wignernj_warmup_factorial_cache(N_max)`** pre-populates the
-  factorial-decomposition cache for arguments `2..N_max` so any
-  subsequent evaluation whose factorial arguments stay within that
-  bound runs allocation-free.  Pass `0` to populate up to the
-  absolute prime-table ceiling.  Memory cost: up to ~80 MB per
-  thread at the absolute ceiling (`wignernj_max_factorial_arg()`),
-  much less for realistic `N_max`.
+- **`wignernj_warmup_to(N_max)`** pre-grows both per-thread caches
+  (the Racah-pipeline scratch buffers and the factorial-decomposition
+  cache) to fit any symbol evaluation whose worst-case factorial
+  argument is bounded by `N_max`, so every subsequent evaluation in
+  this thread within that bound runs allocation-free.  Pass `0` (or
+  any value `>= wignernj_max_factorial_arg()`) to size the caches to
+  the absolute default-build ceiling (j1+j2+j3 ≤ 20019 for 3j / 6j /
+  CG / Racah W / Gaunt; equal-j ≤ 5004 for 9j and Fano X), at a memory
+  cost of ~6 MB scratch + ~80 MB factorial cache per thread.  The
+  per-symbol `wigner*_max_factorial` companions (see below) compute
+  the precise `N_max` for a given input.  No-op when thread-local
+  storage is unavailable.
 - **`wignernj_max_factorial_arg()`** returns the absolute ceiling
   (the largest `N` for which `N!` can be factored against the
   compiled-in prime table).  Equal to `MAX_FACTORIAL_ARG` from
@@ -405,7 +398,7 @@ inputs, so a workload-specific warmup can be sized exactly:
 
 ```c
 int N = wigner3j_max_factorial(tj1, tj2, tj3, tm1, tm2, tm3);
-wignernj_warmup_factorial_cache(N);
+wignernj_warmup_to(N);
 ```
 
 Calling these helpers is purely an optimisation; correctness is
