@@ -97,6 +97,64 @@ static void gaunt_3j_racah_sum(int tj1, int tj2, int tj3,
     int lcm_max = 0;
     pfrac_t *term;
 
+    /* Closed-form fast path for the (j1 j2 j3; 0 0 0) sub-sum that
+     * gaunt_exact requests once per call.  Substituting m=0 into the
+     * Racah single sum collapses it to the closed rational
+     *   S_3j(0,0,0) = (-1)^(g - j1 + j2)
+     *               * g! / [j1! j2! j3! (g-j1)! (g-j2)! (g-j3)!]
+     * with g = (j1+j2+j3)/2 (the symbol vanishes when 2g = j1+j2+j3
+     * is odd).  The exponent of each prime in this rational is
+     * computed once and split between lcm_exp[] (the negative-
+     * exponent / denominator part that the caller folds into D_int)
+     * and sum_out (the positive-exponent / numerator part that goes
+     * into the running Σ), exactly as gaunt_exact does for the
+     * full-Racah-loop output of this routine.  Skips the entire
+     * Pass-1/Pass-2 loop below. */
+    if (tm1 == 0 && tm2 == 0) {
+        int j1 = tj1 / 2, j2 = tj2 / 2, j3 = tj3 / 2;
+        int L = j1 + j2 + j3;
+        if (L & 1) {
+            bigint_set_zero(sum_out);
+            *sum_sign_out = 1;
+            *lcm_max_io = 0;
+            return;
+        }
+        int g = L / 2;
+        pfrac_t *closed = &scratch->pfracs[1];
+        pfrac_zero(closed);
+        pfrac_mul_factorial(closed, g);
+        pfrac_div_factorial(closed, j1);
+        pfrac_div_factorial(closed, j2);
+        pfrac_div_factorial(closed, j3);
+        pfrac_div_factorial(closed, g - j1);
+        pfrac_div_factorial(closed, g - j2);
+        pfrac_div_factorial(closed, g - j3);
+
+        /* Split the signed prime exponents into denominator
+         * (lcm_exp[]) and numerator (the entries that survive in
+         * `closed` after the negative ones are zeroed); then update
+         * lcm_max to reflect the highest prime touched and
+         * materialise the numerator into sum_out. */
+        int lcm_max_local = 0;
+        for (pi = 0; pi < closed->max_idx; pi++) {
+            int e = closed->exp[pi];
+            if (e < 0) {
+                int neg = -e;
+                if (neg > lcm_exp[pi]) lcm_exp[pi] = neg;
+                closed->exp[pi] = 0;
+                if (pi + 1 > lcm_max_local) lcm_max_local = pi + 1;
+            } else if (e > 0) {
+                if (pi + 1 > lcm_max_local) lcm_max_local = pi + 1;
+            }
+        }
+        bigint_set_u64(sum_out, 1);
+        pfrac_bigint_mul_prime_pow_array(sum_out,
+                                          closed->exp, closed->max_idx, ws);
+        *sum_sign_out = ((g - j1 + j2) & 1) ? -1 : 1;
+        *lcm_max_io = lcm_max_local;
+        return;
+    }
+
     gaunt_racah_bounds(tj1, tj2, tj3, tm1, tm2, &s_min, &s_max);
 
     if (s_min > s_max) {
