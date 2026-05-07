@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- PyPI publishing workflow `.github/workflows/publish-pypi.yml`.
+  On every `v*`-tag push, the workflow uses
+  [cibuildwheel](https://github.com/pypa/cibuildwheel) to build
+  CPython 3.9..3.13 wheels for Linux x86_64 (manylinux + musllinux),
+  Linux aarch64 (native `ubuntu-24.04-arm` runner), macOS Apple
+  Silicon, and Windows x86_64, plus an sdist for any platform /
+  interpreter not covered by a wheel.  Each wheel is smoke-tested
+  before upload.  Authentication uses PyPI Trusted Publishing (OIDC)
+  via the `id-token: write` permission and the `pypi` environment;
+  no API token in repository secrets.  Manual `workflow_dispatch`
+  runs build the wheels but skip the publish step, so a maintainer
+  can dry-run the wheel matrix without releasing.  Wheels installed
+  via `pip install wignernj` are the self-contained
+  `setup.py`-driven build (every `src/*.c` recompiled into
+  `_wignernj.so`); the optional libquadmath / MPFR / FLINT back-ends
+  remain CMake-only.
 - Five new bullets in the `## Project policy` section of `CLAUDE.md`,
   codifying conventions that had been operating only as session-level
   rules until now: **code and documentation must stay consistent**,
