@@ -15,8 +15,9 @@ Returns 0.0 if selection rules are violated (not an error).
 
 Phase conventions
 -----------------
-The Wigner 3j, 6j, and 9j symbols, the Clebsch-Gordan coefficient, and
-the Racah W coefficient are pure SU(2) algebraic objects -- their values
+The Wigner 3j, 6j, and 9j symbols, the Clebsch-Gordan coefficient,
+the Racah W coefficient, and the Fano X-coefficient are pure SU(2)
+algebraic objects -- their values
 are fixed by the Racah/Wigner combinatorial formulas alone, with no
 spherical-harmonic phase convention entering anywhere.  The
 Clebsch-Gordan coefficient uses the Condon-Shortley sign convention of

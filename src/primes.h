@@ -41,10 +41,10 @@
  * The largest factorial argument in each symbol comes from the triangle-
  * coefficient denominator (j1+j2+j3+1)!, so for the default LIMIT = 20011:
  *
- *   3j, 6j, CG, Racah W, Gaunt:
+ *   3j, 6j, CG, Racah W, complex Gaunt, real Gaunt:
  *     j1+j2+j3 <= 20019  (equal-j: j <= 6673)
  *
- *   9j (via wigner9j_exact):
+ *   9j (via wigner9j_exact) and Fano X (delegates to the 9j pipeline):
  *     The k-dependent Delta denominators reach (4j+1)! for equal j, so
  *     j <= 5004 when all nine angular momenta are equal.
  *
@@ -56,12 +56,12 @@
  * end-to-end asymptotic per-symbol cost is:
  *
  *   3j / 6j / CG / Racah W / Gaunt / Gaunt-real :  O(j^2)
- *   9j                                          :  O(j^4)
+ *   9j / Fano X                                 :  O(j^4)
  *
  * Practical performance horizons (order of magnitude, modern hardware):
  *
- *   3j / 6j  :  j ~ 1000  in milliseconds;  j ~ 6000  in seconds
- *   9j       :  j ~  100  in milliseconds;  j ~ 1000  in minutes
+ *   3j / 6j        :  j ~ 1000  in milliseconds;  j ~ 6000  in seconds
+ *   9j / Fano X    :  j ~  100  in milliseconds;  j ~ 1000  in minutes
  */
 
 /* PRIME_SIEVE_LIMIT, MAX_PRIME_COUNT, MAX_FACTORIAL_ARG.  All three are

@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2026 Susi Lehtola
  *
- * Wigner 3j symbol via the Racah formula with prime-factorization exact
- * arithmetic following Johansson & Forssén (doi:10.1137/15M1021908).
+ * Wigner 3j symbol via the Racah formula with prime-factorized
+ * factorials (Dodds & Wiechers, CPC 4, 268 (1972)) and the multiword-
+ * integer Racah sum of Johansson & Forssén (doi:10.1137/15M1021908).
  *
  * All arguments are passed as 2*j integers (e.g. j=3/2 → tj=3).
  *
@@ -211,7 +212,7 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
      * UINT64_MAX so a regenerated prime table that exceeded the
      * batched-product safe range would break the build with a clear
      * message rather than silently miscompute.  At the default
-     * MAX_FACTORIAL_ARG = 20000, MAX_FACTORIAL_ARG^3 ~ 8e12 has more
+     * MAX_FACTORIAL_ARG = 20020, MAX_FACTORIAL_ARG^3 ~ 8e12 has more
      * than 11 bits of headroom under UINT64_MAX ~ 1.8e19; the
      * crossover at 2^64 is around MAX_FACTORIAL_ARG ~ 2.64e6.
      * Algorithm D in bigint_div128 handles arbitrary 64-bit divisors

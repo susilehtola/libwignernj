@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2026 Susi Lehtola
  *
- * Wigner 6j symbol via the Racah formula with prime-factorization exact
- * arithmetic following Johansson & Forssén (doi:10.1137/15M1021908).
+ * Wigner 6j symbol via the Racah formula with prime-factorized
+ * factorials (Dodds & Wiechers, CPC 4, 268 (1972)) and the multiword-
+ * integer Racah sum of Johansson & Forssén (doi:10.1137/15M1021908).
  *
  * Racah formula:
  *   {j1 j2 j3}  = Delta(j1,j2,j3)*Delta(j1,j5,j6)*Delta(j4,j2,j6)*Delta(j4,j5,j3)

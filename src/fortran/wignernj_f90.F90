@@ -6,12 +6,14 @@
 ! The module provides:
 !   1. Raw C-interop interfaces using 2*j integer arguments (same convention
 !      as the C API).
-!   2. Real-valued convenience wrappers w3j, w6j, w9j, wcg, wracahw, wgaunt
-!      that accept double-precision real j/m arguments and convert internally.
+!   2. Real-valued convenience wrappers w3j, w6j, w9j, wcg, wracahw, wfanox,
+!      wgaunt, wgaunt_real that accept double-precision real j/m arguments
+!      and convert internally.
 !
 ! Phase conventions: identical to those of the underlying C library.  The
-! Wigner 3j/6j/9j symbols, Clebsch-Gordan coefficient, and Racah W are pure
-! SU(2) algebraic objects and carry no spherical-harmonic phase convention;
+! Wigner 3j/6j/9j symbols, Clebsch-Gordan coefficient, Racah W, and
+! Fano X-coefficient are pure SU(2) algebraic objects and carry no
+! spherical-harmonic phase convention;
 ! the Clebsch-Gordan sign uses the Condon-Shortley convention of Edmonds
 ! and Varshalovich.  The Gaunt and real-Gaunt routines assume the
 ! Condon-Shortley phase for Y_l^m, with the real spherical harmonics

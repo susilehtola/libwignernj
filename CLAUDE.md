@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this library is
 
-**libwignernj** — exact evaluation of Wigner 3j, 6j, 9j symbols, Clebsch-Gordan coefficients, Racah W coefficients, Fano X-coefficients, and Gaunt coefficients in C99, following the prime-factorization algorithm of Johansson & Forssén (SIAM J. Sci. Comput. 38(1), A376–A384, 2016; doi:10.1137/15M1021908). The key property: all intermediate arithmetic is exact integer arithmetic; floating-point conversion happens only at the final step. Results are accurate to the last bit of the chosen output precision.
+**libwignernj** — exact evaluation of Wigner 3j, 6j, 9j symbols, Clebsch-Gordan coefficients, Racah W coefficients, Fano X-coefficients, and Gaunt coefficients in C99, following the prime-factorization technique introduced for the angular-momentum coefficients by Dodds & Wiechers (Comput. Phys. Commun. 4, 268, 1972; doi:10.1016/0010-4655(72)90019-7) and refined in subsequent work, combined with the multiword-integer Racah sum of Johansson & Forssén (SIAM J. Sci. Comput. 38(1), A376–A384, 2016; doi:10.1137/15M1021908). The key property: all intermediate arithmetic is exact integer arithmetic; floating-point conversion happens only at the final step. Results are accurate to the last bit of the chosen output precision.
 
 Language interfaces: C (primary), C++ (header-only wrapper that links against `libwignernj`), Python (CPython extension), Fortran 90 (iso_c_binding).
 
@@ -59,7 +59,7 @@ Every public symbol function follows the same pipeline:
 
 The 9j symbol is implemented as a sum over the intermediate quantum number `k` of products of three 6j exact-path evaluations. At each `k` the three k-dependent Δ factors each appear twice (making them Δ² = rational), and the six k-independent Δ factors form the outer sqrt(C). This enables the same `sqrt(C) × exact_integer` structure as 3j and 6j.
 
-Clebsch-Gordan and Racah W are thin wrappers over the Wigner symbols. Gaunt has its own exact arithmetic pipeline: it builds a single combined `pfrac_t` for `[Δ(l1,l2,l3)]² × (li!)² × m-factorials × (2li+1)/4`, runs two independent Racah sums (for m=(0,0,0) and m=(m1,m2,m3)), multiplies the sums as bigints, and applies `1/sqrt(π)` only at the final float conversion.
+Clebsch-Gordan, Racah W, and Fano X are thin wrappers over the Wigner symbols (CG and Racah W over 3j and 6j respectively; Fano X over 9j with four `sqrt(2j+1)` factors folded into the existing prime-decomposed outer-sqrt tuple). Gaunt has its own exact arithmetic pipeline: it builds a single combined `pfrac_t` for `[Δ(l1,l2,l3)]² × (li!)² × m-factorials × (2li+1)/4`, runs two independent Racah sums (for m=(0,0,0) and m=(m1,m2,m3)), multiplies the sums as bigints, and applies `1/sqrt(π)` only at the final float conversion.
 
 ## Module responsibilities
 
@@ -105,7 +105,7 @@ These constraints apply to every change, not just to typical edits.
 
   The library is currently 0.x.y, i.e. pre-1.0; per the semver convention, public-API stability is not yet guaranteed and any minor bump may break compatibility. Callers should pin to a specific minor version until 1.0.0 ships. Bumping the version is part of the change that introduces the new behaviour, not a separate later commit.
 
-- **Clean-room implementation.** libwignernj is BSD-3-Clause and depends on no GPL/LGPL competitor source. Do not read the source of WIGXJPF, FASTWIGXJ, or any other GPL/LGPL coupling-coefficient library — the library is to remain a derivation from the published Johansson–Forssén algorithm and other openly described methods, never from competitor code.
+- **Clean-room implementation.** libwignernj is BSD-3-Clause and depends on no GPL/LGPL competitor source. Do not read the source of WIGXJPF, FASTWIGXJ, or any other GPL/LGPL coupling-coefficient library — the library is to remain a derivation from the published Dodds–Wiechers prime-factorization scheme, the Johansson–Forssén multiword-integer Racah sum, and other openly described methods, never from competitor code.
 
 - **Out of scope: intra-call threading.** OpenMP, pthreads, threaded BLAS, and any other multi-threading inside one library call are excluded by the embeddability mandate (single-threaded callers, host-managed thread pools, and language bindings whose own threading model is unknown all need to be able to use the library without surprise multi-threading). Per-thread caches and `wignernj_warmup` make concurrent calls from a host thread pool safe and scale well — that is the right threading-related work. Don't propose intra-call parallelism.
 

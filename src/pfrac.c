@@ -31,8 +31,8 @@ int wignernj_max_factorial_arg(void) { return MAX_FACTORIAL_ARG; }
  * Lifecycle:  lazy-allocated on first use, persists for the lifetime
  * of the calling thread, never freed (the OS reclaims at thread exit).
  * Memory grows with the largest N that thread sees; at the absolute
- * default-build ceiling (MAX_FACTORIAL_ARG = 20000) the per-thread
- * cost is bounded by sum_{N=1}^{20000} fact_width(N) ints ~ 80 MB.
+ * default-build ceiling (MAX_FACTORIAL_ARG = 20020) the per-thread
+ * cost is bounded by sum_{N=1}^{20020} fact_width(N) ints ~ 80 MB.
  * For typical workloads (j <~ a few thousand) it is a small fraction
  * of that.
  *
