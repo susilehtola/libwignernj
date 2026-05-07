@@ -290,9 +290,30 @@ def gen_3j(target_small, target_large, tj_small=10, tj_large=200):
         if v == 0:
             continue
         large.append(args + (float(N(v, 34)),))
-    print(f"    → {len(small)} small + {len(large)} large = {len(small)+len(large)} total",
-          flush=True)
-    return small + large
+    # Deterministic m=(0,0,0) coverage spanning small-to-large j: exercises
+    # the closed-form fast path of wigner3j_exact at j values not reached
+    # by the exhaustive small-j enumeration nor by the random-m sampler.
+    # Vanishing-by-parity j values (L = 3j odd) are filtered out, as they
+    # are already covered by the selection-rule paths.
+    print("    injecting deterministic m=(0,0,0) coverage...", flush=True)
+    closed_form = []
+    candidate_tj = list(range(12, 41, 4)) + [60, 80, 100, 140, 200, 280, 400]
+    for tj in candidate_tj:
+        if tj > 2 * tj_large:
+            continue
+        if (tj + tj + tj) // 2 % 2:        # L odd → symbol vanishes
+            continue
+        args = (tj, tj, tj, 0, 0, 0)
+        if args in seen:
+            continue
+        seen.add(args)
+        v = sym_3j(*args)
+        if v == 0:
+            continue
+        closed_form.append(args + (float(N(v, 34)),))
+    print(f"    → {len(small)} small + {len(large)} large + {len(closed_form)} m=(0,0,0) "
+          f"= {len(small)+len(large)+len(closed_form)} total", flush=True)
+    return small + large + closed_form
 
 
 def gen_6j(target_small, target_large, tj_small=10, tj_large=100):
@@ -794,30 +815,30 @@ def main():
     t0 = time.time()
 
     print("Generating 3j references...")
-    c3j = gen_3j(target_small=800, target_large=200, tj_small=10, tj_large=200)
+    c3j = gen_3j(target_small=1600, target_large=400, tj_small=10, tj_large=200)
     emit_3j(c3j)
 
     print("Generating 6j references...")
-    c6j = gen_6j(target_small=800, target_large=200, tj_small=10, tj_large=100)
+    c6j = gen_6j(target_small=1600, target_large=400, tj_small=10, tj_large=100)
     emit_6j(c6j)
 
     print("Generating 9j references...")
-    c9j = gen_9j(target_small=700, target_large=300, tj_small=10, tj_large=30)
+    c9j = gen_9j(target_small=1400, target_large=600, tj_small=10, tj_large=30)
     emit_9j(c9j)
 
     print("Generating CG references...")
-    ccg = gen_cg(target_small=350, target_large=150, tj_small=10, tj_large=200)
+    ccg = gen_cg(target_small=700, target_large=300, tj_small=10, tj_large=200)
 
     print("Generating Racah W references...")
-    crac = gen_racah(target_small=350, target_large=150, tj_small=10, tj_large=60)
+    crac = gen_racah(target_small=700, target_large=300, tj_small=10, tj_large=60)
 
     print("Generating Gaunt references...")
-    cgnt = gen_gaunt(target_small=250, target_large=100, tl_small=10, tl_large=40)
+    cgnt = gen_gaunt(target_small=500, target_large=200, tl_small=10, tl_large=40)
 
     emit_derived(ccg, crac, cgnt)
 
     print("Generating real-Gaunt references...")
-    cgr = gen_gaunt_real(target_small=200, target_large=60,
+    cgr = gen_gaunt_real(target_small=400, target_large=120,
                           tl_small=10, tl_large=40)
     emit_gaunt_real(cgr)
 

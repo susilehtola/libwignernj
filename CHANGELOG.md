@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] – 2026-05-07
+
+### Added
+- **Closed-form fast path for the all-$m$-zero 3j symbol.**
+  `wigner3j_exact` now detects the $(m_1,m_2,m_3) = (0,0,0)$ case
+  and short-circuits the Racah single sum with the closed form
+  $\binom{j_1\,j_2\,j_3}{0\,0\,0} = (-1)^g\,\sqrt{\Delta^2}\,
+  g!/[(g-j_1)!(g-j_2)!(g-j_3)!]$, $g = (j_1+j_2+j_3)/2$ (vanishing
+  by parity for odd $g$).  Bit-identical to the general Racah path
+  on every input and verified against an mpmath reference at
+  $j = 2,4,10,50,100,200$.  Paired bench against the parent commit
+  on a 12th-gen Intel Core i5-1235U: speedup of $\sim 22\times$ at
+  $j = 5$, $\sim 45\times$ at $j = 200$, and $\sim 190\times$ at
+  $j = 1000$ for the $(j\,j\,j; 0\,0\,0)$ family.  The Gaunt
+  coefficient inherits the speedup automatically since one of the
+  two 3j evaluations it performs is always the $(\ell\,\ell\,\ell;
+  0\,0\,0)$ case.  `tests/gen_refs.py` gains a deterministic
+  $m=(0,0,0)$ block at $2j \in \{12, 20, 24, 40, 60, 100, 200, 300,
+  400\}$ so the regression suite exercises the new path at
+  moderate-to-large $j$.
+
 ## [0.4.2] – 2026-05-07
 
 ### Added

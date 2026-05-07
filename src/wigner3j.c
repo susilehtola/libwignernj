@@ -126,6 +126,78 @@ void wigner3j_exact(int tj1, int tj2, int tj3,
         return;
     }
 
+    /* Closed-form fast path for (j1 j2 j3; 0 0 0): the standard Racah
+     * single-sum collapses to the well-known closed form
+     *
+     *   (j1 j2 j3; 0 0 0)
+     *     = (-1)^g * sqrt[Delta^2(j1,j2,j3)]
+     *               * g! / [(g-j1)! (g-j2)! (g-j3)!]
+     *
+     * with g = (j1+j2+j3)/2; the symbol vanishes unless g is integer
+     * (i.e. (j1+j2+j3) even).  This skips the entire Racah-sum
+     * machinery (Pass~1 LCM build + Pass~2 ratio recurrence) in
+     * favour of a single multinomial-coefficient bigint
+     * materialisation.  Used directly here and inherited by every
+     * Gaunt evaluation (which calls (l1 l2 l3; 0 0 0) once on every
+     * call). */
+    if (tm1 == 0 && tm2 == 0 && tm3 == 0) {
+        int Lhalf = (tj1 + tj2 + tj3) / 4; /* g = (j1+j2+j3)/2 if integer */
+        if ((tj1 + tj2 + tj3) & 2) {       /* (j1+j2+j3) odd → vanishes */
+            out->is_zero = 1;
+            return;
+        }
+        int j1 = tj1 / 2, j2 = tj2 / 2, j3 = tj3 / 2;
+        int g = Lhalf;
+        out->sign = (g & 1) ? -1 : +1;
+
+        scratch  = wignernj_scratch_acquire();
+        ws       = &scratch->ws;
+        outer    = &scratch->pfracs[0];
+        pfrac_t *closed = &scratch->pfracs[1];
+
+        mw = bigint_words_for_factorial((tj1 + tj2 + tj3) / 2 + 5);
+        bigint_ws_reserve(ws, mw);
+        bigint_reserve(&out->sum,      mw);
+        bigint_reserve(&out->int_num,  mw);
+        bigint_reserve(&out->int_den,  mw);
+        bigint_reserve(&out->sqrt_num, mw);
+        bigint_reserve(&out->sqrt_den, mw);
+
+        /* Outer sqrt factor: Delta^2(j1,j2,j3) */
+        pfrac_zero(outer);
+        pfrac_mul_factorial(outer, (tj1 + tj2 - tj3) / 2);
+        pfrac_mul_factorial(outer, (tj1 - tj2 + tj3) / 2);
+        pfrac_mul_factorial(outer, (-tj1 + tj2 + tj3) / 2);
+        pfrac_div_factorial(outer, (tj1 + tj2 + tj3) / 2 + 1);
+
+        /* Closed-form Racah sum: g! / [(g-j1)! (g-j2)! (g-j3)!] */
+        pfrac_zero(closed);
+        pfrac_mul_factorial(closed, g);
+        pfrac_div_factorial(closed, g - j1);
+        pfrac_div_factorial(closed, g - j2);
+        pfrac_div_factorial(closed, g - j3);
+
+        /* Materialise the multinomial coefficient as out->sum.  Every
+         * exp[i] of `closed` is non-negative because the multinomial
+         * is a positive integer (triangle inequality forces g >= j_i). */
+        bigint_set_u64(&out->sum, 1);
+        pfrac_bigint_mul_prime_pow_array(&out->sum,
+                                          closed->exp, closed->max_idx, ws);
+        out->sum_sign = +1;
+
+        /* Outer sqrt split */
+        bigint_set_u64(&out->int_num,  1);
+        bigint_set_u64(&out->int_den,  1);
+        bigint_set_u64(&out->sqrt_num, 1);
+        bigint_set_u64(&out->sqrt_den, 1);
+        pfrac_to_sqrt_rational_ws(outer,
+                                   &out->int_num, &out->int_den,
+                                   &out->sqrt_num, &out->sqrt_den, ws);
+
+        wignernj_scratch_relinquish(scratch);
+        return;
+    }
+
     bounds_3j(tj1, tj2, tj3, tm1, tm2, &s_min, &s_max);
     if (s_min > s_max) { out->is_zero = 1; return; }
 
