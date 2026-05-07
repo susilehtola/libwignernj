@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Expanded the Python C extension's per-function docstrings.  Each
+  of the eight public Python functions (`wigner3j`, `wigner6j`,
+  `wigner9j`, `clebsch_gordan`, `racah_w`, `fano_x`, `gaunt`,
+  `gaunt_real`) now has a NumPy/SciPy-style docstring covering the
+  signature, a one-line summary, the underlying mathematical
+  definition (where helpful), a `Parameters` block explaining
+  argument types and unit conventions, a `Returns` block, a
+  `Raises` block where applicable, brief notes on phase
+  conventions, and runnable `Examples` that compute textbook-known
+  values.  The `Examples` blocks double as doctests verified
+  against analytic references at 1e-14 tolerance during the audit
+  for this change.  Visible to users via `help(wignernj.foo)` or
+  `wignernj.foo.__doc__`; the `repr(wignernj.foo)` output remains
+  CPython's default `<built-in function foo>` (the docstring does
+  not change the repr).
+
 ## [0.4.1] – 2026-05-07
 
 ### Added
