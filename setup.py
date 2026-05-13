@@ -42,7 +42,7 @@ ext = Extension(
 
 setup(
     name="wignernj",
-    version="0.4.2",
+    version="0.5.0",
     description="Exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization",
     packages=["wignernj"],
     ext_modules=[ext],

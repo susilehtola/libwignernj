@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **PEP 376 / PEP 427 `.dist-info` for the CMake-installed Python
+  extension.**  When the library is built with `-DBUILD_PYTHON=ON`,
+  the install step (`cmake --install`) now writes a
+  `wignernj-<version>.dist-info/` directory next to the package
+  containing METADATA, WHEEL, INSTALLER, top_level.txt, and RECORD.
+  Result: the CMake-installed package is fully recognised by
+  `pip list`, `pip uninstall wignernj`, and
+  `importlib.metadata.version("wignernj")`, the same way a
+  `pip install wignernj` wheel would be.  Metadata fields
+  (description, license, authors, classifiers, URLs) come from
+  `pyproject.toml` so the wheel and CMake install paths share a
+  single source of truth.  Implemented in
+  `tools/install_python_metadata.py`, invoked via `install(CODE ...)`
+  so RECORD's sha256/size pairs are computed against the
+  actually-installed files (including the Python-ABI-specific
+  `_wignernj.<EXT_SUFFIX>.so` and any DESTDIR staging).
+- **CI guards against build-system drift.**  The existing
+  `check-source-lists` job is extended (and renamed to
+  `check-build-consistency`) with a new
+  `tools/check_versions.py` step that verifies the four
+  independently-maintained version strings (`CMakeLists.txt`,
+  `pyproject.toml`, `setup.py`, `wignernj/__init__.py`) all agree.
+  A new step in the coverage job stages a `cmake --install` into a
+  temporary prefix and runs `tools/verify_python_metadata.py` to
+  confirm the produced `.dist-info` is well-formed (RECORD entries
+  hash-match the installed files; required PEP 566 fields present).
+
+### Fixed
+- **Python-side version strings synced with the project version.**
+  `wignernj/__init__.py`'s `__version__` and `setup.py`'s `version=`
+  argument had been lagging at `0.4.2` since the 0.5.0 tag, even
+  though `CMakeLists.txt` and `pyproject.toml` advanced to `0.5.0`.
+  Both are now at `0.5.0`; the new `check_versions.py` CI step
+  prevents a recurrence.
+
 ## [0.5.0] – 2026-05-07
 
 ### Changed

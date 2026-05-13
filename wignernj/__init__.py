@@ -38,7 +38,7 @@ Example::
 Functions exposed: ``wigner3j``, ``wigner6j``, ``wigner9j``,
 ``clebsch_gordan``, ``racah_w``, ``fano_x``, ``gaunt``, ``gaunt_real``.
 """
-__version__ = "0.4.2"
+__version__ = "0.5.0"
 
 from ._wignernj import (
     wigner3j,

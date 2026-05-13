@@ -425,6 +425,31 @@ if(BUILD_PYTHON)
             LIBRARY DESTINATION ${Python3_SITEARCH}/wignernj)
         install(FILES wignernj/__init__.py
             DESTINATION ${Python3_SITEARCH}/wignernj)
+
+        # Write the PEP 376 / PEP 427 .dist-info directory so the
+        # CMake-installed package is recognised by `pip list`,
+        # `pip uninstall`, and `importlib.metadata.version()` just like
+        # a `pip install wignernj` would produce.  Done at install time
+        # via `install(CODE ...)` because RECORD depends on the exact
+        # installed file paths (including the Python-ABI-specific .so
+        # suffix) and must honour `cmake --install --prefix=` /
+        # DESTDIR=.  Metadata fields are read from pyproject.toml so
+        # description, license, authors, classifiers, URLs etc. stay in
+        # sync with the wheel-based PyPI install path.
+        install(CODE "
+            execute_process(
+                COMMAND \"${Python3_EXECUTABLE}\"
+                        \"${CMAKE_CURRENT_SOURCE_DIR}/tools/install_python_metadata.py\"
+                        \"\$ENV{DESTDIR}${Python3_SITEARCH}\"
+                        \"${PROJECT_VERSION}\"
+                        \"${CMAKE_CURRENT_SOURCE_DIR}/pyproject.toml\"
+                        \"cmake\"
+                RESULT_VARIABLE _wignernj_metadata_result
+            )
+            if(NOT _wignernj_metadata_result EQUAL 0)
+                message(FATAL_ERROR \"Failed to write Python .dist-info metadata for the CMake-installed wignernj package (exit code \${_wignernj_metadata_result})\")
+            endif()
+        ")
     else()
         message(STATUS "Python3 not found -- skipping Python extension")
     endif()
