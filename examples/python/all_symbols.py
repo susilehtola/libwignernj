@@ -107,6 +107,15 @@ def main():
         1.0 / math.sqrt(5.0 * PI),
     )
 
+    # 9. Real <-> complex Y_lm basis transformation.  Returns a list of
+    #    (2l+1) rows, each a list of (2l+1) complex values; index as
+    #    C[m_r + l][m_c + l].
+    C = wignernj.real_ylm_in_complex_ylm(1)
+    s = 1.0 / math.sqrt(2.0)
+    failed += check("real_ylm_in_complex_ylm[+1,-1].re (l=1)", C[2][0].real,  s)
+    failed += check("real_ylm_in_complex_ylm[-1,-1].im (l=1)", C[0][0].imag,  s)
+    failed += check("real_ylm_in_complex_ylm[ 0, 0].re (l=1)", C[1][1].real,  1.0)
+
     if not failed:
         print("\nAll symbols agree with their analytic references.")
     return failed

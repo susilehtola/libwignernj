@@ -21,11 +21,13 @@ algebraic objects -- their values
 are fixed by the Racah/Wigner combinatorial formulas alone, with no
 spherical-harmonic phase convention entering anywhere.  The
 Clebsch-Gordan coefficient uses the Condon-Shortley sign convention of
-Edmonds (1957) and Varshalovich et al. (1988).  The ``gaunt`` and
-``gaunt_real`` routines assume the Condon-Shortley phase for Y_l^m;
-``gaunt_real`` further fixes the real spherical harmonics by the
-Wikipedia/Condon-Shortley construction.  See the header comment of the
-underlying C library (``include/wignernj.h``) for the explicit formulas.
+Edmonds (1957) and Varshalovich et al. (1988).  The ``gaunt``,
+``gaunt_real`` and ``real_ylm_in_complex_ylm`` routines assume the
+Condon-Shortley phase for Y_l^m; ``gaunt_real`` and
+``real_ylm_in_complex_ylm`` further fix the real spherical harmonics by
+the Wikipedia/Condon-Shortley construction.  See the header comment of
+the underlying C library (``include/wignernj.h``) for the explicit
+formulas.
 
 Example::
 
@@ -36,9 +38,10 @@ Example::
     wignernj.gaunt_real(2, 1, 2, -1, 0, 0)       # real-Y Gaunt
 
 Functions exposed: ``wigner3j``, ``wigner6j``, ``wigner9j``,
-``clebsch_gordan``, ``racah_w``, ``fano_x``, ``gaunt``, ``gaunt_real``.
+``clebsch_gordan``, ``racah_w``, ``fano_x``, ``gaunt``, ``gaunt_real``,
+``real_ylm_in_complex_ylm``.
 """
-__version__ = "0.5.0"
+__version__ = "0.6.0"
 
 from ._wignernj import (
     wigner3j,
@@ -49,7 +52,9 @@ from ._wignernj import (
     fano_x,
     gaunt,
     gaunt_real,
+    real_ylm_in_complex_ylm,
 )
 
 __all__ = ["wigner3j", "wigner6j", "wigner9j",
-           "clebsch_gordan", "racah_w", "fano_x", "gaunt", "gaunt_real"]
+           "clebsch_gordan", "racah_w", "fano_x", "gaunt", "gaunt_real",
+           "real_ylm_in_complex_ylm"]

@@ -78,6 +78,7 @@ Clebsch-Gordan, Racah W, and Fano X are thin wrappers over the Wigner symbols (C
 | `src/racah.c` | `racah_w*`: Racah W via 6j, formula `(-1)^(j1+j2+J+j3) * 6j{j1,j2,j12;j3,J,j23}` |
 | `src/fano_x.c` | `fano_x*`: Fano X via 9j, formula `sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] * 9j{j1,j2,j12;j3,j4,j34;j13,j24,J}` |
 | `src/gaunt.c` | `gaunt*`: own exact pipeline — combined pfrac for [Δ]²·factorials·normalization, two Racah sums multiplied as bigints, then `÷sqrt(π)` at float step |
+| `src/real_ylm_in_complex_ylm.c` | `wignernj_real_ylm_in_complex_ylm*`: fills the column-major `(2l+1)×(2l+1)` unitary `C` for `S = C Y` under the same real-Y convention as `gaunt_real`; direct entry-by-entry fill of `±1`, `±1/√2`, `±i/√2` — no Racah sum, no factorials |
 | `include/wignernj.h` | Public C API — all functions, `_f`/`/`_l` precisions |
 | `include/wignernj_quadmath.h` | libquadmath API — requires `BUILD_QUADMATH=ON`; declares `_q` (`__float128`) variant of every public symbol |
 | `include/wignernj_mpfr.h` | MPFR API — requires `BUILD_MPFR=ON`; set precision on `rop` before calling |

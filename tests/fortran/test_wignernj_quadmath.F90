@@ -11,6 +11,7 @@
 program test_wigner_quadmath
 #ifdef WIGNERNJ_HAVE_QUADMATH
   use wignernj
+  use iso_c_binding,   only: c_float128_complex
   use iso_fortran_env, only: real128
   implicit none
 
@@ -113,6 +114,23 @@ program test_wigner_quadmath
                   1.0_real128, 0.0_real128, &
                   2.0_real128, 0.0_real128)
     call check_q(vqr, vqc, q_tol*8, 'wgaunt_realq m=0 = wgauntq', npass, nfail)
+  end block
+
+  ! Real <-> complex Y_lm basis-overlap matrix at quad precision.
+  block
+    complex(c_float128_complex) :: C(3, 3)
+    real(real128) :: s
+    s = 1.0_real128 / sqrt(2.0_real128)
+    call wreal_ylm_in_complex_ylmq(1, C)
+    ! (m_r=+1, m_c=-1) -> C(3, 1): real part = +1/sqrt(2)
+    call check_q(real(C(3, 1), real128), s, q_tol, &
+                 'wreal_ylm_in_complex_ylmq[+1,-1].re', npass, nfail)
+    ! (m_r=-1, m_c=-1) -> C(1, 1): imag part = +1/sqrt(2)
+    call check_q(aimag(C(1, 1)), s, q_tol, &
+                 'wreal_ylm_in_complex_ylmq[-1,-1].im', npass, nfail)
+    ! (m_r=0, m_c=0) -> C(2, 2): real part = 1
+    call check_q(real(C(2, 2), real128), 1.0_real128, q_tol, &
+                 'wreal_ylm_in_complex_ylmq[ 0, 0].re', npass, nfail)
   end block
 
   total = npass + nfail

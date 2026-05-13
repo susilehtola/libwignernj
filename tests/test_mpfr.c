@@ -166,6 +166,39 @@ static void test_fano_x_64bit(void)
     mpfr_clear(v);
 }
 
+static void test_real_ylm_in_complex_ylm_64bit(void)
+{
+    /* Fill the l = 1 matrix at MPFR precision 64 and verify a handful of
+     * entries against their analytic values.  Each entry is 0, ±1, or
+     * ±1/sqrt(2) (real or imaginary), so the 64-bit floor of
+     * |computed - reference| / |reference| is well within 1e-15. */
+    const int l   = 1;
+    const int dim = 2 * l + 1;
+    const size_t n = (size_t)dim * (size_t)dim;
+    mpfr_t Cre[9], Cim[9];
+    for (size_t i = 0; i < n; i++) {
+        mpfr_init2(Cre[i], 64);
+        mpfr_init2(Cim[i], 64);
+    }
+    wignernj_real_ylm_in_complex_ylm_mpfr(l, Cre, Cim, MPFR_RNDN);
+
+    const double s = 1.0 / sqrt(2.0);
+    /* Column-major (m_r=+1, m_c=-1) -> idx 0*3 + 2 = 2; real part = +s. */
+    TEST_NEAR(mpfr_to_d(Cre[2]), +s, 1e-15);
+    TEST_NEAR(mpfr_to_d(Cim[2]),  0.0, 1e-300);
+    /* Column-major (m_r=-1, m_c=-1) -> idx 0*3 + 0 = 0; imag part = +s. */
+    TEST_NEAR(mpfr_to_d(Cre[0]),  0.0, 1e-300);
+    TEST_NEAR(mpfr_to_d(Cim[0]), +s, 1e-15);
+    /* C[0, 0] -> idx 1*3 + 1 = 4: real = 1, imag = 0. */
+    TEST_NEAR(mpfr_to_d(Cre[4]), 1.0, 1e-15);
+    TEST_NEAR(mpfr_to_d(Cim[4]), 0.0, 1e-300);
+
+    for (size_t i = 0; i < n; i++) {
+        mpfr_clear(Cre[i]);
+        mpfr_clear(Cim[i]);
+    }
+}
+
 /* ── 2. High-precision accuracy ─────────────────────────────────────────── */
 
 /*
@@ -288,6 +321,7 @@ int main(void)
     test_gaunt_64bit();
     test_gaunt_real_64bit();
     test_fano_x_64bit();
+    test_real_ylm_in_complex_ylm_64bit();
     test_high_precision_3j();
     test_high_precision_3j_2();
     test_high_precision_6j();

@@ -96,6 +96,23 @@ int main()
                     wignernj::gauntreal<double>(1.0, 0.0,  1.0, 0.0,  2.0, 0.0),
                     1.0 / std::sqrt(5.0 * M_PI));
 
+    // 9. Real <-> complex Y_lm basis transformation.  std::complex<double>
+    // overload returns the (2l+1) x (2l+1) column-major matrix as a
+    // std::vector; element C[m_r, m_c] is at index (m_c + l) * (2l+1) +
+    // (m_r + l).
+    {
+        auto C = wignernj::real_ylm_in_complex_ylm<double>(1);
+        // row m_r = +1, col m_c = -1  ->  flat index 0*3 + 2 = 2
+        failed |= check("real_ylm_in_complex_ylm[+1,-1].re (l=1)",
+                        C[2].real(), 1.0 / std::sqrt(2.0));
+        // row m_r = -1, col m_c = -1  ->  flat index 0*3 + 0 = 0
+        failed |= check("real_ylm_in_complex_ylm[-1,-1].im (l=1)",
+                        C[0].imag(), 1.0 / std::sqrt(2.0));
+        // row m_r = 0, col m_c = 0    ->  flat index 1*3 + 1 = 4
+        failed |= check("real_ylm_in_complex_ylm[ 0, 0].re (l=1)",
+                        C[4].real(), 1.0);
+    }
+
     if (!failed)
         std::printf("\nAll symbols agree with their analytic references.\n");
     return failed;
