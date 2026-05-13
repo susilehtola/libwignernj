@@ -58,17 +58,24 @@ on:
 
 jobs:
   # ── Build-system consistency ──────────────────────────────────────────────
-  # The CMake LIB_SOURCES list and setup.py sources list compile the same C
-  # library twice; if they drift, the Python extension links with an
-  # undefined-symbol error that surfaces as "0 tests collected" rather than
-  # a clear failure.  This check is fast (<1 s) and catches the drift early.
-  check-source-lists:
-    name: "Source-list consistency"
+  # Fast guards (<2 s total) against silent drift in the build manifest.
+  #   (a) CMake LIB_SOURCES vs setup.py sources -- if they disagree, the
+  #       Python extension links with an undefined-symbol error that
+  #       surfaces in CI as "0 tests collected" rather than a clear
+  #       failure.
+  #   (b) Version strings across CMakeLists.txt, pyproject.toml,
+  #       setup.py, and wignernj/__init__.py -- if they disagree, the
+  #       SONAME, the wheel METADATA, and the runtime `__version__`
+  #       all report different versions for the same artifact.
+  check-build-consistency:
+    name: "Build-system consistency"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Compare CMakeLists.txt and setup.py source lists
         run: python3 tools/check_source_lists.py
+      - name: Verify version strings agree across build files
+        run: python3 tools/check_versions.py
 
   # ── Build and test matrix ─────────────────────────────────────────────────
   build:
@@ -465,6 +472,29 @@ jobs:
           pip install pytest
           ln -sf "$PWD/build/wignernj/_wignernj.so" wignernj/_wignernj.so
           python -m pytest tests/python/ -v
+
+      - name: Verify CMake-install .dist-info metadata
+        # The CMake BUILD_PYTHON path writes a PEP 376 / PEP 427
+        # .dist-info directory alongside _wignernj.so so that
+        # `pip list`, `pip uninstall`, and importlib.metadata see the
+        # CMake-installed package.  Stage the install into a temporary
+        # prefix here and verify the dist-info is well-formed: every
+        # RECORD entry hash-matches the installed file, METADATA has
+        # the required PEP 566 fields, and WHEEL / INSTALLER /
+        # top_level.txt are present.
+        run: |
+          STAGE=$(mktemp -d)
+          DESTDIR=$STAGE cmake --install build
+          # CMake's Python3_SITEARCH and sysconfig.get_path("platlib")
+          # differ on some distros (Debian/Ubuntu prepend dist-packages);
+          # locate the dist-info by name instead of by absolute path.
+          DIST_INFO=$(find "$STAGE" -name 'wignernj-*.dist-info' -type d | head -n1)
+          if [ -z "$DIST_INFO" ]; then
+              echo "FAIL: no wignernj-*.dist-info under $STAGE"
+              exit 1
+          fi
+          VERSION=$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          python3 tools/verify_python_metadata.py "$(dirname "$DIST_INFO")" "$VERSION"
 
       - name: Collect coverage
         run: |
