@@ -1,19 +1,35 @@
 # libwignernj examples
 
 Single-file demonstrations of the libwignernj public API in each of
-the four supported language bindings.  Every example calls all eight
-symbol families exposed by the library — `wigner3j`, `wigner6j`,
-`wigner9j`, `clebsch_gordan`, `racah_w`, `fano_x`, `gaunt`,
-`gaunt_real` — at small textbook-scale arguments and verifies the
-results against analytic references (factors of 1/√3, 1/6, √(2/3),
-1/√(5π), …).
+the four supported language bindings.  Every `all_symbols.*` calls
+the nine public families exposed by the library — `wigner3j`,
+`wigner6j`, `wigner9j`, `clebsch_gordan`, `racah_w`, `fano_x`,
+`gaunt`, `gaunt_real`, and `real_ylm_in_complex_ylm` — at small
+textbook-scale arguments and verifies the results against analytic
+references (factors of 1/√3, 1/6, √(2/3), 1/√(5π), 1/√2, …).
 
-| Language | File                          | API surface                                |
-|----------|-------------------------------|--------------------------------------------|
-| C        | `c/all_symbols.c`             | `#include "wignernj.h"`                      |
-| C++      | `cpp/all_symbols.cpp`         | `#include "wignernj.hpp"`                    |
-| Fortran  | `fortran/all_symbols.f90`     | `use wignernj` from `libwignernj_f03`        |
-| Python   | `python/all_symbols.py`       | `import wignernj`                            |
+| Language | File                                 | API surface                                |
+|----------|--------------------------------------|--------------------------------------------|
+| C        | `c/all_symbols.c`                    | `#include "wignernj.h"`                      |
+| C++      | `cpp/all_symbols.cpp`                | `#include "wignernj.hpp"`                    |
+| Fortran  | `fortran/all_symbols.f90`            | `use wignernj` from `libwignernj_f03`        |
+| Python   | `python/all_symbols.py`              | `import wignernj`                            |
+
+Parallel focused demos of the real ↔ complex Y_lm change of basis
+(building the orbital `l_z` operator in the real-Y basis from its
+diagonal complex-basis form via the similarity transform
+`O_real = conj(C) @ O_complex @ transpose(C)`) ship alongside the
+`all_symbols.*` files:
+
+| Language | File                                   |
+|----------|----------------------------------------|
+| C        | `c/real_basis_lz.c`                    |
+| C++      | `cpp/real_basis_lz.cpp`                |
+| Fortran  | `fortran/real_basis_lz.f90`            |
+| Python   | `python/real_basis_lz.py`              |
+
+All four reproduce the textbook `l_z = ((0,0,+i),(0,0,0),(−i,0,0))`
+at l = 1 with Hermiticity residual 0.
 
 ## Building and running from this source tree
 
@@ -63,10 +79,14 @@ python python/all_symbols.py
 The C, C++, and Python APIs each have their own convention for
 half-integer arguments:
 
-* **C / Fortran C-binding interfaces** (`wigner3j`, `gaunt`, …)
-  take `2j` as an integer, so `j = 1/2` is `tj = 1` and `j = 1` is
-  `tj = 2`.  This avoids floating-point representation of half-integer
-  quantum numbers entirely.
+* **C / Fortran C-binding interfaces** for the coupling-coefficient
+  routines (`wigner3j`, `wigner6j`, `wigner9j`, `clebsch_gordan`,
+  `racah_w`, `fano_x`, `gaunt`, `gaunt_real`) take `2j` as an
+  integer, so `j = 1/2` is `tj = 1` and `j = 1` is `tj = 2`.  This
+  avoids floating-point representation of half-integer quantum
+  numbers entirely.  `wignernj_real_ylm_in_complex_ylm` is the lone
+  exception — its argument is always an integer orbital angular
+  momentum and is therefore taken as plain `l`.
 * **C++ wrapper** (`wignernj::symbol3j(double, …)`) and **Fortran
   module wrappers** (`w3j`, `w6j`, …) accept `j` as a real number;
   the implementation doubles it internally and forwards to the C

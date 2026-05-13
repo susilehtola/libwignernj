@@ -20,7 +20,7 @@
 !         -I /path/to/installed/include \
 !         -L /path/to/installed/lib -lwignernj_f03 -lwignernj
 program all_symbols
-  use, intrinsic :: iso_c_binding, only: c_double
+  use, intrinsic :: iso_c_binding, only: c_double, c_double_complex
   use, intrinsic :: iso_fortran_env, only: error_unit
   use wignernj
   implicit none
@@ -92,6 +92,25 @@ program all_symbols
                     2.0_c_double, 0.0_c_double)
   ref = 1.0_c_double / sqrt(5.0_c_double * pi)
   call check('wgaunt_real(1,0; 1,0; 2,0)', v, ref, tol, failed)
+
+  ! 9. Real <-> complex Y_lm basis transformation.
+  !    wreal_ylm_in_complex_ylm fills a (2l+1) x (2l+1) column-major matrix
+  !    such that S_{l,m_r} = sum_{m_c} C(m_r+l+1, m_c+l+1) Y_l^{m_c}.
+  block
+    complex(c_double_complex) :: C(3, 3)
+    real(c_double) :: s
+    s = 1.0_c_double / sqrt(2.0_c_double)
+    call wreal_ylm_in_complex_ylm(1, C)
+    ! row m_r = +1 (idx 3), col m_c = -1 (idx 1): real part = +1/sqrt(2)
+    call check('real_ylm_in_complex_ylm[+1,-1].re (l=1)', &
+               real(C(3, 1)), s, tol, failed)
+    ! row m_r = -1 (idx 1), col m_c = -1 (idx 1): imag part = +1/sqrt(2)
+    call check('real_ylm_in_complex_ylm[-1,-1].im (l=1)', &
+               aimag(C(1, 1)), s, tol, failed)
+    ! row m_r = 0 (idx 2), col m_c = 0 (idx 2): real part = 1
+    call check('real_ylm_in_complex_ylm[ 0, 0].re (l=1)', &
+               real(C(2, 2)), 1.0_c_double, tol, failed)
+  end block
 
   if (failed == 0) then
      print '(A)', ''

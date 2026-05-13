@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026 Susi Lehtola
 cmake_minimum_required(VERSION 3.16)
-project(wignernj VERSION 0.5.0 LANGUAGES C)
+project(wignernj VERSION 0.6.0 LANGUAGES C)
 
 # Default to an optimised build when the consumer hasn't picked a
 # CMAKE_BUILD_TYPE (e.g. plain `cmake -B build`).  libwignernj is
@@ -123,6 +123,7 @@ set(LIB_SOURCES
     src/racah.c
     src/fano_x.c
     src/gaunt.c
+    src/real_ylm_in_complex_ylm.c
 )
 
 add_library(wignernj ${LIB_SOURCES})

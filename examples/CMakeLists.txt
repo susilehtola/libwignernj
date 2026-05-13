@@ -2,9 +2,11 @@
 # Copyright (c) 2026 Susi Lehtola
 #
 # Build language-binding examples and register them as ctest tests.
-# Each example exercises every public symbol family in libwignernj
-# (wigner3j/6j/9j, clebsch_gordan, racah_w, fano_x, gaunt, gaunt_real)
-# and exits non-zero on any tolerance violation.
+# Each `all_symbols.{c,cpp,f90,py}` exercises every public symbol family
+# in libwignernj (wigner3j/6j/9j, clebsch_gordan, racah_w, fano_x, gaunt,
+# gaunt_real, real_ylm_in_complex_ylm) and exits non-zero on any tolerance
+# violation.  The `real_basis_lz.*` examples are focused demos of the
+# real-basis l_z construction via the real/complex Y_lm change of basis.
 
 if(WIN32)
     set(LIBM_LINK)
@@ -12,12 +14,19 @@ else()
     set(LIBM_LINK m)
 endif()
 
-# ── C example ────────────────────────────────────────────────────────────
+# ── C examples ───────────────────────────────────────────────────────────
 add_executable(example_c c/all_symbols.c)
 target_link_libraries(example_c PRIVATE wignernj ${LIBM_LINK})
 target_include_directories(example_c PRIVATE
     ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME example_c COMMAND example_c)
+
+# Real-basis l_z built from the real <-> complex change of basis.
+add_executable(example_real_basis_lz c/real_basis_lz.c)
+target_link_libraries(example_real_basis_lz PRIVATE wignernj ${LIBM_LINK})
+target_include_directories(example_real_basis_lz PRIVATE
+    ${CMAKE_SOURCE_DIR}/include)
+add_test(NAME example_real_basis_lz COMMAND example_real_basis_lz)
 
 # ── C++ example ──────────────────────────────────────────────────────────
 # Enable CXX if it isn't already.  tests/CMakeLists.txt enables it under
@@ -43,6 +52,19 @@ if(BUILD_CXX_TESTS)
         target_include_directories(example_cpp PRIVATE
             ${CMAKE_SOURCE_DIR}/include)
         add_test(NAME example_cpp COMMAND example_cpp)
+
+        # Real-basis l_z C++ parallel.
+        add_executable(example_real_basis_lz_cpp cpp/real_basis_lz.cpp)
+        set_target_properties(example_real_basis_lz_cpp PROPERTIES
+            CXX_STANDARD          11
+            CXX_STANDARD_REQUIRED ON
+            CXX_EXTENSIONS        OFF)
+        target_link_libraries(example_real_basis_lz_cpp
+            PRIVATE wignernj ${LIBM_LINK})
+        target_include_directories(example_real_basis_lz_cpp PRIVATE
+            ${CMAKE_SOURCE_DIR}/include)
+        add_test(NAME example_real_basis_lz_cpp
+            COMMAND example_real_basis_lz_cpp)
     else()
         message(STATUS "C++ compiler not found -- skipping example_cpp")
     endif()
@@ -54,6 +76,13 @@ if(BUILD_FORTRAN)
     target_link_libraries(example_fortran
         PRIVATE wignernj_f03 wignernj ${LIBM_LINK})
     add_test(NAME example_fortran COMMAND example_fortran)
+
+    # Real-basis l_z Fortran parallel.
+    add_executable(example_real_basis_lz_fortran fortran/real_basis_lz.f90)
+    target_link_libraries(example_real_basis_lz_fortran
+        PRIVATE wignernj_f03 wignernj ${LIBM_LINK})
+    add_test(NAME example_real_basis_lz_fortran
+        COMMAND example_real_basis_lz_fortran)
 endif()
 
 # ── Python example ───────────────────────────────────────────────────────
@@ -73,6 +102,13 @@ if(BUILD_PYTHON AND TARGET _wignernj)
         # root.  Both paths must be on PYTHONPATH for `import wignernj`
         # to resolve to the just-built extension.
         set_tests_properties(example_python PROPERTIES
+            ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}")
+
+        # Real-basis l_z Python parallel.
+        add_test(NAME example_real_basis_lz_python
+            COMMAND ${Python3_EXECUTABLE}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/python/real_basis_lz.py)
+        set_tests_properties(example_real_basis_lz_python PROPERTIES
             ENVIRONMENT "PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}")
     endif()
 endif()

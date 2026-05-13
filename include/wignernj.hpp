@@ -22,10 +22,11 @@
 // 9j, Clebsch-Gordan, Racah W, and Fano X are pure SU(2) algebraic objects
 // and carry no spherical-harmonic phase convention; the Clebsch-Gordan
 // coefficient uses
-// the Condon-Shortley sign of Edmonds and Varshalovich.  The Gaunt and real-
-// Gaunt routines assume the Condon-Shortley phase for Y_l^m, with the real
-// spherical harmonics defined by the Wikipedia/Condon-Shortley construction.
-// See include/wignernj.h for the explicit formulas.
+// the Condon-Shortley sign of Edmonds and Varshalovich.  The Gaunt,
+// real-Gaunt and real-to-complex Y_lm basis-overlap routines assume the
+// Condon-Shortley phase for Y_l^m, with the real spherical harmonics
+// defined by the Wikipedia/Condon-Shortley construction.  See
+// include/wignernj.h for the explicit formulas.
 
 #ifndef WIGNERNJ_HPP
 #define WIGNERNJ_HPP
@@ -33,7 +34,9 @@
 #include "wignernj.h"
 #include <stdexcept>
 #include <cmath>
+#include <complex>
 #include <string>
+#include <vector>
 
 namespace wignernj {
 
@@ -127,6 +130,51 @@ gauntreal<double>(int a,int b,int c,int d,int e,int f)
 template<> inline long double
 gauntreal<long double>(int a,int b,int c,int d,int e,int f)
 { return gaunt_real_l(a,b,c,d,e,f); }
+
+// ── real <-> complex spherical-harmonic basis transformation ─────────────
+//
+// Fills a (2l+1) x (2l+1) column-major std::complex<T> buffer (leading
+// dimension 2l+1) with the unitary matrix C such that
+//     S_{l,m_r} = sum_{m_c} C[m_r, m_c] Y_l^{m_c}
+// under the same real-spherical-harmonic convention used by gauntreal.
+// std::complex<T> is guaranteed layout-compatible with T[2] by C++11
+// [complex.numbers]/4, so the cast to T* and the wignernj C entry
+// point's interleaved (re, im) view describe the same memory.
+//
+// Two overloads per precision: a fill-into-caller-storage form for
+// pre-allocated buffers, and a return-a-vector form for convenience.
+
+template<typename T>
+inline void real_ylm_in_complex_ylm(int l, std::complex<T> *C_out);
+
+// std::complex<T> is guaranteed layout-compatible with T[2] by C++11
+// [complex.numbers]/4 and the C-side wignernj_c*_t typedefs are
+// likewise layout-compatible with T[2] (struct{T _pair[2]} in C++ mode,
+// `T _Complex` or `_Tcomplex` in C mode).  reinterpret_cast between
+// the two pointer types is therefore well-defined.
+template<> inline void
+real_ylm_in_complex_ylm<float>(int l, std::complex<float> *C_out)
+{ ::wignernj_real_ylm_in_complex_ylm_f(l,
+    reinterpret_cast<wignernj_cfloat_t *>(C_out)); }
+template<> inline void
+real_ylm_in_complex_ylm<double>(int l, std::complex<double> *C_out)
+{ ::wignernj_real_ylm_in_complex_ylm(l,
+    reinterpret_cast<wignernj_cdouble_t *>(C_out)); }
+template<> inline void
+real_ylm_in_complex_ylm<long double>(int l, std::complex<long double> *C_out)
+{ ::wignernj_real_ylm_in_complex_ylm_l(l,
+    reinterpret_cast<wignernj_cldouble_t *>(C_out)); }
+
+template<typename T = double>
+inline std::vector<std::complex<T>> real_ylm_in_complex_ylm(int l)
+{
+    if (l < 0)
+        throw std::invalid_argument("wignernj::real_ylm_in_complex_ylm: l must be >= 0");
+    const std::size_t dim = static_cast<std::size_t>(2 * l + 1);
+    std::vector<std::complex<T>> C(dim * dim);
+    real_ylm_in_complex_ylm<T>(l, C.data());
+    return C;
+}
 
 // ── convenience helpers ───────────────────────────────────────────────────
 

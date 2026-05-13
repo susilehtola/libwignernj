@@ -34,6 +34,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   temporary prefix and runs `tools/verify_python_metadata.py` to
   confirm the produced `.dist-info` is well-formed (RECORD entries
   hash-match the installed files; required PEP 566 fields present).
+- **Real ↔ complex spherical-harmonic basis-overlap matrix as a
+  public API.**  New `wignernj_real_ylm_in_complex_ylm` family fills
+  the `(2l+1) × (2l+1)` unitary matrix `C` whose entries are
+  `C[m_r, m_c] = <Y_l^{m_c} | S_{l, m_r}>`, equivalently the
+  basis-vector relation `S_{l,m_r} = sum_{m_c} C[m_r, m_c] Y_l^{m_c}`
+  under the same real-Y convention used internally by `gaunt_real`.
+  Layout is column-major (Fortran / BLAS / LAPACK) with leading
+  dimension `2l+1`.  A typedef shim in `wignernj.h` exposes
+  `wignernj_c{float,double,ldouble}_t` (and `wignernj_cfloat128_t`
+  in `wignernj_quadmath.h`) that maps to `T _Complex` on
+  gcc/clang/Apple-Clang/Intel-icx, `_Tcomplex` on MSVC C, and a
+  layout-compatible `struct {T _pair[2];}` in C++; all three
+  representations have identical (re, im)-interleaved memory layout
+  per C99 §6.2.5/13 and C++11 [complex.numbers]/4, so callers
+  holding `T _Complex *` or `std::complex<T> *` (via the C++
+  wrapper) pass them without a cast.  Variants:
+  `wignernj_real_ylm_in_complex_ylm_f` / `_` / `_l` / `_q` (gated on
+  `BUILD_QUADMATH`) in `wignernj.h` and `wignernj_quadmath.h`;
+  `wignernj_real_ylm_in_complex_ylm_mpfr` (two parallel `mpfr_t`
+  arrays for real and imaginary parts) in `wignernj_mpfr.h`.
+  Header-only C++ overloads
+  `wignernj::real_ylm_in_complex_ylm<T>()` (in-place fill and
+  convenience `std::vector<std::complex<T>>` return) in
+  `wignernj.hpp`.  Fortran `bind(c)` interfaces plus a typed
+  `wreal_ylm_in_complex_ylm(l, c_out)` wrapper (and
+  `wreal_ylm_in_complex_ylmq` under `WIGNERNJ_HAVE_QUADMATH`) in
+  `wignernj_f90.F90`.  Python binding
+  `wignernj.real_ylm_in_complex_ylm(l, precision='double')`
+  returning a list-of-lists of `complex`.
+- Unit test `tests/test_real_ylm_in_complex_ylm.c` verifying explicit l=0/1/2
+  entries, unitarity for l = 0..10, and bit-equivalent reconstruction
+  of `gaunt_real` by sandwiching three rows of `C` against complex
+  Gaunts.
+- Parallel `real_basis_lz` examples in all four language bindings
+  (`examples/c/real_basis_lz.c`, `examples/cpp/real_basis_lz.cpp`,
+  `examples/fortran/real_basis_lz.f90`,
+  `examples/python/real_basis_lz.py`) building the orbital
+  angular-momentum operator `l_z` in the real-Y basis from its
+  diagonal complex-basis form via the similarity transform
+  `O_real = conj(C) @ O_complex @ transpose(C)` (consequence of the
+  basis-vector form `S = C Y` returned by libwignernj).  All four
+  examples are registered as ctest targets and reproduce the
+  textbook l = 1 result `l_z = ((0,0,+i),(0,0,0),(−i,0,0))` with
+  Hermiticity residual 0.
+- `wignernj_real_ylm_in_complex_ylm` is also exercised in each binding's
+  `all_symbols.*` example so a downstream user of any one language
+  sees the function alongside every other public symbol.
 
 ### Fixed
 - **Python-side version strings synced with the project version.**

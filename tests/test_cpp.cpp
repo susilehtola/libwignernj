@@ -6,8 +6,10 @@
 #include "../include/wignernj.hpp"
 #include <cfloat>
 #include <cmath>
+#include <complex>
 #include <cstdio>
 #include <stdexcept>
+#include <vector>
 
 // long double has 80-bit extended precision on x86-64 ELF, but is just an
 // alias for double on Apple's arm64 / x86-64 ABIs (LDBL_MANT_DIG == 53) and
@@ -156,6 +158,33 @@ int main(void)
     /* ── large j ──────────────────────────────────────────────────────── */
     CHECK_NEAR(wignernj::symbol3j<double>(100,100,0, 0,0,0),
                1.0/sqrt(101.0), 2e-15);
+
+    /* ── real_ylm_in_complex_ylm ──────────────────────────────────────── */
+    {
+        // std::vector<std::complex<T>> return form, l = 1.
+        auto C = wignernj::real_ylm_in_complex_ylm<double>(1);
+        const double s = 1.0 / std::sqrt(2.0);
+        // Column-major (m_r=+1, m_c=-1) at flat index 0*3 + 2 = 2.
+        CHECK_NEAR(C[2].real(), s,   2e-15);
+        CHECK_ABS (C[2].imag(), 0.0, 1e-300);
+        // Column-major (m_r=-1, m_c=-1) at flat index 0*3 + 0 = 0.
+        CHECK_ABS (C[0].real(), 0.0, 1e-300);
+        CHECK_NEAR(C[0].imag(), s,   2e-15);
+        // C[0, 0] at flat index 1*3 + 1 = 4.
+        CHECK_NEAR(C[4].real(), 1.0, 1e-15);
+        // float overload, in-place fill.
+        std::complex<float> Cf[9];
+        wignernj::real_ylm_in_complex_ylm<float>(1, Cf);
+        CHECK_NEAR(Cf[2].real(), (float)s, 5e-7f);
+        // long double overload.
+        std::complex<long double> Cl[9];
+        wignernj::real_ylm_in_complex_ylm<long double>(1, Cl);
+        CHECK_NEAR((double)Cl[2].real(), s, 2.0 * DBL_EPSILON);
+        // l = 0 edge case: 1x1 matrix == [[1+0i]].
+        auto C0 = wignernj::real_ylm_in_complex_ylm<double>(0);
+        CHECK_NEAR(C0[0].real(), 1.0, 1e-15);
+        CHECK_ABS (C0[0].imag(), 0.0, 1e-300);
+    }
 
     int total = g_pass + g_fail;
     std::printf("%s: %d/%d tests passed\n",

@@ -597,6 +597,144 @@ static PyObject *py_gaunt_real(PyObject *self, PyObject *args, PyObject *kwargs)
     return make_result(gaunt_real_l(tl1,tm1,tl2,tm2,tl3,tm3), prec);
 }
 
+/* ── real_ylm_in_complex_ylm ─────────────────────────────────────────────────── */
+
+static const char real_ylm_in_complex_ylm_doc[] =
+    "real_ylm_in_complex_ylm(l, precision='double') -> list[list[complex]]\n"
+    "\n"
+    "Build the unitary (2l+1) x (2l+1) basis-change matrix C from real\n"
+    "to complex spherical harmonics,\n"
+    "\n"
+    "    S_{l, m_r}  =  sum_{m_c}  C[m_r, m_c] * Y_l^{m_c}\n"
+    "\n"
+    "using the same real-Y convention as gaunt_real:\n"
+    "\n"
+    "    S_{l, 0}     = Y_l^0\n"
+    "    S_{l,  m>0}  = (1 / sqrt(2)) * (Y_l^{-m} + (-1)^m * Y_l^m)\n"
+    "    S_{l,  m<0}  = (i / sqrt(2)) * (Y_l^{m}  - (-1)^|m| * Y_l^{-m})\n"
+    "\n"
+    "The returned object is a Python list of (2l+1) rows, each itself\n"
+    "a list of (2l+1) `complex` values: `out[m_r + l][m_c + l]` is the\n"
+    "matrix element C[m_r, m_c].  Index ordering for both axes follows\n"
+    "the physics convention m = -l, ..., 0, ..., l.\n"
+    "\n"
+    "Parameters\n"
+    "----------\n"
+    "l : int\n"
+    "    Non-negative integer orbital angular momentum.\n"
+    "precision : {'float', 'double', 'longdouble'}, optional\n"
+    "    IEEE 754 binary precision used internally for the 1/sqrt(2)\n"
+    "    entries.  Default 'double'.  The Python `complex` returned to\n"
+    "    the caller is always backed by a C `double` pair, so 'float'\n"
+    "    rounds to binary32 then promotes back to binary64 and\n"
+    "    'longdouble' is identical to 'double' on toolchains where\n"
+    "    long double = double.\n"
+    "\n"
+    "Returns\n"
+    "-------\n"
+    "list of list of complex\n"
+    "    The matrix C.  C is unitary; its conjugate transpose performs\n"
+    "    the complex -> real change of basis.\n"
+    "\n"
+    "Raises\n"
+    "------\n"
+    "ValueError\n"
+    "    If l is negative or `precision` is not one of the accepted\n"
+    "    keywords.\n"
+    "TypeError\n"
+    "    If l is not an integer.\n"
+    "\n"
+    "Examples\n"
+    "--------\n"
+    ">>> import wignernj, numpy as np\n"
+    ">>> C = np.array(wignernj.real_ylm_in_complex_ylm(1))\n"
+    ">>> # unitarity\n"
+    ">>> np.allclose(C @ C.conj().T, np.eye(3))\n"
+    "True\n"
+    ">>> # l_z in real basis from diagonal m * delta complex form.\n"
+    ">>> # Because S = C Y at the basis-vector level, the operator\n"
+    ">>> # similarity transform is O_real = conj(C) @ O_c @ C.T.\n"
+    ">>> lz_complex = np.diag([-1.0, 0.0, 1.0])\n"
+    ">>> lz_real = C.conj() @ lz_complex @ C.T\n"
+    ">>> np.allclose(lz_real.real, 0)            # purely imaginary\n"
+    "True\n"
+    ">>> np.allclose(lz_real, -lz_real.T.conj())  # Hermitian (anti-imag)\n"
+    "True";
+
+static PyObject *py_real_ylm_in_complex_ylm(PyObject *self, PyObject *args,
+                                       PyObject *kwargs)
+{
+    static char *kwlist[] = {"l", "precision", NULL};
+    int l;
+    PyObject *prec_obj = NULL;
+    Precision prec;
+    (void)self;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i|O", kwlist,
+                                     &l, &prec_obj))
+        return NULL;
+    if (l < 0) {
+        PyErr_SetString(PyExc_ValueError,
+            "wigner: real_ylm_in_complex_ylm: l must be non-negative");
+        return NULL;
+    }
+    prec = parse_precision(prec_obj);
+    if ((int)prec < 0) return NULL;
+
+    const int dim = 2 * l + 1;
+    const size_t nflat = (size_t)dim * (size_t)dim;
+    double *buf_d = NULL;
+    float  *buf_f = NULL;
+    long double *buf_l = NULL;
+
+    if (prec == PREC_FLOAT) {
+        buf_f = (float *)PyMem_Malloc(2 * nflat * sizeof(float));
+        if (!buf_f) return PyErr_NoMemory();
+        wignernj_real_ylm_in_complex_ylm_f(l, (wignernj_cfloat_t *)buf_f);
+    } else if (prec == PREC_LONGDOUBLE) {
+        buf_l = (long double *)PyMem_Malloc(2 * nflat * sizeof(long double));
+        if (!buf_l) return PyErr_NoMemory();
+        wignernj_real_ylm_in_complex_ylm_l(l, (wignernj_cldouble_t *)buf_l);
+    } else {
+        buf_d = (double *)PyMem_Malloc(2 * nflat * sizeof(double));
+        if (!buf_d) return PyErr_NoMemory();
+        wignernj_real_ylm_in_complex_ylm(l, (wignernj_cdouble_t *)buf_d);
+    }
+
+    /* Build a list-of-lists indexed as out[m_r + l][m_c + l].  The C-side
+     * buffer is column-major with leading dimension dim, so the (m_r, m_c)
+     * element is at flat slot (m_c + l) * dim + (m_r + l), with the (re, im)
+     * pair occupying two consecutive scalars. */
+    PyObject *outer = PyList_New(dim);
+    if (!outer) goto fail;
+    for (int r = 0; r < dim; r++) {
+        PyObject *row = PyList_New(dim);
+        if (!row) { Py_DECREF(outer); outer = NULL; goto fail; }
+        for (int c = 0; c < dim; c++) {
+            const size_t slot = ((size_t)c * (size_t)dim + (size_t)r) * 2u;
+            double re, im;
+            if (prec == PREC_FLOAT) {
+                re = (double)buf_f[slot];
+                im = (double)buf_f[slot + 1];
+            } else if (prec == PREC_LONGDOUBLE) {
+                re = (double)buf_l[slot];
+                im = (double)buf_l[slot + 1];
+            } else {
+                re = buf_d[slot];
+                im = buf_d[slot + 1];
+            }
+            PyObject *z = PyComplex_FromDoubles(re, im);
+            if (!z) { Py_DECREF(row); Py_DECREF(outer); outer = NULL; goto fail; }
+            PyList_SET_ITEM(row, c, z);
+        }
+        PyList_SET_ITEM(outer, r, row);
+    }
+fail:
+    PyMem_Free(buf_f);
+    PyMem_Free(buf_d);
+    PyMem_Free(buf_l);
+    return outer;
+}
+
 /* ── module definition ─────────────────────────────────────────────────── */
 
 /* Cast every keyword-accepting CFunction through `void (*)(void)` before the
@@ -617,6 +755,7 @@ static PyMethodDef wignernj_methods[] = {
     KW_METHOD("fano_x",         py_fano_x,         fano_x_doc),
     KW_METHOD("gaunt",          py_gaunt,          gaunt_doc),
     KW_METHOD("gaunt_real",     py_gaunt_real,     gaunt_real_doc),
+    KW_METHOD("real_ylm_in_complex_ylm", py_real_ylm_in_complex_ylm, real_ylm_in_complex_ylm_doc),
     {NULL, NULL, 0, NULL}
 };
 

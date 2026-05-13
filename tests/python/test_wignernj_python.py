@@ -11,7 +11,7 @@ import pytest
 try:
     from wignernj import (wigner3j, wigner6j, wigner9j,
                         clebsch_gordan, racah_w, fano_x,
-                        gaunt, gaunt_real)
+                        gaunt, gaunt_real, real_ylm_in_complex_ylm)
 except ImportError:
     pytest.skip("wignernj extension not installed", allow_module_level=True)
 
@@ -294,3 +294,53 @@ class TestGauntReal:
                                precision='double'), ref)
         assert near(gaunt_real(1, 0, 1, 0, 2, 0,
                                precision='longdouble'), ref)
+
+
+# ── real_ylm_in_complex_ylm ──────────────────────────────────────────────────
+
+class TestRealYlmInComplexYlm:
+    def test_l0_identity(self):
+        C = real_ylm_in_complex_ylm(0)
+        assert C == [[complex(1.0, 0.0)]]
+
+    def test_l1_entries(self):
+        # S_{1, 0}  = Y_1^0     -> C[1,1] = 1
+        # S_{1,+1} = (1/sqrt2)( Y_1^{-1} - Y_1^{+1} )
+        # S_{1,-1} = (i/sqrt2)( Y_1^{-1} + Y_1^{+1} )
+        C = real_ylm_in_complex_ylm(1)
+        s = 1.0 / math.sqrt(2.0)
+        # Index is C[m_r + l][m_c + l].
+        assert near_abs(C[1][1].real, 1.0)
+        assert near_abs(C[1][1].imag, 0.0)
+        assert near_abs(C[2][0].real, +s)         # (m_r=+1, m_c=-1)
+        assert near_abs(C[2][2].real, -s)         # (m_r=+1, m_c=+1)
+        assert near_abs(C[0][0].imag, +s)         # (m_r=-1, m_c=-1)
+        assert near_abs(C[0][2].imag, +s)         # (m_r=-1, m_c=+1)
+
+    def test_unitarity(self):
+        # C C^H = I for l = 0..5.
+        for l in range(6):
+            n = 2 * l + 1
+            C = real_ylm_in_complex_ylm(l)
+            for i in range(n):
+                for j in range(n):
+                    acc = sum(C[i][k] * C[j][k].conjugate() for k in range(n))
+                    expected = 1.0 if i == j else 0.0
+                    assert near_abs(acc.real, expected, atol=1e-14)
+                    assert near_abs(acc.imag, 0.0,      atol=1e-14)
+
+    def test_precision_keyword(self):
+        # All three precisions return the same Python-complex matrix.
+        C_d = real_ylm_in_complex_ylm(1, precision='double')
+        C_f = real_ylm_in_complex_ylm(1, precision='float')
+        C_l = real_ylm_in_complex_ylm(1, precision='longdouble')
+        for i in range(3):
+            for j in range(3):
+                assert near_abs(C_f[i][j].real, C_d[i][j].real, atol=5e-7)
+                assert near_abs(C_f[i][j].imag, C_d[i][j].imag, atol=5e-7)
+                assert near_abs(C_l[i][j].real, C_d[i][j].real, atol=1e-15)
+                assert near_abs(C_l[i][j].imag, C_d[i][j].imag, atol=1e-15)
+
+    def test_negative_l_raises(self):
+        with pytest.raises(ValueError):
+            real_ylm_in_complex_ylm(-1)

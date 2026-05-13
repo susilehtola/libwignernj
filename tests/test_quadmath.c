@@ -112,6 +112,22 @@ int main(void)
                   (__float128)wigner9j_l(20,20,20, 20,20,20, 20,20,20),
                   ld_tol);
 
+    /* Real <-> complex Y_lm basis-overlap matrix at quad precision.  For
+     * l = 1, the (m_r=+1, m_c=-1) entry is 1/sqrt(2) (real) and the
+     * (m_r=-1, m_c=-1) entry is 1/sqrt(2) (imaginary). */
+    {
+        wignernj_cfloat128_t C[9];
+        __float128 *F = (__float128 *)C;
+        wignernj_real_ylm_in_complex_ylm_q(1, C);
+        const __float128 inv_sqrt2 = 1.0Q / sqrtq(2.0Q);
+        /* Column-major (m_r=+1, m_c=-1) -> idx 2*(0*3 + 2) = 4. */
+        EXPECT_NEAR_Q(F[4], inv_sqrt2, q_tol);
+        /* Column-major (m_r=-1, m_c=-1) -> idx 2*(0*3 + 0) + 1 = 1. */
+        EXPECT_NEAR_Q(F[1], inv_sqrt2, q_tol);
+        /* C[0,0] real part at idx 2*(1*3 + 1) = 8 == 1. */
+        EXPECT_NEAR_Q(F[8], 1.0Q, q_tol);
+    }
+
     /* ── Corner case: all j=0 → exact 1.0 ─────────────────────────────── */
 
     EXPECT_NEAR_Q(wigner3j_q(0,0,0, 0,0,0), 1.0Q, 0.0Q);

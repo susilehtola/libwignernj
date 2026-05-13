@@ -19,6 +19,7 @@ sources = [
     "src/racah.c",
     "src/fano_x.c",
     "src/gaunt.c",
+    "src/real_ylm_in_complex_ylm.c",
 ]
 
 # MSVC has no -std=c99 / -O2 spelling and bundles libm into the
@@ -42,7 +43,7 @@ ext = Extension(
 
 setup(
     name="wignernj",
-    version="0.5.0",
+    version="0.6.0",
     description="Exact Wigner 3j/6j/9j symbols and related coefficients via prime factorization",
     packages=["wignernj"],
     ext_modules=[ext],

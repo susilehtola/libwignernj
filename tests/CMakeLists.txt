@@ -28,6 +28,7 @@ set(C_UNIT_TESTS
     test_derived
     test_gaunt_real
     test_precisions
+    test_real_ylm_in_complex_ylm
     test_symmetry
 )
 if(NOT BUILD_FLINT)

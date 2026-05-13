@@ -20,8 +20,10 @@ Fortran 90 (iso_c_binding).
 
 ## Argument convention
 
-All angular momentum arguments are passed as **twice their value** so that
-half-integers are represented exactly as odd integers:
+Every coupling-coefficient routine (3j, 6j, 9j, Clebsch-Gordan, Racah W,
+Fano X, Gaunt, real-Gaunt) takes its angular-momentum arguments as
+**twice their value** so that half-integers are represented exactly as
+odd integers:
 
 ```
 j = 3/2  →  tj = 3
@@ -30,6 +32,10 @@ m = -1/2 →  tm = -1
 
 This applies to the C, C++, and Fortran interfaces.  The Python interface also
 accepts plain floats (e.g. `0.5`) and `fractions.Fraction` objects.
+
+The single exception is `wignernj_real_ylm_in_complex_ylm`, whose
+argument is always an integer orbital angular momentum and is therefore
+taken as plain `l` rather than `2*l`.
 
 ## Building
 
@@ -99,6 +105,17 @@ double      gaunt  (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 
 /* Real-spherical-harmonic Gaunt coefficient (Wikipedia/Condon-Shortley) */
 double      gaunt_real(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
+
+/* Real Y_lm in the complex Y_lm basis:
+ *   S_{l,m_r} = sum_{m_c} C[m_r, m_c] Y_l^{m_c}
+ * fills a column-major (2l+1)x(2l+1) complex matrix.  The element
+ * type `wignernj_cdouble_t` is a typedef shim in wignernj.h that
+ * maps to the native complex-double type on every supported
+ * toolchain: `double _Complex` on gcc/clang/Intel, `_Dcomplex` on
+ * MSVC, and a layout-compat `struct {double _pair[2];}` in C++.
+ * Callers holding `double _Complex *` or `std::complex<double> *`
+ * (via the C++ wrapper) pass them directly without a cast. */
+void        wignernj_real_ylm_in_complex_ylm(int l, wignernj_cdouble_t *C_out);
 ```
 
 Each function is available in three precisions: `double` (no suffix), `float`
@@ -114,9 +131,10 @@ Linking: `pkg-config --libs libwignernj` or `-lwignernj -lm`.
 
 Build with `-DBUILD_QUADMATH=ON` (requires a compiler with `__float128`
 support: GCC, Clang, or Intel ICC/ICX on Linux/macOS; not Apple Clang or
-MSVC).  Include `wignernj_quadmath.h` in addition to `wignernj.h`.  Each public
-symbol gains a `_q` variant returning `__float128` (IEEE 754 binary128,
-113-bit mantissa):
+MSVC).  Include `wignernj_quadmath.h` in addition to `wignernj.h`.  Each
+coupling-coefficient routine gains a `_q` variant returning `__float128`
+(IEEE 754 binary128, 113-bit mantissa); `wignernj_real_ylm_in_complex_ylm`
+gains a `_q` variant that fills a `wignernj_cfloat128_t` matrix.
 
 ```c
 #include "wignernj.h"
@@ -128,7 +146,9 @@ __float128 v = wigner6j_q(4, 4, 4, 4, 4, 4);
 The Fortran module also exposes the corresponding `wigner3j_q`,
 `wigner6j_q`, ..., `gaunt_real_q` `bind(c)` interfaces and the real-valued
 convenience wrappers `w3jq`, `w6jq`, `w9jq`, `wcgq`, `wracahwq`, `wgauntq`,
-`wgaunt_realq` that take `real(real128)` arguments.
+`wgaunt_realq` that take `real(real128)` arguments, plus
+`wreal_ylm_in_complex_ylmq(l, c_out)` filling a
+`complex(c_float128_complex)` matrix.
 
 ## MPFR API
 
@@ -156,6 +176,12 @@ gaunt_real_mpfr(v, 4, 2,  4, -2,  0, 0,  MPFR_RNDN);
 mpfr_clear(v);
 ```
 
+The real ↔ complex Y_lm basis-overlap matrix uses a different signature
+because its output is a `(2l+1) × (2l+1)` complex matrix rather than a
+scalar: `wignernj_real_ylm_in_complex_ylm_mpfr(l, C_re, C_im, rnd)` fills
+two parallel `mpfr_t` arrays of length `(2l+1)²` (real and imaginary
+parts) that the caller `mpfr_init2`'s and `mpfr_clear`'s.
+
 Link with `-lwignernj -lmpfr -lm`.
 
 ## C++ API
@@ -176,7 +202,8 @@ float  f = wignernj::symbol6j<float> (2, 2, 2,  2, 2, 2);
 double v = wignernj::symbol3j(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
 double c = wignernj::cg(0.5, 0.5, 0.5, -0.5, 1.0, 0.0);
 
-// Available functions: symbol3j, symbol6j, symbol9j, cg, racahw, gaunt, gauntreal
+// Available functions: symbol3j, symbol6j, symbol9j, cg, racahw, fanox, gaunt,
+// gauntreal, real_ylm_in_complex_ylm
 ```
 
 Link with `-lwignernj -lm` (and `-lmpfr` if `BUILD_MPFR=ON`).
@@ -203,6 +230,7 @@ wignernj.racah_w(1, 1, 2, 1, 2, 2)
 wignernj.fano_x(1, 1, 2,  1, 1, 2,  2, 2, 4)
 wignernj.gaunt(2, 1, 2, -1, 2, 0, precision='longdouble')
 wignernj.gaunt_real(2, 1, 2, -1, 0, 0)
+wignernj.real_ylm_in_complex_ylm(1)                  # 3x3 unitary real->complex Y matrix
 ```
 
 The optional `precision=` keyword selects `'float'`, `'double'` (default), or
@@ -212,17 +240,23 @@ The optional `precision=` keyword selects `'float'`, `'double'` (default), or
 
 The `wignernj` module provides real-valued wrappers `w3j`, `w6j`, `w9j`, `wcg`,
 `wracahw`, `wfanox`, `wgaunt`, and `wgaunt_real` that accept double-precision
-real arguments:
+real arguments, plus a typed real-to-complex-Y subroutine
+`wreal_ylm_in_complex_ylm(l, c_out)` that fills a `complex(c_double_complex)`
+`(2l+1) x (2l+1)` matrix:
 
 ```fortran
 use wignernj
+use iso_c_binding, only: c_double_complex
 real(8) :: v
+complex(c_double_complex), allocatable :: C(:,:)
 v = w3j(1.0d0, 1.0d0, 0.0d0,  0.0d0, 0.0d0, 0.0d0)
 v = w6j(1.0d0, 1.0d0, 2.0d0,  1.0d0, 1.0d0, 2.0d0)
 v = wcg(0.5d0, 0.5d0, 0.5d0, -0.5d0, 1.0d0, 0.0d0)
 v = wfanox(1.0d0, 1.0d0, 2.0d0,  1.0d0, 1.0d0, 2.0d0,  2.0d0, 2.0d0, 4.0d0)
 v = wgaunt(2.0d0, 1.0d0, 2.0d0, -1.0d0, 2.0d0, 0.0d0)
 v = wgaunt_real(2.0d0, 1.0d0, 2.0d0, -1.0d0, 0.0d0, 0.0d0)
+allocate(C(3, 3))
+call wreal_ylm_in_complex_ylm(1, C)
 ```
 
 Raw `bind(c)` interfaces using `2*j` integers are also available for all
@@ -276,8 +310,10 @@ per-language examples: [docs/reference.md](docs/reference.md).
   against external libraries (WIGXJPF, GSL) are published with the
   paper as supplementary material rather than living in this repo.
 - `examples/` — single-file demonstrations of every public symbol in
-  C, C++, Fortran, and Python; built and run as ctest tests when
-  `BUILD_EXAMPLES=ON` (the default).
+  C, C++, Fortran, and Python (`all_symbols.*`) plus focused per-topic
+  demos that mirror across all four bindings (e.g. `real_basis_lz.*`
+  building the orbital `l_z` matrix in the real-Y basis); all built
+  and run as ctest tests when `BUILD_EXAMPLES=ON` (the default).
 - `tools/` — prime-table and source-list generators run at build time
 - `docs/` — extended reference and the descriptor paper
 

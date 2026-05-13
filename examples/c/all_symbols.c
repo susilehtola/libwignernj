@@ -87,6 +87,26 @@ int main(void)
           gaunt_real(2, 0,  2, 0,  4, 0),
           1.0 / sqrt(5.0 * M_PI), tol);
 
+    /* 9. Real <-> complex Y_lm basis transformation.  At l = 1 the
+     *    (m_r=+1, m_c=-1) entry is +1/sqrt(2) (real part), the
+     *    (m_r=-1, m_c=-1) entry is +1/sqrt(2) (imag part), and the
+     *    matrix is unitary.  Storage is column-major with leading
+     *    dimension 2l+1; element C[r,c] sits at index c*(2l+1)+r. */
+    {
+        wignernj_cdouble_t C[9];
+        wignernj_real_ylm_in_complex_ylm(1, C);
+        double *F = (double *)C;            /* re/im pairs interleaved */
+        /* row m_r = +1, col m_c = -1: real part = 1/sqrt(2). */
+        CHECK("real_ylm_in_complex_ylm[+1,-1].re (l=1)",
+              F[2 * (0 * 3 + 2)], 1.0 / sqrt(2.0), tol);
+        /* row m_r = -1, col m_c = -1: imag part = 1/sqrt(2). */
+        CHECK("real_ylm_in_complex_ylm[-1,-1].im (l=1)",
+              F[2 * (0 * 3 + 0) + 1], 1.0 / sqrt(2.0), tol);
+        /* row m_r = 0, col m_c = 0: real part = 1, imag part = 0. */
+        CHECK("real_ylm_in_complex_ylm[ 0, 0].re (l=1)",
+              F[2 * (1 * 3 + 1)], 1.0, tol);
+    }
+
     printf("\nAll symbols agree with their analytic references.\n");
     return 0;
 }

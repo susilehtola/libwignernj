@@ -11,8 +11,9 @@
  *
  * Phase conventions: identical to the floating-point API; see the header
  * comment of wignernj.h.  In short, 3j/6j/9j/CG/Racah W are convention-free
- * SU(2) algebraic objects (CG signs use Condon–Shortley); the Gaunt and
- * real-Gaunt routines assume the Condon–Shortley phase for Y_l^m.
+ * SU(2) algebraic objects (CG signs use Condon–Shortley); Gaunt, real-Gaunt
+ * and the real ↔ complex Y_lm basis-overlap matrix assume the
+ * Condon–Shortley phase for Y_l^m.
  *
  * Example:
  *   mpfr_t v;
@@ -78,5 +79,18 @@ void gaunt_real_mpfr(mpfr_t rop,
                      int tl2, int tm2,
                      int tl3, int tm3,
                      mpfr_rnd_t rnd);
+
+/* Real <-> complex spherical-harmonic basis transformation at MPFR
+ * precision.  Fills two parallel column-major mpfr_t arrays of length
+ * (2l+1)^2 each (real and imaginary parts).  Element C[m_r, m_c]
+ * lives at flat index (m_c+l)*(2l+1) + (m_r+l) in both C_re and C_im.
+ * Each mpfr_t in both arrays must be mpfr_init2'd to the desired
+ * precision before the call; the function only writes values.
+ * Semantics otherwise identical to wignernj_real_ylm_in_complex_ylm in
+ * wignernj.h (same convention, same column-major layout). */
+void wignernj_real_ylm_in_complex_ylm_mpfr(int l,
+                                     mpfr_t *C_re,
+                                     mpfr_t *C_im,
+                                     mpfr_rnd_t rnd);
 
 #endif /* WIGNERNJ_MPFR_H */

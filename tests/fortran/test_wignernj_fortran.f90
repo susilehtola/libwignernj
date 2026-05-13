@@ -4,7 +4,7 @@
 ! Fortran test program for the wigner module convenience wrappers.
 program test_wigner_fortran
   use wignernj
-  use iso_c_binding, only: c_double, c_int
+  use iso_c_binding, only: c_double, c_int, c_double_complex
   implicit none
 
   integer  :: npass, nfail, total
@@ -128,6 +128,24 @@ program test_wigner_fortran
   ! Selection-rule zero (one triangle violated) → X = 0
   val = wfanox(1.0d0,1.0d0,1.0d0, 1.0d0,1.0d0,1.0d0, 1.0d0,1.0d0,3.0d0)
   call check_abs(val, 0.0d0, 1.0d-15, 'wfanox triangle zero', npass, nfail)
+
+  ! ── Real <-> complex Y_lm basis-overlap matrix ─────────────────────────────
+  block
+    complex(c_double_complex) :: C(3, 3)
+    real(c_double) :: s
+    s = 1.0d0 / sqrt(2.0d0)
+    call wreal_ylm_in_complex_ylm(1, C)
+    ! Fortran column-major: C(row, col), row = m_r+l+1, col = m_c+l+1.
+    ! (m_r=+1, m_c=-1) -> C(3, 1): real part = +1/sqrt(2)
+    call check_near(real(C(3, 1)), s, 2.0d-14, &
+                    'wreal_ylm_in_complex_ylm[+1,-1].re', npass, nfail)
+    ! (m_r=-1, m_c=-1) -> C(1, 1): imag part = +1/sqrt(2)
+    call check_near(aimag(C(1, 1)), s, 2.0d-14, &
+                    'wreal_ylm_in_complex_ylm[-1,-1].im', npass, nfail)
+    ! (m_r=0, m_c=0) -> C(2, 2): real part = 1
+    call check_near(real(C(2, 2)), 1.0d0, 2.0d-14, &
+                    'wreal_ylm_in_complex_ylm[ 0, 0].re', npass, nfail)
+  end block
 
   ! ── Summary ────────────────────────────────────────────────────────────────
 

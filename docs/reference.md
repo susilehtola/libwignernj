@@ -79,9 +79,10 @@ pkg-config --cflags --libs libwignernj
 
 ## Argument convention
 
-All angular momentum arguments are passed as **twice their value** so that
-half-integers are represented as odd integers and all arguments are plain C
-`int`:
+Every coupling-coefficient routine (3j, 6j, 9j, Clebsch-Gordan, Racah W,
+Fano X, Gaunt, real-Gaunt) takes its angular-momentum arguments as
+**twice their value** so that half-integers are represented as odd
+integers and all arguments are plain C `int`:
 
 | Physical value | Argument |
 |---|---|
@@ -94,6 +95,10 @@ half-integers are represented as odd integers and all arguments are plain C
 This convention applies to the C, C++, and Fortran `bind(c)` interfaces.
 The Fortran convenience wrappers and the Python interface also accept
 real-valued half-integers directly.
+
+The single exception is `wignernj_real_ylm_in_complex_ylm`, whose argument
+is always an integer orbital angular momentum and is therefore taken as
+plain `l` rather than `2*l`.
 
 ---
 
@@ -322,6 +327,47 @@ double      gaunt  (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 long double gaunt_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 ```
 
+### Real ↔ complex Y_lm basis-overlap matrix
+
+```c
+void        wignernj_real_ylm_in_complex_ylm_f(int l, wignernj_cfloat_t   *C_out);
+void        wignernj_real_ylm_in_complex_ylm  (int l, wignernj_cdouble_t  *C_out);
+void        wignernj_real_ylm_in_complex_ylm_l(int l, wignernj_cldouble_t *C_out);
+```
+
+Fills a column-major `(2l+1) × (2l+1)` unitary `C` with entries
+`C[m_r, m_c] = <Y_l^{m_c} | S_{l, m_r}>`, equivalently the
+basis-vector relation
+```
+S_{l,m_r} = sum_{m_c} C[m_r, m_c] Y_l^{m_c},
+```
+where the `S_{l,m}` are the real spherical harmonics in the
+Wikipedia / Condon–Shortley construction (same convention as
+`gaunt_real`).
+
+The buffer layout is column-major with leading dimension `2l+1` and
+interleaved `(re, im)` in each complex slot.  The element type
+`wignernj_c{float,double,ldouble}_t` is a typedef shim defined in
+`wignernj.h` that maps to the native complex type on every supported
+toolchain: `T _Complex` on gcc/clang/Apple-Clang/Intel-icx, `_Tcomplex`
+on MSVC C, and a layout-compatible `struct {T _pair[2];}` in C++.  All
+three representations have identical memory layout per C99 §6.2.5/13
+and C++11 [complex.numbers]/4, so a caller holding `T _Complex *` or
+`std::complex<T> *` (via the C++ wrapper) needs no cast in the
+common case.
+
+Because `C` encodes the basis-vector relation `S = C Y` rather than a
+coefficient-vector transformation, the corresponding operator-matrix
+similarity transform is
+`O_real = conj(C) @ O_complex @ transpose(C)`
+(applying `C` to a complex coefficient vector does **not** produce
+the real coefficient vector — that would need `conj(C)`).  Each row
+has at most two non-zero entries (`1` at `m_r = 0`; otherwise two of
+magnitude `1/sqrt(2)`).  See `examples/{c,cpp,fortran,python}/real_basis_lz.*`
+for worked parallel examples (one per language binding) that build
+the orbital `l_z` matrix in the real-Y basis from its diagonal
+complex-basis form.
+
 ### Example (C)
 
 ```c
@@ -450,7 +496,11 @@ float  f = wignernj::symbol3j<float>(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
 | `wignernj::symbol9j<T>(...)` | `(tj11..tj33)` row-major |
 | `wignernj::cg<T>(...)` | `(tj1,tm1, tj2,tm2, tJ,tM)` |
 | `wignernj::racahw<T>(...)` | `(tj1,tj2,tJ, tj3,tj12,tj23)` |
+| `wignernj::fanox<T>(...)` | `(tj1,tj2,tj12, tj3,tj4,tj34, tj13,tj24,tJ)` |
 | `wignernj::gaunt<T>(...)` | `(tl1,tm1, tl2,tm2, tl3,tm3)` |
+| `wignernj::gauntreal<T>(...)` | `(tl1,tm1, tl2,tm2, tl3,tm3)` |
+| `wignernj::real_ylm_in_complex_ylm<T>(l, C_out)` | fill `std::complex<T>*` |
+| `wignernj::real_ylm_in_complex_ylm<T>(l)` | returns `std::vector<std::complex<T>>` |
 
 `T` is `float`, `double`, or `long double`.
 
@@ -489,6 +539,7 @@ __float128 fano_x_q(int tj1, int tj2, int tj12,
                     int tj13, int tj24, int tJ);
 __float128 gaunt_q     (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 __float128 gaunt_real_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
+void       wignernj_real_ylm_in_complex_ylm_q(int l, wignernj_cfloat128_t *C_out);
 ```
 
 The Fortran `wignernj` module exposes the same routines (and real-valued
@@ -569,6 +620,21 @@ void gaunt_mpfr(mpfr_t rop,
                 int tl2, int tm2,
                 int tl3, int tm3,
                 mpfr_rnd_t rnd);
+
+void gaunt_real_mpfr(mpfr_t rop,
+                     int tl1, int tm1,
+                     int tl2, int tm2,
+                     int tl3, int tm3,
+                     mpfr_rnd_t rnd);
+
+/* Real <-> complex Y_lm basis transformation at MPFR precision.
+ * Fills two parallel column-major mpfr_t arrays of length (2l+1)^2
+ * (real and imaginary parts).  Each mpfr_t in both arrays must be
+ * mpfr_init2'd by the caller before the call. */
+void wignernj_real_ylm_in_complex_ylm_mpfr(int l,
+                                     mpfr_t *C_re,
+                                     mpfr_t *C_im,
+                                     mpfr_rnd_t rnd);
 ```
 
 All functions set `rop` to zero for selection-rule violations.

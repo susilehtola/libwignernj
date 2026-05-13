@@ -3,10 +3,15 @@
  *
  * Public C API for libwignernj.
  *
- * All angular momentum arguments are passed as TWICE their value so that
- * half-integer values are represented as odd integers:
+ * Every coupling-coefficient routine (3j, 6j, 9j, Clebsch-Gordan,
+ * Racah W, Fano X, Gaunt, real-Gaunt) takes its angular-momentum
+ * arguments as TWICE their value so half-integer values stay
+ * representable as plain integers:
  *   j = 3/2  →  tj = 3
  *   m = -1/2 →  tm = -1
+ * The single exception is wignernj_real_ylm_in_complex_ylm, whose
+ * argument is always an integer orbital angular momentum and is
+ * therefore taken as plain `l` rather than `2*l`.
  *
  * Functions returning 0 / 0.0f / 0.0L for symbols that vanish by selection
  * rules are not errors; only programmer-visible violations (wrong parity,
@@ -24,19 +29,66 @@
  *   <j1 m1; j2 m2 | J M> = (-1)^(j1-j2+M) sqrt(2J+1) * 3j(j1,j2,J;m1,m2,-M),
  * which makes every Clebsch–Gordan coefficient real.
  *
- * The phase convention for Y_l^m enters only the Gaunt routines below
- * (gaunt and gaunt_real), since both are defined as integrals of three
- * spherical harmonics.  We adopt the Condon–Shortley phase for Y_l^m,
+ * The phase convention for Y_l^m enters the Gaunt routines below
+ * (gaunt and gaunt_real), since both are defined as integrals of
+ * three spherical harmonics, and the real ↔ complex Y_lm
+ * basis-overlap matrix wignernj_real_ylm_in_complex_ylm, whose
+ * entries are the inner products <Y_l^{m_c} | S_{l, m_r}>.  We
+ * adopt the Condon–Shortley phase for Y_l^m,
  *   Y_l^m(θ,φ) = (-1)^m sqrt[(2l+1)/(4π) · (l-m)!/(l+m)!] P_l^m(cos θ) e^{i m φ}
  *                  (m ≥ 0),
  *   Y_l^{-m}   = (-1)^m (Y_l^m)*,
  * which is the convention of Edmonds, Varshalovich, and the bulk of the
  * atomic-, molecular-, and nuclear-physics literature.  The real spherical
- * harmonics used by gaunt_real follow the Wikipedia/Condon–Shortley
- * construction; see the comment block above gaunt_real() below.
+ * harmonics used by gaunt_real and wignernj_real_ylm_in_complex_ylm
+ * follow the Wikipedia/Condon–Shortley construction; see the comment
+ * block above gaunt_real() below.
  */
 #ifndef WIGNERNJ_H
 #define WIGNERNJ_H
+
+/* ── Complex-output element type ────────────────────────────────────────────
+ *
+ * `wignernj_real_ylm_in_complex_ylm*` below fills a complex-valued matrix.  The
+ * C99 `_Complex` keyword is recognised by gcc/clang/Apple-Clang/Intel-icx
+ * but not by Microsoft Visual C (which provides `_Dcomplex`/`_Fcomplex`/
+ * `_Lcomplex` typedef'd structs in <complex.h> instead) and not by C++
+ * (which uses `std::complex<T>` from <complex>).  To keep the C function
+ * signatures type-safe across every supported toolchain, we typedef the
+ * three element types here so each compiler sees its native form:
+ *
+ *   gcc/clang/Intel C99:  wignernj_cfloat_t == float       _Complex
+ *                         wignernj_cdouble_t == double      _Complex
+ *                         wignernj_cldouble_t == long double _Complex
+ *   MSVC C:               wignernj_cfloat_t == _Fcomplex (struct)
+ *                         wignernj_cdouble_t == _Dcomplex (struct)
+ *                         wignernj_cldouble_t == _Lcomplex (struct)
+ *   any C++:              wignernj_c{float,double,ldouble}_t == layout-compat
+ *                         struct{T[2]}.  C++ users should go through the
+ *                         std::complex<T> overloads in <wignernj.hpp>; the
+ *                         shim type exists only so the C-side declarations
+ *                         parse in C++ translation units.
+ *
+ * All three forms have identical memory layout (real then imaginary,
+ * interleaved) per C99 §6.2.5/13 and C++11 [complex.numbers]/4, so the
+ * library implementation reads/writes the buffer as a plain `T *` of
+ * length 2*(2l+1)^2 internally. */
+#ifndef __cplusplus
+#  include <complex.h>
+#  if defined(_MSC_VER)
+typedef _Fcomplex wignernj_cfloat_t;
+typedef _Dcomplex wignernj_cdouble_t;
+typedef _Lcomplex wignernj_cldouble_t;
+#  else
+typedef float       _Complex wignernj_cfloat_t;
+typedef double      _Complex wignernj_cdouble_t;
+typedef long double _Complex wignernj_cldouble_t;
+#  endif
+#else
+typedef struct { float       _pair[2]; } wignernj_cfloat_t;
+typedef struct { double      _pair[2]; } wignernj_cdouble_t;
+typedef struct { long double _pair[2]; } wignernj_cldouble_t;
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -140,6 +192,46 @@ long double gaunt_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 float       gaunt_real_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 double      gaunt_real  (int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
 long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3);
+
+/* ── Real <-> complex spherical-harmonic basis transformation ───────────────
+ *
+ * Fill the (2l+1) x (2l+1) unitary matrix C such that
+ *
+ *     S_{l,m_r}  =  sum_{m_c}  C[m_r, m_c]  Y_l^{m_c}
+ *
+ * with the same real-spherical-harmonic convention used by gaunt_real
+ * (S_{l,0} = Y_l^0, S_{l,m>0} = (1/sqrt2)(Y_l^{-m} + (-1)^m Y_l^m),
+ *  S_{l,m<0} = (i/sqrt2)(Y_l^{m} - (-1)^|m| Y_l^{-m})).  Both indices
+ * use the physics convention m = -l, ..., -1, 0, 1, ..., l, mapped to
+ * memory index m + l.
+ *
+ * Storage convention: COLUMN-MAJOR (Fortran / BLAS / LAPACK), with
+ * leading dimension (2l+1).  Element C[m_r, m_c] lives at flat index
+ *     col*(2l+1) + row,    col = m_c + l,    row = m_r + l.
+ * Each complex slot stores real and imaginary parts in the native
+ * compiler representation (`T _Complex` on gcc/clang/Intel, `_Tcomplex`
+ * on MSVC, layout-compat struct in C++); all three are interchangeable
+ * at the ABI level.
+ *
+ * The matrix is unitary (C C^H = I).  Each row has at most two
+ * non-zero entries (1 at m_r = 0; two of magnitude 1/sqrt(2)
+ * otherwise).  Returns silently for l < 0 or NULL output (no
+ * diagnostics).
+ *
+ * Use case: downstream consumers building rotation-equivariant
+ * operator matrix elements in the real-Y basis (orbital angular
+ * momentum, dipole, momentum, ...) from a complex-basis form.
+ * Because C encodes the basis-vector relation S = C Y, the
+ * corresponding operator similarity transform is
+ *
+ *     O_real  =  conj(C)  @  O_complex  @  transpose(C),
+ *
+ * i.e. two ZGEMM calls; equivalently U^H @ O_complex @ U with
+ * U = transpose(C). */
+
+void wignernj_real_ylm_in_complex_ylm_f(int l, wignernj_cfloat_t   *C_out);
+void wignernj_real_ylm_in_complex_ylm  (int l, wignernj_cdouble_t  *C_out);
+void wignernj_real_ylm_in_complex_ylm_l(int l, wignernj_cldouble_t *C_out);
 
 /* ── Optional warmup and scratch introspection ──────────────────────────────
  *

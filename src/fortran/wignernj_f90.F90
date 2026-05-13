@@ -4,30 +4,37 @@
 ! Fortran 90 interface to libwignernj using iso_c_binding.
 !
 ! The module provides:
-!   1. Raw C-interop interfaces using 2*j integer arguments (same convention
-!      as the C API).
+!   1. Raw C-interop interfaces using 2*j integer arguments for every
+!      coupling-coefficient routine (3j, 6j, 9j, Clebsch-Gordan,
+!      Racah W, Fano X, Gaunt, real-Gaunt) -- same convention as the C
+!      API.  The single exception is wignernj_real_ylm_in_complex_ylm,
+!      which takes a plain integer orbital angular momentum l.
 !   2. Real-valued convenience wrappers w3j, w6j, w9j, wcg, wracahw, wfanox,
 !      wgaunt, wgaunt_real that accept double-precision real j/m arguments
-!      and convert internally.
+!      and convert internally; plus wreal_ylm_in_complex_ylm(l, c_out)
+!      filling the (2l+1) x (2l+1) real/complex Y_lm overlap matrix as a
+!      complex(c_double_complex) array.
 !
 ! Phase conventions: identical to those of the underlying C library.  The
 ! Wigner 3j/6j/9j symbols, Clebsch-Gordan coefficient, Racah W, and
 ! Fano X-coefficient are pure SU(2) algebraic objects and carry no
 ! spherical-harmonic phase convention;
 ! the Clebsch-Gordan sign uses the Condon-Shortley convention of Edmonds
-! and Varshalovich.  The Gaunt and real-Gaunt routines assume the
-! Condon-Shortley phase for Y_l^m, with the real spherical harmonics
-! defined by the Wikipedia/Condon-Shortley construction.  See the header
-! comment of include/wignernj.h for the explicit formulas.
+! and Varshalovich.  The Gaunt, real-Gaunt and real-to-complex Y_lm
+! basis-overlap routines assume the Condon-Shortley phase for Y_l^m,
+! with the real spherical harmonics defined by the Wikipedia/
+! Condon-Shortley construction.  See the header comment of
+! include/wignernj.h for the explicit formulas.
 !
 ! Compile with preprocessing enabled (gfortran uses .F90 extension automatically,
 ! or pass -cpp).  The preprocessor guard on c_long_double handles platforms
 ! where 'long double' has no Fortran equivalent.
 
 module wignernj
-  use iso_c_binding, only: c_int, c_float, c_double
+  use iso_c_binding, only: c_int, c_float, c_double, c_float_complex, &
+                            c_double_complex
 #if defined(__GFORTRAN__) || defined(_CRAYFTN)
-  use iso_c_binding, only: c_long_double
+  use iso_c_binding, only: c_long_double, c_long_double_complex
 #endif
 #ifdef WIGNERNJ_HAVE_QUADMATH
   ! c_float128 is the gfortran/ifx extension that maps directly to C's
@@ -35,7 +42,7 @@ module wignernj
   ! real128 from iso_fortran_env is the same physical kind on both
   ! compilers but is technically not a C-interoperable kind, which
   ! gfortran 16 now diagnoses on every bind(c) function returning it.
-  use iso_c_binding, only: c_float128
+  use iso_c_binding, only: c_float128, c_float128_complex
 #endif
   use iso_fortran_env, only: error_unit
   implicit none
@@ -289,6 +296,45 @@ module wignernj
     end function
 #endif
 
+    ! --- real <-> complex spherical-harmonic basis transformation ---
+    ! The C entry points fill a column-major (2l+1) x (2l+1) complex
+    ! matrix into a flat buffer with leading dimension 2l+1.  Fortran
+    ! column-major and the C-side column-major layout describe the
+    ! same memory, so the natural Fortran array C(0:2l, 0:2l) (or
+    ! equivalently C(2l+1, 2l+1)) maps directly: C(m_r+l+1, m_c+l+1)
+    ! is the (m_r, m_c) entry.
+    subroutine wignernj_real_ylm_in_complex_ylm_f(l, c_out) &
+        bind(c,name='wignernj_real_ylm_in_complex_ylm_f')
+      import c_int, c_float_complex
+      integer(c_int), value :: l
+      complex(c_float_complex), intent(out) :: c_out(*)
+    end subroutine
+
+    subroutine wignernj_real_ylm_in_complex_ylm(l, c_out) &
+        bind(c,name='wignernj_real_ylm_in_complex_ylm')
+      import c_int, c_double_complex
+      integer(c_int), value :: l
+      complex(c_double_complex), intent(out) :: c_out(*)
+    end subroutine
+
+#if c_long_double > 0
+    subroutine wignernj_real_ylm_in_complex_ylm_l(l, c_out) &
+        bind(c,name='wignernj_real_ylm_in_complex_ylm_l')
+      import c_int, c_long_double_complex
+      integer(c_int), value :: l
+      complex(c_long_double_complex), intent(out) :: c_out(*)
+    end subroutine
+#endif
+
+#ifdef WIGNERNJ_HAVE_QUADMATH
+    subroutine wignernj_real_ylm_in_complex_ylm_q(l, c_out) &
+        bind(c,name='wignernj_real_ylm_in_complex_ylm_q')
+      import c_int, c_float128_complex
+      integer(c_int), value :: l
+      complex(c_float128_complex), intent(out) :: c_out(*)
+    end subroutine
+#endif
+
     ! --- per-thread cache control ---
     subroutine wignernj_warmup_to(n_max) bind(c,name='wignernj_warmup_to')
       import c_int
@@ -483,6 +529,18 @@ contains
     val = gaunt_real(to_tj(l1), to_tj(m1), to_tj(l2), to_tj(m2), to_tj(l3), to_tj(m3))
   end function wgaunt_real
 
+  ! -------------------------------------------------------------------------
+  ! Real <-> complex spherical-harmonic basis transformation.  Fills a
+  ! (2l+1) x (2l+1) column-major complex(c_double_complex) matrix C where
+  !     S_{l,m_r} = sum_{m_c} C(m_r+l+1, m_c+l+1) Y_l^{m_c}
+  ! using the same real-Y convention as wgaunt_real / gaunt_real.
+  ! -------------------------------------------------------------------------
+  subroutine wreal_ylm_in_complex_ylm(l, c_out)
+    integer, intent(in) :: l
+    complex(c_double_complex), intent(out) :: c_out(2*l+1, 2*l+1)
+    call wignernj_real_ylm_in_complex_ylm(int(l, c_int), c_out)
+  end subroutine wreal_ylm_in_complex_ylm
+
 #ifdef WIGNERNJ_HAVE_QUADMATH
   ! -------------------------------------------------------------------------
   ! Convenience wrappers at quadruple precision.  Arguments are
@@ -603,6 +661,12 @@ contains
     val = gaunt_real_q(to_tj_q(l1), to_tj_q(m1), to_tj_q(l2), to_tj_q(m2), &
                        to_tj_q(l3), to_tj_q(m3))
   end function wgaunt_realq
+
+  subroutine wreal_ylm_in_complex_ylmq(l, c_out)
+    integer, intent(in) :: l
+    complex(c_float128_complex), intent(out) :: c_out(2*l+1, 2*l+1)
+    call wignernj_real_ylm_in_complex_ylm_q(int(l, c_int), c_out)
+  end subroutine wreal_ylm_in_complex_ylmq
 #endif
 
 end module wignernj
