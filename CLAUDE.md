@@ -83,7 +83,7 @@ Clebsch-Gordan, Racah W, and Fano X are thin wrappers over the Wigner symbols (C
 | `include/wignernj_quadmath.h` | libquadmath API — requires `BUILD_QUADMATH=ON`; declares `_q` (`__float128`) variant of every public symbol |
 | `include/wignernj_mpfr.h` | MPFR API — requires `BUILD_MPFR=ON`; set precision on `rop` before calling |
 | `include/wignernj.hpp` | C++11 header-only wrapper (links `wignernj`): `wignernj::symbol3j<T>()`, real-valued overloads, `std::invalid_argument` for non-half-integer inputs |
-| `src/fortran/wignernj_f90.F90` | Fortran module `wignernj`: raw `bind(c)` interfaces + `w3j/w6j/w9j/wcg/wracahw/wfanox/wgaunt/wgaunt_real` real-valued wrappers; `_q` interfaces and `w3jq`/etc.\ wrappers gated on `WIGNERNJ_HAVE_QUADMATH` |
+| `src/fortran/wignernj_f90.F90` | Fortran module `wignernj`: raw `bind(c)` interfaces + `w3j/w6j/w9j/wcg/wracahw/wfanox/wgaunt/wgaunt_real` real-valued scalar wrappers and `wreal_ylm_in_complex_ylm(l, c_out)` matrix-filling subroutine; `_q` interfaces and `w3jq`/etc.\ wrappers plus `wreal_ylm_in_complex_ylmq` gated on `WIGNERNJ_HAVE_QUADMATH` |
 |  `src/python/wignernjmodule.c` | CPython extension `_wignernj`: parses int/float/Fraction, `precision=` kwarg |
 | `wignernj/__init__.py` | Re-exports from `_wignernj` |
 
