@@ -1,5 +1,10 @@
 # libwignernj
 
+[![CI](https://github.com/susilehtola/libwignernj/actions/workflows/ci.yml/badge.svg)](https://github.com/susilehtola/libwignernj/actions/workflows/ci.yml)
+[![Build and publish wheels](https://github.com/susilehtola/libwignernj/actions/workflows/publish-pypi.yml/badge.svg)](https://github.com/susilehtola/libwignernj/actions/workflows/publish-pypi.yml)
+[![CircleCI](https://circleci.com/gh/susilehtola/libwignernj.svg?style=shield)](https://circleci.com/gh/susilehtola/libwignernj)
+[![PyPI version](https://img.shields.io/pypi/v/wignernj.svg)](https://pypi.org/project/wignernj/)
+
 Exact evaluation of Wigner 3j, 6j, and 9j symbols, Clebsch-Gordan coefficients,
 Racah W-coefficients, Fano X-coefficients, and Gaunt coefficients in C99.
 
