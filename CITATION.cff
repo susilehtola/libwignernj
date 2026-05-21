@@ -1,0 +1,45 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 Susi Lehtola
+cff-version: 1.2.0
+message: "If you use libwignernj in published work, please cite the paper under \"preferred-citation\" below."
+title: libwignernj
+abstract: >-
+  Exact evaluation of Wigner 3j, 6j, and 9j symbols, Clebsch-Gordan
+  coefficients, Racah W-coefficients, Fano X-coefficients, and Gaunt
+  coefficients in C99, with C++, Fortran 90, and Python bindings.  All
+  intermediate arithmetic is exact integer arithmetic in a
+  prime-factorization representation; floating-point conversion happens
+  only at the final step, so results are correct to the last
+  representable bit of the chosen output precision.
+type: software
+authors:
+  - given-names: Susi
+    family-names: Lehtola
+    orcid: "https://orcid.org/0000-0001-6296-8103"
+    email: susilehtola@gmail.com
+version: 0.6.0
+date-released: "2026-05-14"
+license: BSD-3-Clause
+repository-code: "https://github.com/susilehtola/libwignernj"
+url: "https://github.com/susilehtola/libwignernj"
+keywords:
+  - Wigner symbols
+  - Clebsch-Gordan coefficients
+  - Racah coefficients
+  - Gaunt coefficients
+  - angular momentum
+  - exact arithmetic
+preferred-citation:
+  type: article
+  title: "libwignernj: a reusable C/C++/Fortran/Python library for exact Wigner symbols and related coefficients"
+  authors:
+    - given-names: Susi
+      family-names: Lehtola
+      orcid: "https://orcid.org/0000-0001-6296-8103"
+  year: 2026
+  doi: 10.48550/arXiv.2605.06634
+  url: "https://arxiv.org/abs/2605.06634"
+  identifiers:
+    - type: other
+      value: "arXiv:2605.06634"
+      description: arXiv identifier

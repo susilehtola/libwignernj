@@ -3,6 +3,11 @@
  *
  * libquadmath / IEEE 754 binary128 ("__float128") interface to libwignernj.
  *
+ * Citation: if libwignernj contributes to published work, please cite
+ *   S. Lehtola, "libwignernj: a reusable C/C++/Fortran/Python library
+ *   for exact Wigner symbols and related coefficients", arXiv:2605.06634
+ *   (2026), doi:10.48550/arXiv.2605.06634.
+ *
  * Built only when configured with -DBUILD_QUADMATH=ON, which requires a
  * compiler that exposes the __float128 type (GCC, Clang, Intel ICC/ICX
  * on Linux/macOS).  Microsoft Visual C++ does not provide __float128

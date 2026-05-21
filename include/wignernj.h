@@ -3,6 +3,11 @@
  *
  * Public C API for libwignernj.
  *
+ * Citation: if libwignernj contributes to published work, please cite
+ *   S. Lehtola, "libwignernj: a reusable C/C++/Fortran/Python library
+ *   for exact Wigner symbols and related coefficients", arXiv:2605.06634
+ *   (2026), doi:10.48550/arXiv.2605.06634.
+ *
  * Every coupling-coefficient routine (3j, 6j, 9j, Clebsch-Gordan,
  * Racah W, Fano X, Gaunt, real-Gaunt) takes its angular-momentum
  * arguments as TWICE their value so half-integer values stay

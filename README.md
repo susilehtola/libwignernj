@@ -298,6 +298,30 @@ can be slow.  See [docs/reference.md](docs/reference.md#limitations) for details
 Full API reference with mathematical definitions, selection rules, and
 per-language examples: [docs/reference.md](docs/reference.md).
 
+## Citing libwignernj
+
+If libwignernj contributes to published work, please cite:
+
+> S. Lehtola, *libwignernj: a reusable C/C++/Fortran/Python library for
+> exact Wigner symbols and related coefficients*, arXiv:2605.06634
+> (2026). doi:[10.48550/arXiv.2605.06634](https://doi.org/10.48550/arXiv.2605.06634).
+
+```bibtex
+@article{Lehtola2026libwignernj,
+  author  = {Lehtola, Susi},
+  title   = {{libwignernj}: a reusable {C}/{C}++/{F}ortran/{P}ython
+             library for exact {W}igner symbols and related coefficients},
+  journal = {arXiv preprint},
+  year    = {2026},
+  eprint  = {2605.06634},
+  archivePrefix = {arXiv},
+  doi     = {10.48550/arXiv.2605.06634}
+}
+```
+
+A machine-readable [`CITATION.cff`](CITATION.cff) is provided at the
+repository root; GitHub's "Cite this repository" button reads it.
+
 ## Repository layout
 
 - `include/`, `src/` — C99 core library and language wrappers

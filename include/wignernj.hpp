@@ -3,6 +3,11 @@
 //
 // C++11 header-only wrapper around the libwignernj C API.
 //
+// Citation: if libwignernj contributes to published work, please cite
+//   S. Lehtola, "libwignernj: a reusable C/C++/Fortran/Python library
+//   for exact Wigner symbols and related coefficients", arXiv:2605.06634
+//   (2026), doi:10.48550/arXiv.2605.06634.
+//
 // "Header-only" means the C++ side has no separate .cpp -- every template and
 // overload below is inline.  It does NOT mean stand-alone: each specialisation
 // forwards to a C function (wigner3j, wigner6j_l, ...) defined in libwignernj,
