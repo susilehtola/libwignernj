@@ -3,6 +3,11 @@
 !
 ! Fortran 90 interface to libwignernj using iso_c_binding.
 !
+! Citation: if libwignernj contributes to published work, please cite
+!   S. Lehtola, "libwignernj: a reusable C/C++/Fortran/Python library
+!   for exact Wigner symbols and related coefficients", arXiv:2605.06634
+!   (2026), doi:10.48550/arXiv.2605.06634.
+!
 ! The module provides:
 !   1. Raw C-interop interfaces using 2*j integer arguments for every
 !      coupling-coefficient routine (3j, 6j, 9j, Clebsch-Gordan,

@@ -3,8 +3,9 @@
 # Copyright (c) 2026 Susi Lehtola
 """Verify that every version string in the repository agrees.
 
-libwignernj's version lives in four places that the build system,
-the wheel pipeline, and the runtime extension each read independently:
+libwignernj's version lives in five places that the build system,
+the wheel pipeline, the runtime extension, and citation tooling each
+read independently:
 
   1. ``CMakeLists.txt``       — ``project(wignernj VERSION ...)`` →
                                 ``libwignernj.so.<MAJOR>.<MINOR>.<PATCH>``
@@ -16,11 +17,14 @@ the wheel pipeline, and the runtime extension each read independently:
                                 sync as a defensive measure.
   4. ``wignernj/__init__.py`` — ``__version__`` exposed to Python
                                 consumers via the package object.
+  5. ``CITATION.cff``         — ``version:`` field read by GitHub's
+                                "Cite this repository" button and by
+                                citation-export tooling.
 
 When these disagree, downstream consumers see inconsistent results
 (`pip list` says one version, `import wignernj; wignernj.__version__`
 says another, the installed `.so` SONAME says a third).  This script
-exits 0 only when all four agree; otherwise it prints a per-source
+exits 0 only when all five agree; otherwise it prints a per-source
 table and exits 1.  CI runs it in the same fast job as
 ``check_source_lists.py``; run locally before pushing to catch
 drift.
@@ -72,18 +76,27 @@ def read_init_version() -> str:
     return m.group(1)
 
 
+def read_citation_cff_version() -> str:
+    text = (REPO / "CITATION.cff").read_text(encoding="utf-8")
+    m = re.search(r"""(?m)^version:\s*["']?([0-9][0-9.]*)["']?\s*$""", text)
+    if not m:
+        sys.exit("error: could not find top-level version: field in CITATION.cff")
+    return m.group(1)
+
+
 def main() -> int:
     versions = {
         "CMakeLists.txt": read_cmake_version(),
         "pyproject.toml": read_pyproject_version(),
         "setup.py": read_setup_py_version(),
         "wignernj/__init__.py": read_init_version(),
+        "CITATION.cff": read_citation_cff_version(),
     }
 
     distinct = set(versions.values())
     if len(distinct) == 1:
         (version,) = distinct
-        print(f"OK: all 4 version strings agree at {version}.")
+        print(f"OK: all 5 version strings agree at {version}.")
         return 0
 
     print("FAIL: version strings disagree across the build:", file=sys.stderr)

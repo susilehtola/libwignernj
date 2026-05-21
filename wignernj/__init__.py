@@ -29,6 +29,13 @@ the Wikipedia/Condon-Shortley construction.  See the header comment of
 the underlying C library (``include/wignernj.h``) for the explicit
 formulas.
 
+Citation
+--------
+If wignernj contributes to published work, please cite
+S. Lehtola, "libwignernj: a reusable C/C++/Fortran/Python library
+for exact Wigner symbols and related coefficients", arXiv:2605.06634
+(2026), doi:10.48550/arXiv.2605.06634.
+
 Example::
 
     import wignernj

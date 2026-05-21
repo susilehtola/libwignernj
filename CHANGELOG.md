@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README badges for the GitHub Actions CI workflow, the
   publish-wheels workflow, and the current PyPI version of the
   `wignernj` package.
+- Citation to the libwignernj descriptor paper (S. Lehtola,
+  arXiv:2605.06634, 2026). A machine-readable `CITATION.cff` is added
+  at the repository root (enabling GitHub's "Cite this repository"
+  button), a "Citing libwignernj" section with a BibTeX entry is added
+  to `README.md`, and the reference is recorded in `docs/reference.md`,
+  the public-header comment blocks (`wignernj.h`, `wignernj.hpp`,
+  `wignernj_quadmath.h`, `wignernj_mpfr.h`), the Fortran module header,
+  and the Python package docstring.
 
 ## [0.6.0] – 2026-05-14
 

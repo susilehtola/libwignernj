@@ -17,6 +17,12 @@ sum of Johansson & Forssén, *SIAM J. Sci. Comput.* **38**(1),
 A376–A384, 2016
 ([doi:10.1137/15M1021908](https://doi.org/10.1137/15M1021908)).
 
+If libwignernj contributes to published work, please cite S. Lehtola,
+*libwignernj: a reusable C/C++/Fortran/Python library for exact Wigner
+symbols and related coefficients*, arXiv:2605.06634 (2026),
+[doi:10.48550/arXiv.2605.06634](https://doi.org/10.48550/arXiv.2605.06634).
+A machine-readable `CITATION.cff` is provided at the repository root.
+
 ---
 
 ## Building
