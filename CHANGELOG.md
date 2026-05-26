@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Internal refactor: extracted the "fold `sqrt(k)` for an integer `k`
+  into the exact-tuple's outer-sqrt argument" loop, previously
+  open-coded in `src/clebsch.c` and four times in `src/fano_x.c`, into
+  a new internal helper `wignernj_exact_mul_sqrt_int` declared in
+  `src/wignernj_exact.h`.  No observable behaviour change; paired
+  bench (5 iterations, alternating) shows ±5% over CG, Racah W, and
+  Gaunt sweeps — within noise.
+- Internal refactor: deduplicated the five-fold `(-1)^(j1+j2+J+j3)`
+  phase computation in `src/racah.c` behind a `static inline
+  racah_w_phase` helper.
+- Internal refactor: lifted the per-precision `/sqrt(π)` postprocessing
+  in `src/gaunt.c` into shared `gaunt_finish_{f,d,l,q}` inline helpers
+  and the MPFR `mpfr_const_pi → mpfr_sqrt → mpfr_div → mpfr_clear`
+  block into `gaunt_finish_mpfr`.  The complex-Y and real-Y Gaunt
+  public functions now share these finishers; the per-precision π
+  constants live in one place per precision.
+
 ## [0.6.1] – 2026-05-26
 
 ### Added
