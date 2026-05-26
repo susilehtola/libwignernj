@@ -12,7 +12,6 @@
  * Requires m1+m2 = M (else zero).
  */
 #include "wignernj_exact.h"
-#include "primes.h"
 #include "scratch.h"
 #include "wignernj.h"
 
@@ -41,22 +40,8 @@ static void clebsch_gordan_exact(int tj1, int tm1, int tj2, int tm2,
     phase = (((tj1 - tj2 + tM) / 2) & 1) ? -1 : 1;
     out->sign *= phase;
 
-    /* Multiply by sqrt(2J+1): factor (tJ+1) directly.
-     * Even prime powers p^(2k) → p^k into int_num (outside sqrt).
-     * Odd prime powers p^(2k+1) → p^k into int_num, p into sqrt_num. */
-    {
-        int k = tJ + 1, pi;
-        for (pi = 0; pi < g_nprimes && g_primes[pi] <= k; pi++) {
-            int cnt = 0;
-            while (k % g_primes[pi] == 0) { cnt++; k /= g_primes[pi]; }
-            if (cnt == 0) continue;
-            if (cnt / 2 > 0)
-                bigint_mul_prime_pow(&out->int_num,  (uint64_t)g_primes[pi], cnt / 2);
-            if (cnt & 1)
-                bigint_mul_prime_pow(&out->sqrt_num, (uint64_t)g_primes[pi], 1);
-            if (k == 1) break;
-        }
-    }
+    /* Multiply by sqrt(2J+1). */
+    wignernj_exact_mul_sqrt_int(out, tJ + 1);
 }
 
 int clebsch_gordan_max_factorial(int tj1, int tm1, int tj2, int tm2,

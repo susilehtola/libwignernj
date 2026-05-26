@@ -11,6 +11,12 @@
  */
 #include "wignernj.h"
 
+/* Racah W phase: (-1)^(j1+j2+J+j3) = (-1)^((tj1+tj2+tJ+tj3)/2). */
+static inline int racah_w_phase(int tj1, int tj2, int tJ, int tj3)
+{
+    return ((((tj1 + tj2 + tJ + tj3) / 2) & 1) == 0) ? 1 : -1;
+}
+
 int racah_w_max_factorial(int tj1, int tj2, int tJ,
                           int tj3, int tj12, int tj23)
 {
@@ -20,28 +26,28 @@ int racah_w_max_factorial(int tj1, int tj2, int tJ,
 
 float racah_w_f(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23)
 {
-    int phase = ((((tj1 + tj2 + tJ + tj3) / 2) & 1) == 0) ? 1 : -1;
-    return (float)phase * wigner6j_f(tj1, tj2, tj12, tj3, tJ, tj23);
+    return (float)racah_w_phase(tj1, tj2, tJ, tj3)
+           * wigner6j_f(tj1, tj2, tj12, tj3, tJ, tj23);
 }
 
 double racah_w(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23)
 {
-    int phase = ((((tj1 + tj2 + tJ + tj3) / 2) & 1) == 0) ? 1 : -1;
-    return (double)phase * wigner6j(tj1, tj2, tj12, tj3, tJ, tj23);
+    return (double)racah_w_phase(tj1, tj2, tJ, tj3)
+           * wigner6j(tj1, tj2, tj12, tj3, tJ, tj23);
 }
 
 long double racah_w_l(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23)
 {
-    int phase = ((((tj1 + tj2 + tJ + tj3) / 2) & 1) == 0) ? 1 : -1;
-    return (long double)phase * wigner6j_l(tj1, tj2, tj12, tj3, tJ, tj23);
+    return (long double)racah_w_phase(tj1, tj2, tJ, tj3)
+           * wigner6j_l(tj1, tj2, tj12, tj3, tJ, tj23);
 }
 
 #ifdef WIGNERNJ_HAVE_QUADMATH
 #include "wignernj_quadmath.h"
 __float128 racah_w_q(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23)
 {
-    int phase = ((((tj1 + tj2 + tJ + tj3) / 2) & 1) == 0) ? 1 : -1;
-    return (__float128)phase * wigner6j_q(tj1, tj2, tj12, tj3, tJ, tj23);
+    return (__float128)racah_w_phase(tj1, tj2, tJ, tj3)
+           * wigner6j_q(tj1, tj2, tj12, tj3, tJ, tj23);
 }
 #endif
 
@@ -50,8 +56,7 @@ __float128 racah_w_q(int tj1, int tj2, int tJ, int tj3, int tj12, int tj23)
 void racah_w_mpfr(mpfr_t rop, int tj1, int tj2, int tJ, int tj3,
                               int tj12, int tj23, mpfr_rnd_t rnd)
 {
-    int phase = ((((tj1 + tj2 + tJ + tj3) / 2) & 1) == 0) ? 1 : -1;
     wigner6j_mpfr(rop, tj1, tj2, tj12, tj3, tJ, tj23, rnd);
-    if (phase < 0) mpfr_neg(rop, rop, MPFR_RNDN);
+    if (racah_w_phase(tj1, tj2, tJ, tj3) < 0) mpfr_neg(rop, rop, MPFR_RNDN);
 }
 #endif

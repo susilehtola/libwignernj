@@ -23,32 +23,21 @@
  * Clebsch--Gordan coefficient (see src/clebsch.c).
  */
 #include "wignernj_exact.h"
-#include "primes.h"
 #include "scratch.h"
 #include "wignernj.h"
 
 /*
  * Internal: compute the exact Fano X coefficient.  The 9j symbol is
- * computed exactly by the existing wigner9j_exact pipeline; the four
- * (2j+1) factors above are then folded in by factoring each of them
- * into prime powers and distributing those prime powers over the
- * int_num and sqrt_num bigints of the wignernj_exact_t:
- *
- *   even prime power p^(2k) -> p^k into int_num
- *   odd  prime power p^(2k+1) -> p^k into int_num, p into sqrt_num
- *
- * This is the same scheme that src/clebsch.c uses for its single
- * sqrt(2J+1) factor; here it is iterated over the four factors of
- * the Fano X normalisation.
+ * computed exactly by the existing wigner9j_exact pipeline; each of the
+ * four (2j+1) factors above is then folded in via
+ * wignernj_exact_mul_sqrt_int, which is the same helper that
+ * src/clebsch.c uses for its single sqrt(2J+1) factor.
  */
 static void fano_x_exact(int tj1, int tj2, int tj12,
                          int tj3, int tj4, int tj34,
                          int tj13, int tj24, int tJ,
                          wignernj_exact_t *out)
 {
-    int factors[4];
-    int f;
-
     /* The underlying 9j */
     wigner9j_exact(tj1, tj2, tj12,
                    tj3, tj4, tj34,
@@ -56,26 +45,10 @@ static void fano_x_exact(int tj1, int tj2, int tj12,
     if (out->is_zero) return;
 
     /* Fold sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] into the exact tuple. */
-    factors[0] = tj12 + 1;
-    factors[1] = tj34 + 1;
-    factors[2] = tj13 + 1;
-    factors[3] = tj24 + 1;
-    for (f = 0; f < 4; ++f) {
-        int k = factors[f];
-        int pi;
-        for (pi = 0; pi < g_nprimes && g_primes[pi] <= k; ++pi) {
-            int cnt = 0;
-            while (k % g_primes[pi] == 0) { cnt++; k /= g_primes[pi]; }
-            if (cnt == 0) continue;
-            if (cnt / 2 > 0)
-                bigint_mul_prime_pow(&out->int_num,
-                                     (uint64_t)g_primes[pi], cnt / 2);
-            if (cnt & 1)
-                bigint_mul_prime_pow(&out->sqrt_num,
-                                     (uint64_t)g_primes[pi], 1);
-            if (k == 1) break;
-        }
-    }
+    wignernj_exact_mul_sqrt_int(out, tj12 + 1);
+    wignernj_exact_mul_sqrt_int(out, tj34 + 1);
+    wignernj_exact_mul_sqrt_int(out, tj13 + 1);
+    wignernj_exact_mul_sqrt_int(out, tj24 + 1);
 }
 
 /* ── public API ──────────────────────────────────────────────────────────── */

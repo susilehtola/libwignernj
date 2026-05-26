@@ -50,6 +50,45 @@
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 
+/* Per-precision finish step: convert the exact tuple to T and divide by
+ * sqrt(π).  Shared between {complex, real}-Y Gaunt so that the per-precision
+ * π constants live in one place per precision rather than being duplicated
+ * across both variants. */
+static inline float gaunt_finish_f(const wignernj_exact_t *e)
+{
+    return wignernj_exact_to_float(e) / sqrtf((float)M_PI);
+}
+static inline double gaunt_finish_d(const wignernj_exact_t *e)
+{
+    return wignernj_exact_to_double(e) / sqrt(M_PI);
+}
+static inline long double gaunt_finish_l(const wignernj_exact_t *e)
+{
+    return wignernj_exact_to_long_double(e) / sqrtl(acosl(-1.0L));
+}
+
+#ifdef WIGNERNJ_HAVE_QUADMATH
+static inline __float128 gaunt_finish_q(const wignernj_exact_t *e)
+{
+    return wignernj_exact_to_float128(e) / sqrtq(M_PIq);
+}
+#endif
+
+#ifdef WIGNERNJ_HAVE_MPFR
+/* In-place /sqrt(π) at the precision of rop.  No-op when rop is zero
+ * (selection rules already fired). */
+static void gaunt_finish_mpfr(mpfr_t rop, mpfr_rnd_t rnd)
+{
+    mpfr_t pi;
+    if (mpfr_zero_p(rop)) return;
+    mpfr_init2(pi, mpfr_get_prec(rop));
+    mpfr_const_pi(pi, rnd);
+    mpfr_sqrt(pi, pi, rnd);
+    mpfr_div(rop, rop, pi, rnd);
+    mpfr_clear(pi);
+}
+#endif
+
 static int gaunt_selection_rules(int tl1, int tm1, int tl2, int tm2,
                                   int tl3, int tm3)
 {
@@ -601,7 +640,7 @@ float gaunt_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
     wignernj_scratch_t *s = wignernj_scratch_acquire();
     float result;
     gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wignernj_exact_to_float(&s->exact) / sqrtf((float)M_PI);
+    result = gaunt_finish_f(&s->exact);
     wignernj_scratch_relinquish(s);
     return result;
 }
@@ -611,7 +650,7 @@ double gaunt(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
     wignernj_scratch_t *s = wignernj_scratch_acquire();
     double result;
     gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wignernj_exact_to_double(&s->exact) / sqrt(M_PI);
+    result = gaunt_finish_d(&s->exact);
     wignernj_scratch_relinquish(s);
     return result;
 }
@@ -621,7 +660,7 @@ long double gaunt_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
     wignernj_scratch_t *s = wignernj_scratch_acquire();
     long double result;
     gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wignernj_exact_to_long_double(&s->exact) / sqrtl(acosl(-1.0L));
+    result = gaunt_finish_l(&s->exact);
     wignernj_scratch_relinquish(s);
     return result;
 }
@@ -632,7 +671,7 @@ __float128 gaunt_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
     wignernj_scratch_t *s = wignernj_scratch_acquire();
     __float128 result;
     gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wignernj_exact_to_float128(&s->exact) / sqrtq(M_PIq);
+    result = gaunt_finish_q(&s->exact);
     wignernj_scratch_relinquish(s);
     return result;
 }
@@ -644,19 +683,10 @@ void gaunt_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
                              int tl3, int tm3, mpfr_rnd_t rnd)
 {
     wignernj_scratch_t *s = wignernj_scratch_acquire();
-    mpfr_t pi;
-
     gaunt_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
     wignernj_exact_to_mpfr(rop, &s->exact, rnd);
     wignernj_scratch_relinquish(s);
-
-    if (!mpfr_zero_p(rop)) {
-        mpfr_init2(pi, mpfr_get_prec(rop));
-        mpfr_const_pi(pi, rnd);
-        mpfr_sqrt(pi, pi, rnd);
-        mpfr_div(rop, rop, pi, rnd);
-        mpfr_clear(pi);
-    }
+    gaunt_finish_mpfr(rop, rnd);
 }
 #endif
 
@@ -667,7 +697,7 @@ float gaunt_real_f(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
     wignernj_scratch_t *s = wignernj_scratch_acquire();
     float result;
     gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wignernj_exact_to_float(&s->exact) / sqrtf((float)M_PI);
+    result = gaunt_finish_f(&s->exact);
     wignernj_scratch_relinquish(s);
     return result;
 }
@@ -677,7 +707,7 @@ double gaunt_real(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
     wignernj_scratch_t *s = wignernj_scratch_acquire();
     double result;
     gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wignernj_exact_to_double(&s->exact) / sqrt(M_PI);
+    result = gaunt_finish_d(&s->exact);
     wignernj_scratch_relinquish(s);
     return result;
 }
@@ -687,7 +717,7 @@ long double gaunt_real_l(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
     wignernj_scratch_t *s = wignernj_scratch_acquire();
     long double result;
     gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wignernj_exact_to_long_double(&s->exact) / sqrtl(acosl(-1.0L));
+    result = gaunt_finish_l(&s->exact);
     wignernj_scratch_relinquish(s);
     return result;
 }
@@ -698,7 +728,7 @@ __float128 gaunt_real_q(int tl1, int tm1, int tl2, int tm2, int tl3, int tm3)
     wignernj_scratch_t *s = wignernj_scratch_acquire();
     __float128 result;
     gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
-    result = wignernj_exact_to_float128(&s->exact) / sqrtq(M_PIq);
+    result = gaunt_finish_q(&s->exact);
     wignernj_scratch_relinquish(s);
     return result;
 }
@@ -709,18 +739,9 @@ void gaunt_real_mpfr(mpfr_t rop, int tl1, int tm1, int tl2, int tm2,
                                   int tl3, int tm3, mpfr_rnd_t rnd)
 {
     wignernj_scratch_t *s = wignernj_scratch_acquire();
-    mpfr_t pi;
-
     gaunt_real_exact(tl1, tm1, tl2, tm2, tl3, tm3, &s->exact);
     wignernj_exact_to_mpfr(rop, &s->exact, rnd);
     wignernj_scratch_relinquish(s);
-
-    if (!mpfr_zero_p(rop)) {
-        mpfr_init2(pi, mpfr_get_prec(rop));
-        mpfr_const_pi(pi, rnd);
-        mpfr_sqrt(pi, pi, rnd);
-        mpfr_div(rop, rop, pi, rnd);
-        mpfr_clear(pi);
-    }
+    gaunt_finish_mpfr(rop, rnd);
 }
 #endif

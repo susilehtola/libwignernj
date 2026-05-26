@@ -46,6 +46,18 @@ void wigner9j_exact(int tj11, int tj12, int tj13,
                     wignernj_exact_t *out);
 void wignernj_exact_free(wignernj_exact_t *e);
 
+/* Multiply the value carried by `e` by sqrt(k), in place, by factoring
+ * the positive integer k and distributing its prime powers across the
+ * outer-sqrt tuple:
+ *   even prime power p^(2a) → p^a into int_num (outside sqrt)
+ *   odd  prime power p^(2a+1) → p^a into int_num, one p into sqrt_num
+ * No-op when k == 1.  Caller is responsible for k > 0.
+ *
+ * Used by clebsch_gordan_exact to fold sqrt(2J+1) and by fano_x_exact
+ * to fold sqrt[(2j12+1)(2j34+1)(2j13+1)(2j24+1)] into the exact tuple
+ * produced by the underlying Wigner symbol. */
+void wignernj_exact_mul_sqrt_int(wignernj_exact_t *e, int k);
+
 float       wignernj_exact_to_float      (const wignernj_exact_t *e);
 double      wignernj_exact_to_double     (const wignernj_exact_t *e);
 long double wignernj_exact_to_long_double(const wignernj_exact_t *e);

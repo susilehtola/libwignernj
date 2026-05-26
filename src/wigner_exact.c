@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright (c) 2026 Susi Lehtola */
 #include "wignernj_exact.h"
+#include "primes.h"
 #include <math.h>
 
 void wignernj_exact_init(wignernj_exact_t *e)
@@ -41,6 +42,22 @@ void wignernj_exact_free(wignernj_exact_t *e)
     bigint_free(&e->int_den);
     bigint_free(&e->sqrt_num);
     bigint_free(&e->sqrt_den);
+}
+
+void wignernj_exact_mul_sqrt_int(wignernj_exact_t *e, int k)
+{
+    int pi;
+    if (e->is_zero || k == 1) return;
+    for (pi = 0; pi < g_nprimes && g_primes[pi] <= k; pi++) {
+        int cnt = 0;
+        while (k % g_primes[pi] == 0) { cnt++; k /= g_primes[pi]; }
+        if (cnt == 0) continue;
+        if (cnt / 2 > 0)
+            bigint_mul_prime_pow(&e->int_num,  (uint64_t)g_primes[pi], cnt / 2);
+        if (cnt & 1)
+            bigint_mul_prime_pow(&e->sqrt_num, (uint64_t)g_primes[pi], 1);
+        if (k == 1) break;
+    }
 }
 
 /*
