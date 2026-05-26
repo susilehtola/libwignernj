@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] – 2026-05-26
+
 ### Added
 - README badges for the GitHub Actions CI workflow, the
   publish-wheels workflow, and the current PyPI version of the
@@ -19,6 +21,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the public-header comment blocks (`wignernj.h`, `wignernj.hpp`,
   `wignernj_quadmath.h`, `wignernj_mpfr.h`), the Fortran module header,
   and the Python package docstring.
+
+### Fixed
+- **Downstream `find_package(wignernj)` failed when libwignernj had
+  been built with `BUILD_MPFR=ON`.**  The CMake config previously
+  linked the `PkgConfig::MPFR` (and, when GMP was present,
+  `PkgConfig::GMP`) IMPORTED targets `PUBLIC` to the `wignernj`
+  target.  Those targets were exported into `wignernjTargets.cmake`
+  but never re-created on the consumer side, so any project running
+  `find_package(wignernj)` against an MPFR-enabled install errored
+  out with `The link interface of target "wignernj::wignernj"
+  contains: PkgConfig::MPFR but the target was not found`.  The
+  detection now resolves MPFR / GMP to absolute library paths via
+  `pkg_check_modules` *without* `IMPORTED_TARGET`, so the exported
+  interface is self-contained: downstream consumers no longer need
+  pkg-config at find-package time, and the upstream build's MPFR /
+  GMP locations propagate as ordinary absolute library paths.
 
 ## [0.6.0] – 2026-05-14
 
@@ -624,7 +642,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CPython extension module exposing the same routines.
 - BSD 3-Clause licence.
 
-[Unreleased]: https://github.com/susilehtola/libwignernj/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/susilehtola/libwignernj/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/susilehtola/libwignernj/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/susilehtola/libwignernj/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/susilehtola/libwignernj/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/susilehtola/libwignernj/compare/v0.4.1...v0.4.2

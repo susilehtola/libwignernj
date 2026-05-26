@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026 Susi Lehtola
 cmake_minimum_required(VERSION 3.16)
-project(wignernj VERSION 0.6.0 LANGUAGES C)
+project(wignernj VERSION 0.6.1 LANGUAGES C)
 
 # Default to an optimised build when the consumer hasn't picked a
 # CMAKE_BUILD_TYPE (e.g. plain `cmake -B build`).  libwignernj is
@@ -255,11 +255,23 @@ endif()
 if(BUILD_MPFR)
     find_package(PkgConfig QUIET)
     if(PKG_CONFIG_FOUND)
-        pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
-        pkg_check_modules(GMP            IMPORTED_TARGET gmp)
-        target_link_libraries(wignernj PUBLIC PkgConfig::MPFR)
+        # Do NOT request IMPORTED_TARGET here: linking PkgConfig::MPFR
+        # PUBLIC would leak that IMPORTED target into the exported
+        # wignernjTargets.cmake, where it is not redefined on the
+        # consumer side and triggers
+        #   "The link interface ... contains: PkgConfig::MPFR but the
+        #    target was not found"
+        # at find_package(wignernj) time.  Resolving via the bare
+        # absolute paths in *_LINK_LIBRARIES keeps the exported interface
+        # self-contained: downstream consumers do not need to re-find
+        # pkg-config.
+        pkg_check_modules(MPFR REQUIRED mpfr)
+        pkg_check_modules(GMP            gmp)
+        target_include_directories(wignernj PUBLIC ${MPFR_INCLUDE_DIRS})
+        target_link_libraries     (wignernj PUBLIC ${MPFR_LINK_LIBRARIES})
         if(GMP_FOUND)
-            target_link_libraries(wignernj PUBLIC PkgConfig::GMP)
+            target_include_directories(wignernj PUBLIC ${GMP_INCLUDE_DIRS})
+            target_link_libraries     (wignernj PUBLIC ${GMP_LINK_LIBRARIES})
         endif()
     else()
         find_library(MPFR_LIB NAMES mpfr REQUIRED)
