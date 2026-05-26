@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Susi Lehtola
 """Write PEP 376 / PEP 427 .dist-info metadata for a CMake-installed wignernj.
 
-CMake's BUILD_PYTHON path drops `_wignernj.<EXT_SUFFIX>.so` and
+CMake's WIGNERNJ_BUILD_PYTHON path drops `_wignernj.<EXT_SUFFIX>.so` and
 `__init__.py` under ${Python3_SITEARCH}/wignernj/ but does not produce
 the `.dist-info` directory that pip and importlib.metadata require.
 This script writes that directory at `cmake --install` time so that

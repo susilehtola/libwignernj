@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **All project-specific CMake options are now prefixed with
+  `WIGNERNJ_`** so that consumers who pull libwignernj in via
+  `add_subdirectory()` don't collide with their own (or a sibling
+  dependency's) cache variables. `BUILD_FORTRAN` → `WIGNERNJ_BUILD_FORTRAN`,
+  and likewise `BUILD_PYTHON`, `BUILD_MPFR`, `BUILD_QUADMATH`,
+  `BUILD_FLINT`, `BUILD_TESTS`, `BUILD_EXAMPLES`, `BUILD_CXX_TESTS`,
+  `BUILD_LTO`, `BUILD_COVERAGE`. **This is a breaking change**: the old
+  unprefixed names are no longer recognised and are silently ignored;
+  update your `-D...` flags accordingly. The standard CMake builtin
+  `BUILD_SHARED_LIBS` is intentionally left unprefixed. The internal
+  preprocessor/compile definitions (`WIGNERNJ_HAVE_QUADMATH`,
+  `WIGNERNJ_HAVE_MPFR`, `WIGNERNJ_USE_FLINT`) are unchanged.
+
+### Fixed
+- `tests/test_warmup.c` no longer fails to compile with
+  `'RTLD_NEXT' undeclared`: `_GNU_SOURCE` is now defined before the
+  first `#include` (it previously came after `run_tests.h` had already
+  pulled in `<features.h>`, so `<dlfcn.h>` never exposed `RTLD_NEXT`).
+
 ### Added
 - README badges for the GitHub Actions CI workflow, the
   publish-wheels workflow, and the current PyPI version of the

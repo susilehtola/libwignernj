@@ -34,11 +34,11 @@ ctest --test-dir build
 
 # All features
 cmake -B build \
-    -DBUILD_FORTRAN=ON \
-    -DBUILD_CXX_TESTS=ON \
-    -DBUILD_QUADMATH=ON \
-    -DBUILD_MPFR=ON \
-    -DBUILD_PYTHON=ON
+    -DWIGNERNJ_BUILD_FORTRAN=ON \
+    -DWIGNERNJ_BUILD_CXX_TESTS=ON \
+    -DWIGNERNJ_BUILD_QUADMATH=ON \
+    -DWIGNERNJ_BUILD_MPFR=ON \
+    -DWIGNERNJ_BUILD_PYTHON=ON
 cmake --build build
 
 # Python package (self-contained, no prior CMake build needed)
@@ -51,16 +51,16 @@ python -m pytest tests/python/
 | Option | Default | Description |
 |---|---|---|
 | `BUILD_SHARED_LIBS` | `ON` | Shared library (`.so` / `.dylib` / `.dll`) |
-| `BUILD_FORTRAN` | `ON` | Fortran 90 interface (`libwignernj_f03`) |
-| `BUILD_TESTS` | `ON` | C and Fortran test suite |
-| `BUILD_CXX_TESTS` | `ON` | C++ header tests |
-| `BUILD_EXAMPLES` | `ON` | Build and run the language-binding example programs as ctest tests |
-| `BUILD_LTO` | `ON` | Link-time optimisation; auto-disabled if the toolchain does not support it (and on MSVC, where it conflicts with `WINDOWS_EXPORT_ALL_SYMBOLS`) |
-| `BUILD_PYTHON` | `OFF` | CPython extension module (dynamically linked against `libwignernj`) |
-| `BUILD_QUADMATH` | `OFF` | libquadmath / IEEE 754 binary128 (`__float128`) interface (requires GCC, Clang, or Intel ICC/ICX on Linux/macOS) |
-| `BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface (requires libmpfr) |
-| `BUILD_FLINT` | `OFF` | FLINT/GMP/MPFR bigint backend (sub-quadratic multiplication; replaces the in-tree schoolbook + Karatsuba bigint, requires libflint, libgmp, and libmpfr) |
-| `BUILD_COVERAGE` | `OFF` | Build with `--coverage -O0` for lcov / Codecov (gcc, clang) |
+| `WIGNERNJ_BUILD_FORTRAN` | `ON` | Fortran 90 interface (`libwignernj_f03`) |
+| `WIGNERNJ_BUILD_TESTS` | `ON` | C and Fortran test suite |
+| `WIGNERNJ_BUILD_CXX_TESTS` | `ON` | C++ header tests |
+| `WIGNERNJ_BUILD_EXAMPLES` | `ON` | Build and run the language-binding example programs as ctest tests |
+| `WIGNERNJ_BUILD_LTO` | `ON` | Link-time optimisation; auto-disabled if the toolchain does not support it (and on MSVC, where it conflicts with `WINDOWS_EXPORT_ALL_SYMBOLS`) |
+| `WIGNERNJ_BUILD_PYTHON` | `OFF` | CPython extension module (dynamically linked against `libwignernj`) |
+| `WIGNERNJ_BUILD_QUADMATH` | `OFF` | libquadmath / IEEE 754 binary128 (`__float128`) interface (requires GCC, Clang, or Intel ICC/ICX on Linux/macOS) |
+| `WIGNERNJ_BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface (requires libmpfr) |
+| `WIGNERNJ_BUILD_FLINT` | `OFF` | FLINT/GMP/MPFR bigint backend (sub-quadratic multiplication; replaces the in-tree schoolbook + Karatsuba bigint, requires libflint, libgmp, and libmpfr) |
+| `WIGNERNJ_BUILD_COVERAGE` | `OFF` | Build with `--coverage -O0` for lcov / Codecov (gcc, clang) |
 
 ### Linking
 
@@ -514,7 +514,7 @@ float  f = wignernj::symbol3j<float>(1.0, 1.0, 0.0,  0.0, 0.0, 0.0);
 
 ## libquadmath API
 
-Build with `-DBUILD_QUADMATH=ON` (requires GCC, Clang, or Intel
+Build with `-DWIGNERNJ_BUILD_QUADMATH=ON` (requires GCC, Clang, or Intel
 ICC/ICX with `__float128` support; not available on Apple Clang or
 MSVC).  Include `wignernj_quadmath.h` in addition to `wignernj.h`.  Link
 with `-lwignernj -lquadmath -lm`.
@@ -561,7 +561,7 @@ mantissa.
 
 ## MPFR API
 
-Build with `-DBUILD_MPFR=ON` (requires libmpfr ≥ 4).
+Build with `-DWIGNERNJ_BUILD_MPFR=ON` (requires libmpfr ≥ 4).
 Include `wignernj_mpfr.h` in addition to `wignernj.h`.
 Link with `-lwignernj -lmpfr -lm`.
 
@@ -696,7 +696,7 @@ Raises `ValueError` for non-half-integer arguments.
 
 ## Fortran API
 
-Build with `-DBUILD_FORTRAN=ON`.  Link with `-lwignernj_f03 -lwignernj -lm`.
+Build with `-DWIGNERNJ_BUILD_FORTRAN=ON`.  Link with `-lwignernj_f03 -lwignernj -lm`.
 
 The `wignernj` module provides two layers:
 

@@ -30,15 +30,15 @@ add_test(NAME example_real_basis_lz COMMAND example_real_basis_lz)
 
 # ── C++ example ──────────────────────────────────────────────────────────
 # Enable CXX if it isn't already.  tests/CMakeLists.txt enables it under
-# BUILD_CXX_TESTS only when an actual CXX compiler is present, so we
-# repeat the same probe here -- BUILD_EXAMPLES=ON without BUILD_TESTS is
+# WIGNERNJ_BUILD_CXX_TESTS only when an actual CXX compiler is present, so we
+# repeat the same probe here -- WIGNERNJ_BUILD_EXAMPLES=ON without WIGNERNJ_BUILD_TESTS is
 # a valid configuration on machines that only have a C compiler.
-if(BUILD_CXX_TESTS)
+if(WIGNERNJ_BUILD_CXX_TESTS)
     include(CheckLanguage)
     check_language(CXX)
     if(CMAKE_CXX_COMPILER)
         # enable_language is idempotent; tests/CMakeLists.txt may have
-        # called it already (when BUILD_TESTS is also on), in which case
+        # called it already (when WIGNERNJ_BUILD_TESTS is also on), in which case
         # this is a no-op.  Calling it unconditionally is safer than
         # querying ENABLED_LANGUAGES, which has been observed to lag
         # the actual state when subdirectories run in some orders.
@@ -71,7 +71,7 @@ if(BUILD_CXX_TESTS)
 endif()
 
 # ── Fortran example ──────────────────────────────────────────────────────
-if(BUILD_FORTRAN)
+if(WIGNERNJ_BUILD_FORTRAN)
     add_executable(example_fortran fortran/all_symbols.f90)
     target_link_libraries(example_fortran
         PRIVATE wignernj_f03 wignernj ${LIBM_LINK})
@@ -86,12 +86,12 @@ if(BUILD_FORTRAN)
 endif()
 
 # ── Python example ───────────────────────────────────────────────────────
-# Run only when the Python extension is built in-tree (BUILD_PYTHON=ON);
+# Run only when the Python extension is built in-tree (WIGNERNJ_BUILD_PYTHON=ON);
 # point PYTHONPATH at the build directory so `import wignernj` finds
 # the freshly compiled _wignernj module without needing an editable
-# install.  When BUILD_PYTHON is off the Python example still ships in
+# install.  When WIGNERNJ_BUILD_PYTHON is off the Python example still ships in
 # the source tree but is not exercised by ctest.
-if(BUILD_PYTHON AND TARGET _wignernj)
+if(WIGNERNJ_BUILD_PYTHON AND TARGET _wignernj)
     find_package(Python3 COMPONENTS Interpreter)
     if(Python3_Interpreter_FOUND)
         add_test(NAME example_python

@@ -21,7 +21,7 @@
  *   unless size == 0 (representing zero).
  *
  * - The optional FLINT backend (src/bigint_flint.c, selected by the
- *   CMake option BUILD_FLINT) stores the value as a single fmpz_t and
+ *   CMake option WIGNERNJ_BUILD_FLINT) stores the value as a single fmpz_t and
  *   delegates every arithmetic operation to FLINT/GMP.  This trades a
  *   runtime dependency for sub-quadratic multiplication
  *   (Karatsuba/Toom-Cook/Schönhage--Strassen via FLINT) at very large

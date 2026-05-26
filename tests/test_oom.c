@@ -47,7 +47,7 @@ extern void xalloc_set_test_failure_countdown(long n);
  * flush primitive before _exit to capture them.
  *
  * The flush functions are gated on WIGNERNJ_COVERAGE, which CMake's
- * BUILD_COVERAGE option defines.  We deliberately avoid plain
+ * WIGNERNJ_BUILD_COVERAGE option defines.  We deliberately avoid plain
  * `__attribute__((weak))` here: ELF leaves an unresolved weak
  * reference null at link time, but Mach-O (macOS) demands the
  * symbol be defined and would fail to link non-coverage builds. */

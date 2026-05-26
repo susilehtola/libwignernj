@@ -9,7 +9,7 @@
  *   (2026), doi:10.48550/arXiv.2605.06634.
  *
  * Include this header (in addition to wignernj.h) when MPFR output is needed.
- * The library must have been built with -DBUILD_MPFR=ON.
+ * The library must have been built with -DWIGNERNJ_BUILD_MPFR=ON.
  *
  * Convention: rop is the first argument; set its precision before calling.
  * rnd is the MPFR rounding mode applied to each elementary operation.
