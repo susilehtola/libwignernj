@@ -31,7 +31,7 @@ set(C_UNIT_TESTS
     test_real_ylm_in_complex_ylm
     test_symmetry
 )
-if(NOT BUILD_FLINT)
+if(NOT WIGNERNJ_BUILD_FLINT)
     list(APPEND C_UNIT_TESTS test_bigint)
 endif()
 foreach(test_name ${C_UNIT_TESTS})
@@ -62,7 +62,7 @@ endif()
 # allocation-free.  Built only on Linux (glibc + dlsym semantics required).
 #
 # Skipped under:
-#   - BUILD_FLINT: FLINT's internal fmpz/mpz arithmetic allocates from
+#   - WIGNERNJ_BUILD_FLINT: FLINT's internal fmpz/mpz arithmetic allocates from
 #     glibc on its own; those allocations are outside the libwignernj
 #     scratch cache and would cause spurious failures.
 #   - sanitizer builds: AddressSanitizer intercepts malloc itself, and
@@ -71,7 +71,7 @@ endif()
 string(REGEX MATCH "fsanitize" _wigner_sanitizer_flags
        "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}}")
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux"
-   AND NOT BUILD_FLINT
+   AND NOT WIGNERNJ_BUILD_FLINT
    AND NOT _wigner_sanitizer_flags)
     add_executable(test_warmup test_warmup.c)
     target_link_libraries(test_warmup PRIVATE wignernj ${LIBM_LINK} dl)
@@ -84,7 +84,7 @@ endif()
 
 # ── C++ header tests ──────────────────────────────────────────────────────────
 
-if(BUILD_CXX_TESTS)
+if(WIGNERNJ_BUILD_CXX_TESTS)
     include(CheckLanguage)
     check_language(CXX)
     if(CMAKE_CXX_COMPILER)
@@ -104,7 +104,7 @@ endif()
 
 # ── libquadmath tests ─────────────────────────────────────────────────────────
 
-if(BUILD_QUADMATH)
+if(WIGNERNJ_BUILD_QUADMATH)
     add_executable(test_quadmath test_quadmath.c)
     target_link_libraries(test_quadmath PRIVATE wignernj quadmath ${LIBM_LINK})
     target_include_directories(test_quadmath PRIVATE
@@ -116,7 +116,7 @@ endif()
 
 # ── MPFR tests ────────────────────────────────────────────────────────────────
 
-if(BUILD_MPFR)
+if(WIGNERNJ_BUILD_MPFR)
     add_executable(test_mpfr test_mpfr.c)
     target_link_libraries(test_mpfr PRIVATE wignernj)
     target_include_directories(test_mpfr PRIVATE
@@ -128,7 +128,7 @@ endif()
 
 # ── Fortran interface tests ───────────────────────────────────────────────────
 
-if(BUILD_FORTRAN AND TARGET wignernj_f03)
+if(WIGNERNJ_BUILD_FORTRAN AND TARGET wignernj_f03)
     add_executable(test_wignernj_fortran
         fortran/test_wignernj_fortran.f90
     )
@@ -142,7 +142,7 @@ if(BUILD_FORTRAN AND TARGET wignernj_f03)
     )
     add_test(NAME test_wignernj_fortran COMMAND test_wignernj_fortran)
 
-    if(BUILD_QUADMATH)
+    if(WIGNERNJ_BUILD_QUADMATH)
         add_executable(test_wignernj_quadmath
             fortran/test_wignernj_quadmath.F90
         )

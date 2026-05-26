@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026 Susi Lehtola
 cmake_minimum_required(VERSION 3.16)
-project(wignernj VERSION 0.6.0 LANGUAGES C)
+project(wignernj VERSION 0.7.0 LANGUAGES C)
 
 # Default to an optimised build when the consumer hasn't picked a
 # CMAKE_BUILD_TYPE (e.g. plain `cmake -B build`).  libwignernj is
@@ -16,16 +16,16 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 option(BUILD_SHARED_LIBS  "Build shared library"         ON)
-option(BUILD_FORTRAN      "Build Fortran interface"      ON)
-option(BUILD_PYTHON       "Build Python extension"       OFF)
-option(BUILD_MPFR         "Build MPFR arbitrary-precision interface" OFF)
-option(BUILD_QUADMATH     "Build libquadmath / __float128 interface"  OFF)
-option(BUILD_FLINT        "Use FLINT/GMP/MPFR for the bigint backend"  OFF)
-option(BUILD_TESTS        "Build test suite"             ON)
-option(BUILD_EXAMPLES     "Build language-binding examples" ON)
-option(BUILD_CXX_TESTS    "Build C++ header tests"      ON)
-option(BUILD_LTO          "Enable link-time optimisation (LTO/IPO)"  ON)
-option(BUILD_COVERAGE     "Build with --coverage instrumentation (gcc/clang)" OFF)
+option(WIGNERNJ_BUILD_FORTRAN      "Build Fortran interface"      ON)
+option(WIGNERNJ_BUILD_PYTHON       "Build Python extension"       OFF)
+option(WIGNERNJ_BUILD_MPFR         "Build MPFR arbitrary-precision interface" OFF)
+option(WIGNERNJ_BUILD_QUADMATH     "Build libquadmath / __float128 interface"  OFF)
+option(WIGNERNJ_BUILD_FLINT        "Use FLINT/GMP/MPFR for the bigint backend"  OFF)
+option(WIGNERNJ_BUILD_TESTS        "Build test suite"             ON)
+option(WIGNERNJ_BUILD_EXAMPLES     "Build language-binding examples" ON)
+option(WIGNERNJ_BUILD_CXX_TESTS    "Build C++ header tests"      ON)
+option(WIGNERNJ_BUILD_LTO          "Enable link-time optimisation (LTO/IPO)"  ON)
+option(WIGNERNJ_BUILD_COVERAGE     "Build with --coverage instrumentation (gcc/clang)" OFF)
 
 # Probe the toolchain for LTO/IPO support and silently fall back if it
 # isn't available -- LTO defaults to ON because libwignernj is
@@ -33,15 +33,15 @@ option(BUILD_COVERAGE     "Build with --coverage instrumentation (gcc/clang)" OF
 # inlining of pfrac.c helpers into the Racah-sum hot path is worth a
 # few percent across every consumer who just runs `cmake`.  Users who
 # need a fast build (Debug, sanitizers, static analysis) can pass
-# -DBUILD_LTO=OFF to opt out.
-if(BUILD_LTO)
+# -DWIGNERNJ_BUILD_LTO=OFF to opt out.
+if(WIGNERNJ_BUILD_LTO)
     include(CheckIPOSupported)
     check_ipo_supported(RESULT _wignernj_ipo_supported OUTPUT _wignernj_ipo_error)
     if(NOT _wignernj_ipo_supported)
         message(STATUS
             "Link-time optimisation not supported by this toolchain "
-            "(${_wignernj_ipo_error}); BUILD_LTO disabled.")
-        set(BUILD_LTO OFF CACHE BOOL "" FORCE)
+            "(${_wignernj_ipo_error}); WIGNERNJ_BUILD_LTO disabled.")
+        set(WIGNERNJ_BUILD_LTO OFF CACHE BOOL "" FORCE)
     endif()
 endif()
 
@@ -54,17 +54,17 @@ endif()
 # with the public API, so the cleanest fix is to disable LTO on MSVC.
 # Consumers who want LTO with MSVC can hand-write a .def file or sprinkle
 # __declspec(dllexport) on every public function and pass
-# -DWINDOWS_EXPORT_ALL_SYMBOLS=OFF -DBUILD_LTO=ON, but that's a hostile
+# -DWINDOWS_EXPORT_ALL_SYMBOLS=OFF -DWIGNERNJ_BUILD_LTO=ON, but that's a hostile
 # default for a library positioned for embeddability across toolchains.
-if(BUILD_LTO AND MSVC)
+if(WIGNERNJ_BUILD_LTO AND MSVC)
     message(STATUS
-        "BUILD_LTO disabled on MSVC: /GL emits IL .obj files that "
+        "WIGNERNJ_BUILD_LTO disabled on MSVC: /GL emits IL .obj files that "
         "the WINDOWS_EXPORT_ALL_SYMBOLS auto-export step cannot parse.")
-    set(BUILD_LTO OFF CACHE BOOL "" FORCE)
+    set(WIGNERNJ_BUILD_LTO OFF CACHE BOOL "" FORCE)
 endif()
 
 # ── Coverage instrumentation ──────────────────────────────────────────────────
-# When BUILD_COVERAGE=ON, every target in this build gets compiled and
+# When WIGNERNJ_BUILD_COVERAGE=ON, every target in this build gets compiled and
 # linked with --coverage, and -O0 is forced so that the line-by-line
 # coverage map is not mangled by inlining or dead-code elimination.
 # The instrumentation works on gcc and clang; on MSVC the option is a
@@ -72,14 +72,14 @@ endif()
 # `lcov` (or grcov for clang's source-based coverage) to merge .gcda
 # files into a report.  See the "Ubuntu / GCC / coverage" cell in
 # .github/workflows/ci.yml for the exact command sequence.
-if(BUILD_COVERAGE)
+if(WIGNERNJ_BUILD_COVERAGE)
     if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
         add_compile_options(--coverage -O0)
         add_link_options(--coverage)
         add_compile_definitions(WIGNERNJ_COVERAGE)
     else()
         message(WARNING
-            "BUILD_COVERAGE=ON requested but compiler '${CMAKE_C_COMPILER_ID}' "
+            "WIGNERNJ_BUILD_COVERAGE=ON requested but compiler '${CMAKE_C_COMPILER_ID}' "
             "does not recognise --coverage; flag ignored.")
     endif()
 endif()
@@ -103,8 +103,8 @@ include(GNUInstallDirs)
 
 # Core C library.  The bigint backend is selected at configure time:
 # the schoolbook src/bigint.c is the default; the FLINT backend
-# (src/bigint_flint.c) replaces it when BUILD_FLINT=ON.
-if(BUILD_FLINT)
+# (src/bigint_flint.c) replaces it when WIGNERNJ_BUILD_FLINT=ON.
+if(WIGNERNJ_BUILD_FLINT)
     set(BIGINT_SOURCE src/bigint_flint.c)
 else()
     set(BIGINT_SOURCE src/bigint.c)
@@ -132,7 +132,7 @@ set_target_properties(wignernj PROPERTIES
     C_STANDARD_REQUIRED ON
     VERSION   ${PROJECT_VERSION}
     SOVERSION ${PROJECT_VERSION_MAJOR}
-    INTERPROCEDURAL_OPTIMIZATION ${BUILD_LTO}
+    INTERPROCEDURAL_OPTIMIZATION ${WIGNERNJ_BUILD_LTO}
     # Auto-generate the MSVC import library by exporting every function
     # symbol.  On ELF/Mach-O the public-by-default visibility makes this
     # a no-op; on Windows it is what saves us from sprinkling
@@ -195,7 +195,7 @@ endif()
 #
 # Apple Clang and MSVC have no __float128 at all and fall through to
 # the FATAL_ERROR.
-if(BUILD_QUADMATH)
+if(WIGNERNJ_BUILD_QUADMATH)
     include(CheckCSourceCompiles)
     set(_qm_test
         "#include <quadmath.h>\nint main(void){__float128 x=sqrtq(2.0Q);return (int)x;}\n")
@@ -232,11 +232,11 @@ if(BUILD_QUADMATH)
 
     if(NOT WIGNERNJ_QUADMATH_DIRECT AND NOT WIGNERNJ_QUADMATH_GCC_INC)
         message(FATAL_ERROR
-            "BUILD_QUADMATH=ON, but neither <quadmath.h> nor the gcc-shipped "
+            "WIGNERNJ_BUILD_QUADMATH=ON, but neither <quadmath.h> nor the gcc-shipped "
             "fallback path was usable.  __float128 / libquadmath are "
             "available only on GCC, Clang (with libquadmath-devel / "
             "libgcc-N-dev installed), and Intel compilers on Linux/macOS.  "
-            "Disable BUILD_QUADMATH on unsupported toolchains.")
+            "Disable WIGNERNJ_BUILD_QUADMATH on unsupported toolchains.")
     endif()
 
     target_compile_definitions(wignernj PUBLIC WIGNERNJ_HAVE_QUADMATH)
@@ -252,7 +252,7 @@ endif()
 # mpfr.h does `#include <gmp.h>`, but on multi-prefix packagings (notably
 # Homebrew on macOS) GMP lives in its own prefix and mpfr.pc does not
 # propagate the GMP include path.  We therefore pull GMP in alongside MPFR.
-if(BUILD_MPFR)
+if(WIGNERNJ_BUILD_MPFR)
     find_package(PkgConfig QUIET)
     if(PKG_CONFIG_FOUND)
         pkg_check_modules(MPFR REQUIRED IMPORTED_TARGET mpfr)
@@ -277,7 +277,7 @@ endif()
 
 # FLINT bigint backend (optional)
 #
-# FLINT pulls in GMP and MPFR transitively, so when BUILD_FLINT=ON we
+# FLINT pulls in GMP and MPFR transitively, so when WIGNERNJ_BUILD_FLINT=ON we
 # unconditionally link all three.  Floating-point conversions in the
 # FLINT path go through MPFR (correct round-to-nearest-even at every
 # IEEE 754 binary precision), and the binary128 conversion extracts
@@ -286,7 +286,7 @@ endif()
 # directly:  FLINT does not ship a pkg-config file on every distribution
 # (notably Ubuntu's libflint-dev), so the explicit search is more robust
 # than pkg_check_modules.
-if(BUILD_FLINT)
+if(WIGNERNJ_BUILD_FLINT)
     find_library(FLINT_LIB NAMES flint REQUIRED)
     find_path   (FLINT_INC flint/fmpz.h REQUIRED)
     find_library(MPFR_LIB  NAMES mpfr REQUIRED)
@@ -302,7 +302,7 @@ endif()
 
 # Fortran interface (optional, only if compiler found)
 set(WIGNERNJ_HAS_FORTRAN OFF)
-if(BUILD_FORTRAN)
+if(WIGNERNJ_BUILD_FORTRAN)
     include(CheckLanguage)
     check_language(Fortran)
     if(CMAKE_Fortran_COMPILER)
@@ -314,7 +314,7 @@ if(BUILD_FORTRAN)
         # in.  iso_fortran_env::real128 is also gated on this define
         # because, on toolchains where __float128 is unavailable, real128
         # may be -1 (no kind), which would render the module unparseable.
-        if(BUILD_QUADMATH)
+        if(WIGNERNJ_BUILD_QUADMATH)
             target_compile_definitions(wignernj_f03 PRIVATE WIGNERNJ_HAVE_QUADMATH)
         endif()
         set_target_properties(wignernj_f03 PROPERTIES
@@ -322,7 +322,7 @@ if(BUILD_FORTRAN)
                 ${CMAKE_CURRENT_BINARY_DIR}/fortran_modules
             VERSION   ${PROJECT_VERSION}
             SOVERSION ${PROJECT_VERSION_MAJOR}
-            INTERPROCEDURAL_OPTIMIZATION ${BUILD_LTO}
+            INTERPROCEDURAL_OPTIMIZATION ${WIGNERNJ_BUILD_LTO}
             WINDOWS_EXPORT_ALL_SYMBOLS ON
             # Bake $ORIGIN into the installed library so that, when a
             # downstream binary's DT_RUNPATH points at some non-system
@@ -375,11 +375,11 @@ endif()
 #      libwignernj.so.  This is the canonical path for `pip install
 #      wignernj` end users.
 #
-#   2. The CMake-driven build below (BUILD_PYTHON=ON).  This links
+#   2. The CMake-driven build below (WIGNERNJ_BUILD_PYTHON=ON).  This links
 #      `_wignernj.so` dynamically against libwignernj.so so that distro
 #      packages (Fedora, etc.) ship one copy of the C library on disk
 #      rather than embedding it inside every consumer.  Picking up
-#      BUILD_FLINT, BUILD_QUADMATH, BUILD_MPFR is automatic via the
+#      WIGNERNJ_BUILD_FLINT, WIGNERNJ_BUILD_QUADMATH, WIGNERNJ_BUILD_MPFR is automatic via the
 #      transitive link to the wignernj target -- no separate switches
 #      needed here.
 #
@@ -390,7 +390,7 @@ endif()
 # under `Python3_SITEARCH`, so the resulting RPM (or other distro
 # package) can register a `python3-wignernj` namespace package out of
 # the same build that produced `libwignernj.so`.
-if(BUILD_PYTHON)
+if(WIGNERNJ_BUILD_PYTHON)
     find_package(Python3 COMPONENTS Interpreter Development)
     if(Python3_FOUND)
         # Linking a static libwignernj into the shared _wignernj.so
@@ -411,7 +411,7 @@ if(BUILD_PYTHON)
         set_target_properties(_wignernj PROPERTIES
             C_STANDARD 99
             C_STANDARD_REQUIRED ON
-            INTERPROCEDURAL_OPTIMIZATION ${BUILD_LTO}
+            INTERPROCEDURAL_OPTIMIZATION ${WIGNERNJ_BUILD_LTO}
             OUTPUT_NAME "_wignernj"
             LIBRARY_OUTPUT_DIRECTORY
                 ${CMAKE_CURRENT_BINARY_DIR}/wignernj
@@ -456,12 +456,12 @@ if(BUILD_PYTHON)
     endif()
 endif()
 
-if(BUILD_TESTS)
+if(WIGNERNJ_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
 
-if(BUILD_EXAMPLES)
+if(WIGNERNJ_BUILD_EXAMPLES)
     enable_testing()
     add_subdirectory(examples)
 endif()

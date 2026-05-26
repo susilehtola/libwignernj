@@ -19,7 +19,7 @@ All public API arguments use `2*j` integers (so `j=3/2` is passed as `tj=3`). Th
 cmake -B build && cmake --build build
 
 # With all options explicit
-cmake -B build -DBUILD_FORTRAN=ON -DBUILD_TESTS=ON -DBUILD_CXX_TESTS=ON
+cmake -B build -DWIGNERNJ_BUILD_FORTRAN=ON -DWIGNERNJ_BUILD_TESTS=ON -DWIGNERNJ_BUILD_CXX_TESTS=ON
 cmake --build build
 
 # Run all tests
@@ -36,16 +36,16 @@ pip install -e .
 python -m pytest tests/python/
 
 # Python extension via CMake
-cmake -B build -DBUILD_PYTHON=ON && cmake --build build
+cmake -B build -DWIGNERNJ_BUILD_PYTHON=ON && cmake --build build
 
 # MPFR arbitrary-precision interface
-cmake -B build -DBUILD_MPFR=ON && cmake --build build
+cmake -B build -DWIGNERNJ_BUILD_MPFR=ON && cmake --build build
 
 # libquadmath / __float128 binary128 interface
-cmake -B build -DBUILD_QUADMATH=ON && cmake --build build
+cmake -B build -DWIGNERNJ_BUILD_QUADMATH=ON && cmake --build build
 
 # FLINT bigint backend (closes large-j speed gap; replaces in-tree schoolbook+Karatsuba)
-cmake -B build -DBUILD_FLINT=ON && cmake --build build
+cmake -B build -DWIGNERNJ_BUILD_FLINT=ON && cmake --build build
 ```
 
 ## Architecture: computation pipeline
@@ -57,7 +57,7 @@ Every public symbol function follows the same pipeline:
    - Builds the outer sqrt-factor as a `pfrac_t` (prime-factored rational representing the argument under the outer square root — triangle Δ coefficients and m-dependent factorials for 3j; four triangle Δ's for 6j).
    - Two-pass Racah sum: pass 1 finds `lcm_exp[i]` (max Legendre valuation per prime across all sum terms); pass 2 converts each term to a `bigint_t` scaled integer and accumulates the signed sum.
    - Calls `pfrac_to_sqrt_rational()` to split the outer pfrac into `int_num`, `int_den`, `sqrt_num`, `sqrt_den` bigints.
-3. **`wignernj_exact_to_{float,double,long_double,float128}()`** (in `src/wigner_exact.c`) — the only floating-point step: `sign * sum * int_num / int_den * sqrt(sqrt_num / sqrt_den)`. The `_float128` variant is gated on `WIGNERNJ_HAVE_QUADMATH` (set by `-DBUILD_QUADMATH=ON`).
+3. **`wignernj_exact_to_{float,double,long_double,float128}()`** (in `src/wigner_exact.c`) — the only floating-point step: `sign * sum * int_num / int_den * sqrt(sqrt_num / sqrt_den)`. The `_float128` variant is gated on `WIGNERNJ_HAVE_QUADMATH` (set by `-DWIGNERNJ_BUILD_QUADMATH=ON`).
 
 The 9j symbol is implemented as a sum over the intermediate quantum number `k` of products of three 6j exact-path evaluations. At each `k` the three k-dependent Δ factors each appear twice (making them Δ² = rational), and the six k-independent Δ factors form the outer sqrt(C). This enables the same `sqrt(C) × exact_integer` structure as 3j and 6j.
 
@@ -69,11 +69,11 @@ Clebsch-Gordan, Racah W, and Fano X are thin wrappers over the Wigner symbols (C
 |------|------|
 | `src/primes.c` | `legendre_valuation(n, pi)` = v_p(n!) via Legendre's formula. The prime list is hard-coded into the compiled library by `#include "prime_table.inc"`, generated at build time by `tools/gen_prime_table.py` (the runtime sieve was removed in 0.2.0) |
 | `src/bigint.c` | Default in-tree backend: unsigned multiword integer (little-endian `uint64_t` words) + sign; schoolbook multiplication below `KARATSUBA_THRESHOLD` (default 32 limbs), Karatsuba above; `bigint_to_{float,double,long_double}` with correct IEEE 754 round-to-nearest, plus `bigint_to_float128` / `bigint_frexp_q` (gated on `WIGNERNJ_HAVE_QUADMATH`) using top-3-words Horner-style binary128 evaluation |
-| `src/bigint_flint.c` | Optional FLINT backend (gated on `BUILD_FLINT`): the same bigint API delegated to FLINT's `fmpz_t`. Floating-point conversions go through MPFR for correct rounding; binary128 uses `mpfr_get_float128`. Replaces (does not augment) `bigint.c` when enabled |
+| `src/bigint_flint.c` | Optional FLINT backend (gated on `WIGNERNJ_BUILD_FLINT`): the same bigint API delegated to FLINT's `fmpz_t`. Floating-point conversions go through MPFR for correct rounding; binary128 uses `mpfr_get_float128`. Replaces (does not augment) `bigint.c` when enabled |
 | `src/bigint_arith.h` | 64-bit arithmetic primitives (mul/add/sub/div with carry); native `__uint128_t` path on GCC/Clang/ICC, pure-C99 fallback (32×32 partial products, 64/32 long division) on other compilers including MSVC. `-DBIGINT_FORCE_PORTABLE` forces the fallback. |
 | `src/pfrac.c` | Prime-factored rational: signed `int exp[]` indexed by prime table index; `pfrac_mul_factorial` / `pfrac_div_factorial`; `pfrac_to_sqrt_rational` |
 | `src/wigner_exact.c` | `wignernj_exact_t` struct and `wignernj_exact_to_*` conversion |
-| `src/wigner3j.c` | `wigner3j_exact()` + public `wigner3j_f/wigner3j/wigner3j_l` (and `wigner3j_q` when built with `BUILD_QUADMATH=ON`) |
+| `src/wigner3j.c` | `wigner3j_exact()` + public `wigner3j_f/wigner3j/wigner3j_l` (and `wigner3j_q` when built with `WIGNERNJ_BUILD_QUADMATH=ON`) |
 | `src/wigner6j.c` | `wigner6j_exact()` + public variants |
 | `src/wigner9j.c` | `wigner9j_exact()` (sum over k of three 6j exact-path products) + public variants |
 | `src/clebsch.c` | `clebsch_gordan*`: CG via 3j, formula `(-1)^(j1-j2+M) sqrt(2J+1) * 3j(j1,j2,J;m1,m2,-M)` |
@@ -82,8 +82,8 @@ Clebsch-Gordan, Racah W, and Fano X are thin wrappers over the Wigner symbols (C
 | `src/gaunt.c` | `gaunt*`: own exact pipeline — combined pfrac for [Δ]²·factorials·normalization, two Racah sums multiplied as bigints, then `÷sqrt(π)` at float step |
 | `src/real_ylm_in_complex_ylm.c` | `wignernj_real_ylm_in_complex_ylm*`: fills the column-major `(2l+1)×(2l+1)` unitary `C` for `S = C Y` under the same real-Y convention as `gaunt_real`; direct entry-by-entry fill of `±1`, `±1/√2`, `±i/√2` — no Racah sum, no factorials |
 | `include/wignernj.h` | Public C API — all functions, `_f`/`/`_l` precisions |
-| `include/wignernj_quadmath.h` | libquadmath API — requires `BUILD_QUADMATH=ON`; declares `_q` (`__float128`) variant of every public symbol |
-| `include/wignernj_mpfr.h` | MPFR API — requires `BUILD_MPFR=ON`; set precision on `rop` before calling |
+| `include/wignernj_quadmath.h` | libquadmath API — requires `WIGNERNJ_BUILD_QUADMATH=ON`; declares `_q` (`__float128`) variant of every public symbol |
+| `include/wignernj_mpfr.h` | MPFR API — requires `WIGNERNJ_BUILD_MPFR=ON`; set precision on `rop` before calling |
 | `include/wignernj.hpp` | C++11 header-only wrapper (links `wignernj`): `wignernj::symbol3j<T>()`, real-valued overloads, `std::invalid_argument` for non-half-integer inputs |
 | `src/fortran/wignernj_f90.F90` | Fortran module `wignernj`: raw `bind(c)` interfaces + `w3j/w6j/w9j/wcg/wracahw/wfanox/wgaunt/wgaunt_real` real-valued scalar wrappers and `wreal_ylm_in_complex_ylm(l, c_out)` matrix-filling subroutine; `_q` interfaces and `w3jq`/etc.\ wrappers plus `wreal_ylm_in_complex_ylmq` gated on `WIGNERNJ_HAVE_QUADMATH` |
 |  `src/python/wignernjmodule.c` | CPython extension `_wignernj`: parses int/float/Fraction, `precision=` kwarg |
@@ -129,7 +129,7 @@ These constraints apply to every change, not just to typical edits.
 
 - **Code and documentation must stay consistent.** Every concrete fact in the docs (function name, build option, file path, symbol family, byte size, j-limit, performance number, attribution) must match the current source. When a change touches a public surface — a renamed symbol, a new build option, a new public family — sweep `README.md`, `CHANGELOG.md`, `CLAUDE.md`, `docs/reference.md`, `examples/README.md`, the public-header docstrings, and the wrapper docs in the same PR; don't defer the doc fix to a later commit. Treat every doc claim as a hypothesis and verify against the live source before pushing.
 
-- **Run a full repository consistency audit before tagging a release.** Sweep every tracked file — sources, comments, public-header docstrings, every doc, every example, every test, every build-system / CI-config file. Audit by claim: every concrete fact is a hypothesis; verify against live source / build / CI / test output. The minimum coverage list: versions across `CMakeLists.txt` / `pyproject.toml` / `CHANGELOG.md`; public-symbol enumerations; build-option tables; factorial / sieve ceilings (`MAX_FACTORIAL_ARG`, `PRIME_SIEVE_LIMIT`); removed-symbol references; the CLAUDE.md "Module responsibilities" table; latent bugs in the diff against the previous tag. Past misses caught only by focused audits include `g_prime_index` listed in a CHANGELOG export-symbols entry after removal, `bench_compare.c` "siblings" claimed moved out of the repo when never tracked, `BUILD_FLINT=ON Python build path` (should have been `BUILD_PYTHON=ON`), the `wigner_warmup` entry inheriting a stale 19999 ceiling from a now-stale public-header docstring, and `src/primes.c` described as containing a Sieve of Eratosthenes when the runtime sieve was removed in 0.2.0.
+- **Run a full repository consistency audit before tagging a release.** Sweep every tracked file — sources, comments, public-header docstrings, every doc, every example, every test, every build-system / CI-config file. Audit by claim: every concrete fact is a hypothesis; verify against live source / build / CI / test output. The minimum coverage list: versions across `CMakeLists.txt` / `pyproject.toml` / `CHANGELOG.md`; public-symbol enumerations; build-option tables; factorial / sieve ceilings (`MAX_FACTORIAL_ARG`, `PRIME_SIEVE_LIMIT`); removed-symbol references; the CLAUDE.md "Module responsibilities" table; latent bugs in the diff against the previous tag. Past misses caught only by focused audits include `g_prime_index` listed in a CHANGELOG export-symbols entry after removal, `bench_compare.c` "siblings" claimed moved out of the repo when never tracked, `WIGNERNJ_BUILD_FLINT=ON Python build path` (should have been `WIGNERNJ_BUILD_PYTHON=ON`), the `wigner_warmup` entry inheriting a stale 19999 ceiling from a now-stale public-header docstring, and `src/primes.c` described as containing a Sieve of Eratosthenes when the runtime sieve was removed in 0.2.0.
 
 - **Amend `CHANGELOG.md` as part of every pull request.** The matching `### Added` / `### Changed` / `### Fixed` / `### Deprecated` / `### Removed` / `### Security` entry under `## [Unreleased]` lands in the same commit (or at least the same PR) as the code change it describes. Don't defer the CHANGELOG to a release-time housekeeping commit. Pure-internal refactors with no observable behaviour change can skip the CHANGELOG, but err on the side of including an entry when in doubt; anything that touches public headers, build options, supported toolchains, build instructions, or test infrastructure that contributors interact with should get one. Release tagging is then mechanical: rename `[Unreleased]` → `[X.Y.Z] – DATE`, add a fresh empty `[Unreleased]`, update the compare-link footnote.
 

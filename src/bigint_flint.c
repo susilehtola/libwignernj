@@ -2,7 +2,7 @@
  * Copyright (c) 2026 Susi Lehtola
  *
  * FLINT-backed implementation of the bigint API.  Selected by
- * -DBUILD_FLINT=ON; otherwise the schoolbook implementation in
+ * -DWIGNERNJ_BUILD_FLINT=ON; otherwise the schoolbook implementation in
  * src/bigint.c is used.  Both backends share the public bigint.h API
  * and produce bit-identical floating-point output, verified in CI.
  *

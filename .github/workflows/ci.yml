@@ -194,12 +194,12 @@ jobs:
         run: |
           cmake -B build \
             -DBUILD_SHARED_LIBS=${{ matrix.shared }} \
-            -DBUILD_FORTRAN=${{ matrix.fortran }} \
-            -DBUILD_MPFR=${{ matrix.mpfr }} \
-            -DBUILD_QUADMATH=${{ matrix.quadmath }} \
-            -DBUILD_FLINT=${{ matrix.flint }} \
-            -DBUILD_CXX_TESTS=ON \
-            -DBUILD_TESTS=ON
+            -DWIGNERNJ_BUILD_FORTRAN=${{ matrix.fortran }} \
+            -DWIGNERNJ_BUILD_MPFR=${{ matrix.mpfr }} \
+            -DWIGNERNJ_BUILD_QUADMATH=${{ matrix.quadmath }} \
+            -DWIGNERNJ_BUILD_FLINT=${{ matrix.flint }} \
+            -DWIGNERNJ_BUILD_CXX_TESTS=ON \
+            -DWIGNERNJ_BUILD_TESTS=ON
 
       - name: Build
         run: cmake --build build --parallel --verbose
@@ -230,10 +230,10 @@ jobs:
           CXX: g++
         run: |
           cmake -B build \
-            -DBUILD_FORTRAN=ON \
-            -DBUILD_MPFR=ON \
-            -DBUILD_CXX_TESTS=ON \
-            -DBUILD_TESTS=ON \
+            -DWIGNERNJ_BUILD_FORTRAN=ON \
+            -DWIGNERNJ_BUILD_MPFR=ON \
+            -DWIGNERNJ_BUILD_CXX_TESTS=ON \
+            -DWIGNERNJ_BUILD_TESTS=ON \
             -DCMAKE_C_FLAGS="-DBIGINT_FORCE_PORTABLE"
 
       - name: Build
@@ -269,10 +269,10 @@ jobs:
           CXX: g++
         run: |
           cmake -B build \
-            -DBUILD_FORTRAN=ON \
-            -DBUILD_MPFR=ON \
-            -DBUILD_CXX_TESTS=ON \
-            -DBUILD_TESTS=ON \
+            -DWIGNERNJ_BUILD_FORTRAN=ON \
+            -DWIGNERNJ_BUILD_MPFR=ON \
+            -DWIGNERNJ_BUILD_CXX_TESTS=ON \
+            -DWIGNERNJ_BUILD_TESTS=ON \
             -DCMAKE_C_FLAGS="-DBIGINT_NO_DIVQ"
 
       - name: Build
@@ -282,12 +282,12 @@ jobs:
         run: ctest --test-dir build --output-on-failure --parallel
 
   # ── Link-time optimisation off ────────────────────────────────────────────
-  # BUILD_LTO defaults to ON now that libwignernj is positioned as a
+  # WIGNERNJ_BUILD_LTO defaults to ON now that libwignernj is positioned as a
   # high-performance math library, so every other cell in this file
   # exercises the LTO-on dispatch.  This cell exists to keep the
   # LTO-off fallback compiling clean and producing identical test
   # output -- consumers who need a fast build (Debug, sanitizers,
-  # static analysis) reach for -DBUILD_LTO=OFF and we want that path
+  # static analysis) reach for -DWIGNERNJ_BUILD_LTO=OFF and we want that path
   # to stay green.
   build-no-lto:
     name: "Ubuntu / GCC / no LTO"
@@ -306,12 +306,12 @@ jobs:
           CXX: g++
         run: |
           cmake -B build \
-            -DBUILD_FORTRAN=ON \
-            -DBUILD_MPFR=ON \
-            -DBUILD_QUADMATH=ON \
-            -DBUILD_CXX_TESTS=ON \
-            -DBUILD_TESTS=ON \
-            -DBUILD_LTO=OFF
+            -DWIGNERNJ_BUILD_FORTRAN=ON \
+            -DWIGNERNJ_BUILD_MPFR=ON \
+            -DWIGNERNJ_BUILD_QUADMATH=ON \
+            -DWIGNERNJ_BUILD_CXX_TESTS=ON \
+            -DWIGNERNJ_BUILD_TESTS=ON \
+            -DWIGNERNJ_BUILD_LTO=OFF
 
       - name: Build
         run: cmake --build build --parallel --verbose
@@ -343,10 +343,10 @@ jobs:
           CXX: g++
         run: |
           cmake -B build \
-            -DBUILD_FORTRAN=ON \
-            -DBUILD_MPFR=ON \
-            -DBUILD_CXX_TESTS=ON \
-            -DBUILD_TESTS=ON \
+            -DWIGNERNJ_BUILD_FORTRAN=ON \
+            -DWIGNERNJ_BUILD_MPFR=ON \
+            -DWIGNERNJ_BUILD_CXX_TESTS=ON \
+            -DWIGNERNJ_BUILD_TESTS=ON \
             -DCMAKE_C_FLAGS="-DWIGNERNJ_FORCE_NO_TLS"
 
       - name: Build
@@ -404,11 +404,11 @@ jobs:
         run: |
           cmake -B build \
             -DBUILD_SHARED_LIBS=OFF \
-            -DBUILD_FORTRAN=OFF \
-            -DBUILD_MPFR=ON \
-            -DBUILD_CXX_TESTS=ON \
-            -DBUILD_TESTS=ON \
-            -DBUILD_LTO=OFF \
+            -DWIGNERNJ_BUILD_FORTRAN=OFF \
+            -DWIGNERNJ_BUILD_MPFR=ON \
+            -DWIGNERNJ_BUILD_CXX_TESTS=ON \
+            -DWIGNERNJ_BUILD_TESTS=ON \
+            -DWIGNERNJ_BUILD_LTO=OFF \
             -DCMAKE_C_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all" \
             -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-sanitize-recover=all" \
             -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
@@ -424,7 +424,7 @@ jobs:
   # suite, and upload the merged report to Codecov.io.  Kept as a separate
   # cell because --coverage slows tests by 2-3x and conflicts with the
   # sanitizer build's interception of mallocs.  We deliberately do NOT
-  # set BUILD_FLINT here: FLINT lives outside our source tree, would
+  # set WIGNERNJ_BUILD_FLINT here: FLINT lives outside our source tree, would
   # contribute no coverable lines, and would slow the run further.
   coverage:
     name: "Ubuntu / GCC / coverage"
@@ -447,13 +447,13 @@ jobs:
           CXX: g++
         run: |
           cmake -B build \
-            -DBUILD_FORTRAN=ON \
-            -DBUILD_MPFR=ON \
-            -DBUILD_QUADMATH=ON \
-            -DBUILD_PYTHON=ON \
-            -DBUILD_CXX_TESTS=ON \
-            -DBUILD_TESTS=ON \
-            -DBUILD_COVERAGE=ON
+            -DWIGNERNJ_BUILD_FORTRAN=ON \
+            -DWIGNERNJ_BUILD_MPFR=ON \
+            -DWIGNERNJ_BUILD_QUADMATH=ON \
+            -DWIGNERNJ_BUILD_PYTHON=ON \
+            -DWIGNERNJ_BUILD_CXX_TESTS=ON \
+            -DWIGNERNJ_BUILD_TESTS=ON \
+            -DWIGNERNJ_BUILD_COVERAGE=ON
 
       - name: Build
         run: cmake --build build --parallel
@@ -462,7 +462,7 @@ jobs:
         run: ctest --test-dir build --output-on-failure --parallel
 
       - name: Python tests
-        # Run pytest against the Python extension that BUILD_PYTHON+BUILD_COVERAGE
+        # Run pytest against the Python extension that WIGNERNJ_BUILD_PYTHON+WIGNERNJ_BUILD_COVERAGE
         # already produced under build/wignernj/, rather than letting setuptools
         # build a second uninstrumented copy.  Python's import order puts the
         # cwd ahead of PYTHONPATH, so the source-tree wignernj/__init__.py is
@@ -474,7 +474,7 @@ jobs:
           python -m pytest tests/python/ -v
 
       - name: Verify CMake-install .dist-info metadata
-        # The CMake BUILD_PYTHON path writes a PEP 376 / PEP 427
+        # The CMake WIGNERNJ_BUILD_PYTHON path writes a PEP 376 / PEP 427
         # .dist-info directory alongside _wignernj.so so that
         # `pip list`, `pip uninstall`, and importlib.metadata see the
         # CMake-installed package.  Stage the install into a temporary
@@ -555,10 +555,10 @@ jobs:
         shell: cmd
         run: |
           cmake -B build ^
-            -DBUILD_FORTRAN=OFF ^
-            -DBUILD_MPFR=OFF ^
-            -DBUILD_TESTS=ON ^
-            -DBUILD_CXX_TESTS=ON
+            -DWIGNERNJ_BUILD_FORTRAN=OFF ^
+            -DWIGNERNJ_BUILD_MPFR=OFF ^
+            -DWIGNERNJ_BUILD_TESTS=ON ^
+            -DWIGNERNJ_BUILD_CXX_TESTS=ON
 
       - name: Build
         run: cmake --build build --config Release --parallel --verbose
@@ -586,10 +586,10 @@ jobs:
         shell: cmd
         run: |
           cmake -B build ^
-            -DBUILD_FORTRAN=OFF ^
-            -DBUILD_MPFR=OFF ^
-            -DBUILD_TESTS=ON ^
-            -DBUILD_CXX_TESTS=ON
+            -DWIGNERNJ_BUILD_FORTRAN=OFF ^
+            -DWIGNERNJ_BUILD_MPFR=OFF ^
+            -DWIGNERNJ_BUILD_TESTS=ON ^
+            -DWIGNERNJ_BUILD_CXX_TESTS=ON
 
       - name: Build
         run: cmake --build build --config Release --parallel --verbose

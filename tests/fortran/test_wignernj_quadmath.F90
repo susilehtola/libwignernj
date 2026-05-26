@@ -3,7 +3,7 @@
 !
 ! Fortran test program for the wigner module's quadruple-precision
 ! convenience wrappers (real(real128)).  Built only when the C library
-! is configured with -DBUILD_QUADMATH=ON.
+! is configured with -DWIGNERNJ_BUILD_QUADMATH=ON.
 !
 ! Compile with -cpp; .F90 extension already enables the preprocessor in
 ! gfortran by default.

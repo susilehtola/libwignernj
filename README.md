@@ -53,16 +53,16 @@ CMake options:
 | Option | Default | Description |
 |---|---|---|
 | `BUILD_SHARED_LIBS` | `ON` | Shared library |
-| `BUILD_FORTRAN` | `ON` | Fortran interface |
-| `BUILD_TESTS` | `ON` | C/Fortran test suite |
-| `BUILD_CXX_TESTS` | `ON` | C++ header tests |
-| `BUILD_EXAMPLES` | `ON` | Build and run the language-binding example programs as ctest tests |
-| `BUILD_LTO` | `ON` | Link-time optimisation; auto-disabled if the toolchain does not support it (and on MSVC, where it conflicts with `WINDOWS_EXPORT_ALL_SYMBOLS`) |
-| `BUILD_PYTHON` | `OFF` | Python extension (dynamically linked against `libwignernj`) |
-| `BUILD_QUADMATH` | `OFF` | libquadmath / IEEE 754 binary128 (`__float128`) interface |
-| `BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface |
-| `BUILD_FLINT` | `OFF` | Use FLINT/GMP/MPFR for the bigint backend (instead of the in-tree schoolbook with Karatsuba) — sub-quadratic multiplication at large *j* via Toom-Cook / Schönhage--Strassen |
-| `BUILD_COVERAGE` | `OFF` | Build with `--coverage -O0` for lcov / Codecov (gcc, clang) |
+| `WIGNERNJ_BUILD_FORTRAN` | `ON` | Fortran interface |
+| `WIGNERNJ_BUILD_TESTS` | `ON` | C/Fortran test suite |
+| `WIGNERNJ_BUILD_CXX_TESTS` | `ON` | C++ header tests |
+| `WIGNERNJ_BUILD_EXAMPLES` | `ON` | Build and run the language-binding example programs as ctest tests |
+| `WIGNERNJ_BUILD_LTO` | `ON` | Link-time optimisation; auto-disabled if the toolchain does not support it (and on MSVC, where it conflicts with `WINDOWS_EXPORT_ALL_SYMBOLS`) |
+| `WIGNERNJ_BUILD_PYTHON` | `OFF` | Python extension (dynamically linked against `libwignernj`) |
+| `WIGNERNJ_BUILD_QUADMATH` | `OFF` | libquadmath / IEEE 754 binary128 (`__float128`) interface |
+| `WIGNERNJ_BUILD_MPFR` | `OFF` | MPFR arbitrary-precision interface |
+| `WIGNERNJ_BUILD_FLINT` | `OFF` | Use FLINT/GMP/MPFR for the bigint backend (instead of the in-tree schoolbook with Karatsuba) — sub-quadratic multiplication at large *j* via Toom-Cook / Schönhage--Strassen |
+| `WIGNERNJ_BUILD_COVERAGE` | `OFF` | Build with `--coverage -O0` for lcov / Codecov (gcc, clang) |
 
 A separate preprocessor switch `-DBIGINT_FORCE_PORTABLE` (passed via
 `CMAKE_C_FLAGS`) forces the multiword-integer back-end onto its pure-C99
@@ -124,7 +124,7 @@ void        wignernj_real_ylm_in_complex_ylm(int l, wignernj_cdouble_t *C_out);
 
 Each function is available in three precisions: `double` (no suffix), `float`
 (`_f`), and `long double` (`_l`).  When the library is built with
-`-DBUILD_QUADMATH=ON`, an additional `_q` variant returning `__float128`
+`-DWIGNERNJ_BUILD_QUADMATH=ON`, an additional `_q` variant returning `__float128`
 is exposed in `wignernj_quadmath.h` (see below).  Functions return 0 for
 symbols that vanish by selection rules; selection-rule violations are not
 errors.
@@ -133,7 +133,7 @@ Linking: `pkg-config --libs libwignernj` or `-lwignernj -lm`.
 
 ## libquadmath API
 
-Build with `-DBUILD_QUADMATH=ON` (requires a compiler with `__float128`
+Build with `-DWIGNERNJ_BUILD_QUADMATH=ON` (requires a compiler with `__float128`
 support: GCC, Clang, or Intel ICC/ICX on Linux/macOS; not Apple Clang or
 MSVC).  Include `wignernj_quadmath.h` in addition to `wignernj.h`.  Each
 coupling-coefficient routine gains a `_q` variant returning `__float128`
@@ -156,7 +156,7 @@ convenience wrappers `w3jq`, `w6jq`, `w9jq`, `wcgq`, `wracahwq`, `wgauntq`,
 
 ## MPFR API
 
-Build with `-DBUILD_MPFR=ON` (requires libmpfr).  Include `wignernj_mpfr.h` in
+Build with `-DWIGNERNJ_BUILD_MPFR=ON` (requires libmpfr).  Include `wignernj_mpfr.h` in
 addition to `wignernj.h`.  Set the output precision on `rop` via `mpfr_init2`
 before calling; the rounding mode is the last argument and may be any of the
 standard MPFR modes (`MPFR_RNDN`, `MPFR_RNDZ`, `MPFR_RNDD`, `MPFR_RNDU`,
@@ -210,7 +210,7 @@ double c = wignernj::cg(0.5, 0.5, 0.5, -0.5, 1.0, 0.0);
 // gauntreal, real_ylm_in_complex_ylm
 ```
 
-Link with `-lwignernj -lm` (and `-lmpfr` if `BUILD_MPFR=ON`).
+Link with `-lwignernj -lm` (and `-lmpfr` if `WIGNERNJ_BUILD_MPFR=ON`).
 
 ## Python API
 
@@ -266,7 +266,7 @@ call wreal_ylm_in_complex_ylm(1, C)
 Raw `bind(c)` interfaces using `2*j` integers are also available for all
 three precisions (the `long double` variants require gfortran or Cray
 Fortran), plus the `_q` (`real(real128)`) variants when the library is
-built with `BUILD_QUADMATH=ON`.
+built with `WIGNERNJ_BUILD_QUADMATH=ON`.
 
 Link with `-lwignernj_f03 -lwignernj -lm`.
 
@@ -341,7 +341,7 @@ repository root; GitHub's "Cite this repository" button reads it.
   C, C++, Fortran, and Python (`all_symbols.*`) plus focused per-topic
   demos that mirror across all four bindings (e.g. `real_basis_lz.*`
   building the orbital `l_z` matrix in the real-Y basis); all built
-  and run as ctest tests when `BUILD_EXAMPLES=ON` (the default).
+  and run as ctest tests when `WIGNERNJ_BUILD_EXAMPLES=ON` (the default).
 - `tools/` — prime-table and source-list generators run at build time
 - `docs/` — extended reference and the descriptor paper
 
