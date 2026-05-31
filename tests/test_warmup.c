@@ -11,6 +11,7 @@
  * allocations across a representative call mix, and asserts the count
  * is exactly zero.
  */
+#define _GNU_SOURCE
 #include "run_tests.h"
 #include "../include/wignernj.h"
 #include "../src/scratch.h"
@@ -26,7 +27,6 @@ int main(void)
 }
 #else
 
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>
