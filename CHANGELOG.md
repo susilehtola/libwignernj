@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Source distribution was missing every header file.**  The 0.6.1
+  sdist (and every prior release) shipped only the `.c` files listed
+  in `setup.py`'s `Extension(sources=...)` because no `MANIFEST.in`
+  was present, so a from-source `pip install wignernj` always failed
+  at the first `#include "bigint.h"` with `fatal error: 'bigint.h'
+  file not found`.  A new `MANIFEST.in` now adds `recursive-include
+  src *.h *.inc` and `recursive-include include *.h *.hpp` (plus the
+  top-level `LICENSE`, `README.md`, `CHANGELOG.md`, `CITATION.cff`),
+  and a new `python-sdist` job in `.github/workflows/ci.yml` builds
+  the sdist, installs it from the tarball into a clean venv with
+  `--no-binary :all:`, and runs the public-API smoke import.  The
+  per-push CI now catches `MANIFEST.in` / `setup.py` packaging
+  regressions before they reach PyPI.
+
 ### Added
 - PyPI wheels now cover CPython 3.14 in addition to 3.9 – 3.13
   (`CIBW_BUILD: cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*` in
