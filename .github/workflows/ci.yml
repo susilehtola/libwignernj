@@ -536,6 +536,40 @@ jobs:
       - name: Test
         run: python -m pytest tests/python/ -v
 
+  # ── sdist install smoke test ──────────────────────────────────────────────
+  # `pip install -e .` above uses the working tree, so it never notices
+  # files that are missing from the sdist (headers, .inc, etc.).
+  # Build the sdist, install it into a fresh venv with --no-binary, and
+  # run the public smoke import.  Catches MANIFEST.in / setup.py
+  # packaging regressions before they ship to PyPI.
+  python-sdist:
+    name: "Python sdist install"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Build sdist
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --sdist
+      - name: Install sdist in clean venv and smoke-test
+        # cd /tmp before importing: the repo root contains a
+        # `wignernj/` source package whose __init__.py has no
+        # compiled _wignernj.so next to it; left on sys.path[0], it
+        # shadows the venv-installed copy and the relative import
+        # of `._wignernj` fails.
+        run: |
+          python -m venv /tmp/sdist-venv
+          /tmp/sdist-venv/bin/pip install --no-binary :all: "$PWD"/dist/wignernj-*.tar.gz
+          cd /tmp && /tmp/sdist-venv/bin/python -c "
+          import wignernj
+          v = wignernj.wigner3j(2, 2, 2, 0, 0, 0)
+          assert abs(v - (-0.23904572186687872)) < 1e-15, v
+          print('sdist install OK; wigner3j(2,2,2;0,0,0) =', v)
+          "
+
   # ── Windows / MSVC (x86-64) ───────────────────────────────────────────────
   # Verifies that the library builds and the test suite passes under
   # Microsoft Visual C++ on x86-64.  MSVC has no __uint128_t, so the

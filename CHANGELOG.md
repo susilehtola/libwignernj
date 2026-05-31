@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] – 2026-05-31
+
+### Fixed
+- **Source distribution was missing every header file.**  The 0.6.1
+  sdist (and every prior release) shipped only the `.c` files listed
+  in `setup.py`'s `Extension(sources=...)` because no `MANIFEST.in`
+  was present, so a from-source `pip install wignernj` always failed
+  at the first `#include "bigint.h"` with `fatal error: 'bigint.h'
+  file not found`.  A new `MANIFEST.in` now adds `recursive-include
+  src *.h *.inc` and `recursive-include include *.h *.hpp` (plus the
+  top-level `LICENSE`, `README.md`, `CHANGELOG.md`, `CITATION.cff`),
+  and a new `python-sdist` job in `.github/workflows/ci.yml` builds
+  the sdist, installs it from the tarball into a clean venv with
+  `--no-binary :all:`, and runs the public-API smoke import.  The
+  per-push CI now catches `MANIFEST.in` / `setup.py` packaging
+  regressions before they reach PyPI.
+
 ### Added
 - PyPI wheels now cover CPython 3.14 in addition to 3.9 – 3.13
   (`CIBW_BUILD: cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*` in
@@ -17,6 +34,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   extension is exercised on the new interpreter before a release goes
   out.  Downstream consumers on Python 3.14 no longer need to fall
   back to an sdist build.
+- New weekly CI workflow `.github/workflows/check-python-wheels.yml`
+  (Mondays 05:00 UTC) that fetches the active CPython release set
+  from `https://endoflife.date/api/python.json` and checks each
+  currently-supported version (`releaseDate <= today < eol`) against
+  the `CIBW_BUILD` tags in `.github/workflows/publish-pypi.yml` and
+  the `Programming Language :: Python :: 3.X` trove classifiers in
+  `pyproject.toml`.  On any gap the workflow opens (or updates) a
+  tracking issue; it does not fail per-push CI, leaving the decision
+  to bump the wheel matrix to a deliberate patch-release.  Detection
+  logic lives in `tools/check_python_wheels.py` (pure standard
+  library; no extra build/CI dependencies).
 
 ### Changed
 - Internal refactor: extracted the "fold `sqrt(k)` for an integer `k`
@@ -35,6 +63,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   block into `gaunt_finish_mpfr`.  The complex-Y and real-Y Gaunt
   public functions now share these finishers; the per-precision π
   constants live in one place per precision.
+- `tests/test_warmup.c` now defines `_GNU_SOURCE` before any system
+  header is included, so `RTLD_NEXT` is visible on toolchains (NVHPC,
+  some older glibc header configurations) that strictly honour the
+  feature-test macros.  No public-API change; the test wraps the
+  libc allocator and forwards via `dlsym(RTLD_NEXT, "malloc")` to
+  count per-call allocations after `wignernj_warmup_to()`.
 
 ## [0.6.1] – 2026-05-26
 
@@ -671,7 +705,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and CPython extension module exposing the same routines.
 - BSD 3-Clause licence.
 
-[Unreleased]: https://github.com/susilehtola/libwignernj/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/susilehtola/libwignernj/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/susilehtola/libwignernj/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/susilehtola/libwignernj/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/susilehtola/libwignernj/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/susilehtola/libwignernj/compare/v0.4.2...v0.5.0
