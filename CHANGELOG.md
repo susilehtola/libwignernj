@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- New `github-release` job in `.github/workflows/publish-pypi.yml`
+  that runs after the PyPI publish job succeeds on every `v*` tag
+  push and creates the matching GitHub release.  Title is `Release
+  X.Y.Z`, body is the corresponding `[X.Y.Z]` section of
+  `CHANGELOG.md` extracted by the new
+  `tools/changelog_section.py`.  Backfilled the GitHub releases for
+  the historical `v0.1.0`, `v0.2.0`, `v0.6.0`, `v0.6.1`, and
+  `v0.6.2` tags so the GitHub releases page matches `git tag -l`.
+
 ## [0.6.2] – 2026-05-31
 
 ### Fixed
