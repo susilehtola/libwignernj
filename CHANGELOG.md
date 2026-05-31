@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- PyPI wheels now cover CPython 3.14 in addition to 3.9 – 3.13
+  (`CIBW_BUILD: cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*` in
+  `.github/workflows/publish-pypi.yml`).  The matching `Programming
+  Language :: Python :: 3.14` trove classifier is added to
+  `pyproject.toml`, and the per-push Python matrix in
+  `.github/workflows/ci.yml` is extended with a 3.14 cell so the
+  extension is exercised on the new interpreter before a release goes
+  out.  Downstream consumers on Python 3.14 no longer need to fall
+  back to an sdist build.
+
 ### Changed
 - Internal refactor: extracted the "fold `sqrt(k)` for an integer `k`
   into the exact-tuple's outer-sqrt argument" loop, previously

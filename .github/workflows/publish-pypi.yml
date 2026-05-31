@@ -2,7 +2,7 @@
 # Copyright (c) 2026 Susi Lehtola
 #
 # Build wheels + sdist with cibuildwheel and publish to PyPI on every
-# v*-tag push.  Wheels are produced for CPython 3.9 .. 3.13 on
+# v*-tag push.  Wheels are produced for CPython 3.9 .. 3.14 on
 # Linux x86_64 (manylinux + musllinux), Linux aarch64 (native runner),
 # macOS Apple Silicon, and Windows x86_64; the sdist is the canonical
 # fallback for any platform / interpreter not covered by a wheel.
@@ -50,11 +50,12 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.4
         env:
-          # Match the Python matrix already exercised by the
-          # per-push CI in ci.yml: 3.9, 3.11, 3.13.  cibuildwheel's
-          # default also adds 3.10 and 3.12 which is fine -- the
-          # extension is API-stable across CPython 3.9..3.13.
-          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-*"
+          # Cover every current CPython release.  ci.yml exercises a
+          # subset (3.9, 3.11, 3.13, 3.14) on every push; the wheel
+          # matrix below adds 3.10 and 3.12 to fill in the gaps so
+          # downstream consumers never have to fall back to an sdist
+          # build for a supported interpreter.
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
           # macOS Apple Silicon only; we do not build x86_64 macOS
           # wheels because the macOS hosted runner went arm64-only
           # in 2024 and the extension is small enough that universal2
