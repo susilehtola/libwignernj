@@ -17,6 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   extension is exercised on the new interpreter before a release goes
   out.  Downstream consumers on Python 3.14 no longer need to fall
   back to an sdist build.
+- New weekly CI workflow `.github/workflows/check-python-wheels.yml`
+  (Mondays 05:00 UTC) that fetches the active CPython release set
+  from `https://endoflife.date/api/python.json` and checks each
+  currently-supported version (`releaseDate <= today < eol`) against
+  the `CIBW_BUILD` tags in `.github/workflows/publish-pypi.yml` and
+  the `Programming Language :: Python :: 3.X` trove classifiers in
+  `pyproject.toml`.  On any gap the workflow opens (or updates) a
+  tracking issue; it does not fail per-push CI, leaving the decision
+  to bump the wheel matrix to a deliberate patch-release.  Detection
+  logic lives in `tools/check_python_wheels.py` (pure standard
+  library; no extra build/CI dependencies).
 
 ### Changed
 - Internal refactor: extracted the "fold `sqrt(k)` for an integer `k`

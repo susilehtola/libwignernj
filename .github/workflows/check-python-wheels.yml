@@ -1,0 +1,89 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026 Susi Lehtola
+#
+# Weekly check that the PyPI wheel matrix and the pyproject.toml trove
+# classifiers cover every currently-supported CPython release.
+#
+# Policy: every CPython 3.X with a `releaseDate <= today < eol` window
+# (per https://endoflife.date/api/python.json) must appear as
+#   - `cp3X-*` in CIBW_BUILD in .github/workflows/publish-pypi.yml
+#   - `Programming Language :: Python :: 3.X` in pyproject.toml
+#
+# When a new final release lands (CPython 3.15.0 ship day, etc.) this
+# workflow opens / updates a tracking issue rather than failing per-push
+# CI: cibuildwheel may not yet ship a build image for that interpreter,
+# and the right response is a deliberate patch-release update of
+# publish-pypi.yml + pyproject.toml.
+
+name: Check Python wheel coverage
+
+on:
+  schedule:
+    # Mondays at 05:00 UTC, an hour after the per-push arm64-Windows
+    # scheduled cell in ci.yml so the two slots do not collide.
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    name: Check wheel coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect missing CPython versions
+        id: detect
+        run: |
+          set -euo pipefail
+          curl -sSf https://endoflife.date/api/python.json -o python.json
+          python3 tools/check_python_wheels.py \
+              --eol-json    python.json \
+              --workflow    .github/workflows/publish-pypi.yml \
+              --pyproject   pyproject.toml \
+              --github-output "$GITHUB_OUTPUT"
+
+      - name: Open or update tracking issue
+        if: steps.detect.outputs.missing_wheel != '' || steps.detect.outputs.missing_classifier != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MISSING_WHEEL:      ${{ steps.detect.outputs.missing_wheel }}
+          MISSING_CLASSIFIER: ${{ steps.detect.outputs.missing_classifier }}
+        run: |
+          set -euo pipefail
+          title="Python wheel matrix is missing currently-supported CPython release(s)"
+          body=$(python3 -c '
+          import os
+          mw = os.environ.get("MISSING_WHEEL") or "(none)"
+          mc = os.environ.get("MISSING_CLASSIFIER") or "(none)"
+          print(f"""The weekly **Check Python wheel coverage** workflow found
+          currently-supported CPython release(s) that are not yet built
+          on every release tag.
+
+          - Missing from `CIBW_BUILD` in `.github/workflows/publish-pypi.yml`: `{mw}`
+          - Missing from trove classifiers in `pyproject.toml`: `{mc}`
+
+          Source list: https://endoflife.date/api/python.json
+          (cycles where `releaseDate <= today < eol`).
+
+          To resolve, add the missing `cp3XX-*` entries and the
+          `Programming Language :: Python :: 3.XX` classifiers, then
+          cut a patch release so the next PyPI publish covers the new
+          interpreter.  Confirm `cibuildwheel` ships a build image for
+          the new version before merging.
+
+          This issue was opened automatically; it will be updated
+          weekly while a gap remains.""".replace("\n          ", "\n"))
+          ')
+
+          existing=$(gh issue list --state open \
+                     --search "in:title \"$title\"" \
+                     --json number --jq '.[0].number' || true)
+          if [ -n "$existing" ]; then
+              gh issue edit "$existing" --body "$body"
+          else
+              gh issue create --title "$title" --body "$body"
+          fi
