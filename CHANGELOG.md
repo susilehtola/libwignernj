@@ -16,6 +16,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `tools/changelog_section.py`.  Backfilled the GitHub releases for
   the historical `v0.1.0`, `v0.2.0`, `v0.6.0`, `v0.6.1`, and
   `v0.6.2` tags so the GitHub releases page matches `git tag -l`.
+- **C++ `__float128` parity in `wignernj.hpp`.**  New header
+  `include/wignernj_quadmath.hpp` (installed alongside
+  `wignernj_quadmath.h` under `BUILD_QUADMATH=ON`) provides explicit
+  `__float128` specialisations of every `wignernj::symbol3j<T>()`,
+  `symbol6j<T>`, `symbol9j<T>`, `cg<T>`, `racahw<T>`, `fanox<T>`,
+  `gaunt<T>`, `gauntreal<T>` template, plus a non-template
+  `wignernj::real_ylm_in_complex_ylm(int, wignernj_cfloat128_t *)`
+  overload and a vector-returning `real_ylm_in_complex_ylm_q(int)`
+  helper.  Before this addition, the C++ wrapper exposed only
+  `float`/`double`/`long double`; quad-precision C++ callers had to
+  drop down to the C `_q` entry points, defeating the wrapper.  The
+  `std::complex<__float128>` form is not portable (libc++ does not
+  provide it) so the matrix overload takes the C-side
+  `wignernj_cfloat128_t *` type directly.
+- C, C++, and Fortran `quadmath` examples (`examples/c/quadmath.c`,
+  `examples/cpp/quadmath.cpp`, `examples/fortran/quadmath.F90`)
+  exercising the per-binding `__float128` / `real(real128)`
+  surfaces.  Each is registered as a ctest test under
+  `BUILD_QUADMATH=ON`.
+- C++ test `test_cpp` gained a `WIGNERNJ_HAVE_QUADMATH`-guarded
+  block verifying every new `__float128` specialisation against the
+  corresponding `long double` value within a long-double-ulp
+  tolerance, plus closed-form checks for 3j and `real_ylm_in_complex_ylm`.
 
 ## [0.6.2] – 2026-05-31
 

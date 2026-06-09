@@ -244,7 +244,9 @@ if(BUILD_QUADMATH)
     if(WIGNERNJ_QUADMATH_INCLUDE)
         target_include_directories(wignernj PUBLIC ${WIGNERNJ_QUADMATH_INCLUDE})
     endif()
-    install(FILES include/wignernj_quadmath.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(FILES include/wignernj_quadmath.h
+                  include/wignernj_quadmath.hpp
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
 # MPFR arbitrary-precision interface (optional)

@@ -4,6 +4,10 @@
 // Tests for the C++11 header-only wrapper (wignernj.hpp).
 
 #include "../include/wignernj.hpp"
+#ifdef WIGNERNJ_HAVE_QUADMATH
+#  include "../include/wignernj_quadmath.hpp"
+#  include <quadmath.h>
+#endif
 #include <cfloat>
 #include <cmath>
 #include <complex>
@@ -185,6 +189,97 @@ int main(void)
         CHECK_NEAR(C0[0].real(), 1.0, 1e-15);
         CHECK_ABS (C0[0].imag(), 0.0, 1e-300);
     }
+
+#ifdef WIGNERNJ_HAVE_QUADMATH
+    /* ── __float128 specialisations from wignernj_quadmath.hpp ──────────── */
+    {
+        /* Quad ulp tolerance: FLT128_EPSILON = 2^-112 ≈ 1.93e-34 */
+        const __float128 q_tol = 4.0Q * FLT128_EPSILON;
+
+        /* symbol3j<__float128>: closed form -1/sqrt(3). */
+        {
+            __float128 v   = wignernj::symbol3j<__float128>(2,2,0, 0,0,0);
+            __float128 ref = -1.0Q / sqrtq(3.0Q);
+            __float128 d   = fabsq(v - ref);
+            if (d <= q_tol * fabsq(ref)) ++g_pass;
+            else { ++g_fail; std::printf("FAIL %s:%d  quad symbol3j\n",
+                                        __FILE__, __LINE__); }
+        }
+
+        /* Real-valued (double-arg) overload at __float128: agrees with
+         * the integer-API specialisation to the last quad ulp. */
+        {
+            __float128 v1 = wignernj::symbol3j<__float128>(0.5, 0.5, 0.0,
+                                                          0.5,-0.5, 0.0);
+            __float128 v2 = wignernj::symbol3j<__float128>(1, 1, 0, 1,-1, 0);
+            if (v1 == v2) ++g_pass;
+            else { ++g_fail; std::printf("FAIL %s:%d  quad real-overload\n",
+                                        __FILE__, __LINE__); }
+        }
+
+        /* symbol6j, symbol9j, cg, racahw, fanox, gaunt, gauntreal:
+         * agree with long double specialisations within long-double ulps,
+         * since quad has strictly more bits than long double. */
+        #define CHECK_QUAD_AGAINST_LD(call_q, call_ld) do {                \
+            __float128 q   = (call_q);                                    \
+            __float128 ld  = (__float128)(call_ld);                       \
+            __float128 d   = fabsq(q - ld);                               \
+            __float128 sc  = fabsq(ld) > 1e-300Q ? fabsq(ld) : 1.0Q;      \
+            __float128 tol = 4.0Q * (__float128)LDBL_EPSILON;             \
+            if (d <= tol * sc) ++g_pass;                                  \
+            else { ++g_fail;                                              \
+                std::printf("FAIL %s:%d  %s\n",                           \
+                            __FILE__, __LINE__, #call_q); }               \
+        } while(0)
+
+        CHECK_QUAD_AGAINST_LD(
+            wignernj::symbol6j<__float128>(2,2,2, 2,2,2),
+            wignernj::symbol6j<long double>(2,2,2, 2,2,2));
+        CHECK_QUAD_AGAINST_LD(
+            wignernj::symbol9j<__float128>(1,1,2, 1,1,0, 2,2,2),
+            wignernj::symbol9j<long double>(1,1,2, 1,1,0, 2,2,2));
+        CHECK_QUAD_AGAINST_LD(
+            wignernj::cg<__float128>(1, 1, 1,-1, 2, 0),
+            wignernj::cg<long double>(1, 1, 1,-1, 2, 0));
+        CHECK_QUAD_AGAINST_LD(
+            wignernj::racahw<__float128>(2,2,0, 2,0,2),
+            wignernj::racahw<long double>(2,2,0, 2,0,2));
+        CHECK_QUAD_AGAINST_LD(
+            wignernj::fanox<__float128>(4,4,4, 4,4,4, 4,4,4),
+            wignernj::fanox<long double>(4,4,4, 4,4,4, 4,4,4));
+        CHECK_QUAD_AGAINST_LD(
+            wignernj::gaunt<__float128>(2,0, 2,0, 0,0),
+            wignernj::gaunt<long double>(2,0, 2,0, 0,0));
+        CHECK_QUAD_AGAINST_LD(
+            wignernj::gauntreal<__float128>(2,0, 2,0, 4,0),
+            wignernj::gauntreal<long double>(2,0, 2,0, 4,0));
+        #undef CHECK_QUAD_AGAINST_LD
+
+        /* real_ylm_in_complex_ylm non-template overload at l=1: same
+         * inv_sqrt2 entries as the C and Fortran tests. */
+        {
+            wignernj_cfloat128_t C[9];
+            wignernj::real_ylm_in_complex_ylm(1, C);
+            const __float128 *F = reinterpret_cast<const __float128 *>(C);
+            const __float128 inv_sqrt2 = 1.0Q / sqrtq(2.0Q);
+            __float128 d1 = fabsq(F[4] - inv_sqrt2);  /* re part, idx 4 */
+            __float128 d2 = fabsq(F[1] - inv_sqrt2);  /* im part, idx 1 */
+            __float128 d3 = fabsq(F[8] - 1.0Q);
+            if (d1 <= q_tol && d2 <= q_tol && d3 <= q_tol) ++g_pass;
+            else { ++g_fail; std::printf("FAIL %s:%d  quad real_ylm fill\n",
+                                        __FILE__, __LINE__); }
+        }
+
+        /* Vector-returning real_ylm_in_complex_ylm_q form. */
+        {
+            std::vector<wignernj_cfloat128_t> C =
+                wignernj::real_ylm_in_complex_ylm_q(1);
+            if (C.size() == 9) ++g_pass;
+            else { ++g_fail; std::printf("FAIL %s:%d  quad vector size\n",
+                                        __FILE__, __LINE__); }
+        }
+    }
+#endif
 
     int total = g_pass + g_fail;
     std::printf("%s: %d/%d tests passed\n",

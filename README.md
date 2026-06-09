@@ -154,6 +154,15 @@ convenience wrappers `w3jq`, `w6jq`, `w9jq`, `wcgq`, `wracahwq`, `wgauntq`,
 `wreal_ylm_in_complex_ylmq(l, c_out)` filling a
 `complex(c_float128_complex)` matrix.
 
+C++ callers get the same `wignernj::symbol3j<T>()` / `cg<T>()` / ...
+template surface at `__float128` by including `wignernj_quadmath.hpp`
+in addition to (or instead of) `wignernj.hpp`:
+
+```cpp
+#include "wignernj_quadmath.hpp"
+__float128 v = wignernj::symbol3j<__float128>(2, 2, 0, 0, 0, 0);
+```
+
 ## MPFR API
 
 Build with `-DBUILD_MPFR=ON` (requires libmpfr).  Include `wignernj_mpfr.h` in
