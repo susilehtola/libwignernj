@@ -552,6 +552,26 @@ The Fortran `wignernj` module exposes the same routines (and real-valued
 convenience wrappers `w3jq`, `w6jq`, `w9jq`, `wcgq`, `wracahwq`,
 `wgauntq`, `wgaunt_realq`) returning `real(real128)`.
 
+C++ callers get the same `wignernj::symbol3j<T>()` / `cg<T>()` / ...
+template surface at `T = __float128` by including `wignernj_quadmath.hpp`
+in addition to `wignernj.hpp`:
+
+```cpp
+#include "wignernj_quadmath.hpp"
+__float128 v = wignernj::symbol3j<__float128>(2, 2, 0, 0, 0, 0);
+```
+
+`std::complex<__float128>` is not portable across standard libraries
+(libc++ does not provide it), so the real-to-complex Y_lm basis-matrix
+overload takes the C-side `wignernj_cfloat128_t *` directly:
+
+```cpp
+wignernj_cfloat128_t C[(2*l+1)*(2*l+1)];
+wignernj::real_ylm_in_complex_ylm(l, C);
+// or vector form:
+std::vector<wignernj_cfloat128_t> Cv = wignernj::real_ylm_in_complex_ylm_q(l);
+```
+
 Results are accurate to within 2 ulp at quad precision; the conversion
 path Horner-evaluates the top three 64-bit words of the bigint in
 `__float128` arithmetic, feeding 192 input bits into a 113-bit

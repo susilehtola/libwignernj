@@ -31,6 +31,19 @@ diagonal complex-basis form via the similarity transform
 All four reproduce the textbook `l_z = ((0,0,+i),(0,0,0),(−i,0,0))`
 at l = 1 with Hermiticity residual 0.
 
+When libwignernj is built with `-DBUILD_QUADMATH=ON`, an additional
+`quadmath` demo in each of C, C++, and Fortran exercises the
+`__float128` / `real(real128)` (binary128) precision surface:
+
+| Language | File                              | API surface                                |
+|----------|-----------------------------------|--------------------------------------------|
+| C        | `c/quadmath.c`                    | `#include "wignernj_quadmath.h"`            |
+| C++      | `cpp/quadmath.cpp`                | `#include "wignernj_quadmath.hpp"`          |
+| Fortran  | `fortran/quadmath.F90`            | `use wignernj` (`w3jq`/`w6jq`/… wrappers)   |
+
+Python has no native `__float128`, so no parallel Python quadmath demo
+ships.
+
 ## Building and running from this source tree
 
 The examples are built as part of the standard CMake build whenever

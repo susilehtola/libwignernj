@@ -28,6 +28,15 @@ target_include_directories(example_real_basis_lz PRIVATE
     ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME example_real_basis_lz COMMAND example_real_basis_lz)
 
+# __float128 / libquadmath demo (requires BUILD_QUADMATH=ON).
+if(BUILD_QUADMATH)
+    add_executable(example_quadmath_c c/quadmath.c)
+    target_link_libraries(example_quadmath_c PRIVATE wignernj ${LIBM_LINK})
+    target_include_directories(example_quadmath_c PRIVATE
+        ${CMAKE_SOURCE_DIR}/include)
+    add_test(NAME example_quadmath_c COMMAND example_quadmath_c)
+endif()
+
 # ── C++ example ──────────────────────────────────────────────────────────
 # Enable CXX if it isn't already.  tests/CMakeLists.txt enables it under
 # BUILD_CXX_TESTS only when an actual CXX compiler is present, so we
@@ -65,6 +74,23 @@ if(BUILD_CXX_TESTS)
             ${CMAKE_SOURCE_DIR}/include)
         add_test(NAME example_real_basis_lz_cpp
             COMMAND example_real_basis_lz_cpp)
+
+        # __float128 / libquadmath C++ demo (requires BUILD_QUADMATH=ON).
+        # CXX_EXTENSIONS stays ON here: __float128 itself is a GCC
+        # extension, and <quadmath.h> macros (FLT128_EPSILON, ...) expand
+        # to `Q`-suffixed literals that strict -std=c++11 rejects.
+        if(BUILD_QUADMATH)
+            add_executable(example_quadmath_cpp cpp/quadmath.cpp)
+            set_target_properties(example_quadmath_cpp PROPERTIES
+                CXX_STANDARD          11
+                CXX_STANDARD_REQUIRED ON
+                CXX_EXTENSIONS        ON)
+            target_link_libraries(example_quadmath_cpp
+                PRIVATE wignernj ${LIBM_LINK})
+            target_include_directories(example_quadmath_cpp PRIVATE
+                ${CMAKE_SOURCE_DIR}/include)
+            add_test(NAME example_quadmath_cpp COMMAND example_quadmath_cpp)
+        endif()
     else()
         message(STATUS "C++ compiler not found -- skipping example_cpp")
     endif()
@@ -83,6 +109,19 @@ if(BUILD_FORTRAN)
         PRIVATE wignernj_f03 wignernj ${LIBM_LINK})
     add_test(NAME example_real_basis_lz_fortran
         COMMAND example_real_basis_lz_fortran)
+
+    # __float128 / libquadmath Fortran demo (requires BUILD_QUADMATH=ON).
+    # The .F90 source preprocesses on WIGNERNJ_HAVE_QUADMATH so a build
+    # without the macro compiles to a no-op program instead of failing.
+    if(BUILD_QUADMATH)
+        add_executable(example_quadmath_fortran fortran/quadmath.F90)
+        target_link_libraries(example_quadmath_fortran
+            PRIVATE wignernj_f03 wignernj ${LIBM_LINK})
+        target_compile_definitions(example_quadmath_fortran
+            PRIVATE WIGNERNJ_HAVE_QUADMATH)
+        add_test(NAME example_quadmath_fortran
+            COMMAND example_quadmath_fortran)
+    endif()
 endif()
 
 # ── Python example ───────────────────────────────────────────────────────
