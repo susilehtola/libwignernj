@@ -48,7 +48,7 @@ Functions exposed: ``wigner3j``, ``wigner6j``, ``wigner9j``,
 ``clebsch_gordan``, ``racah_w``, ``fano_x``, ``gaunt``, ``gaunt_real``,
 ``real_ylm_in_complex_ylm``.
 """
-__version__ = "0.6.2"
+__version__ = "0.7.0"
 
 from ._wignernj import (
     wigner3j,
