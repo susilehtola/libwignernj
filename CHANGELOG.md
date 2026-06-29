@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] – 2026-06-29
+
 ### Changed
 - **All project-specific CMake options are now prefixed with
   `WIGNERNJ_`** so that consumers who pull libwignernj in via
