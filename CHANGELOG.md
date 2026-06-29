@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **`precision='longdouble'` from the CPython wrapper.**  The keyword
+  dispatched to the underlying `wigner*_l` C entry points so the
+  internal evaluation was carried out in long double, but the result
+  was ultimately boxed through `PyFloat_FromDouble`, which truncates
+  back to C `double` — the extra precision was silently lost at the
+  Python boundary.  Rather than ship a documented workaround, the
+  option has been removed: `precision=` now accepts only `'float'`
+  and `'double'`, and passing `'longdouble'` raises `ValueError`
+  with a transition message pointing the caller at the C `*_q`
+  (libquadmath, IEEE 754 binary128) or `*_mpfr` (arbitrary
+  precision) routines, callable from Python via `ctypes` / `cffi`.
+  The same reasoning rules out a hypothetical `'quad'` option, so
+  none is offered.  Breaking change for downstream callers that
+  passed `precision='longdouble'`; they were already getting double
+  precision under the hood, so the value returned is unchanged —
+  only the API surface narrows.
+
 ## [0.7.0] – 2026-06-11
 
 ### Added

@@ -71,9 +71,13 @@ class TestWigner3j:
         v = wigner3j(1, 1, 0, 0, 0, 0, precision='float')
         assert near(v, -1.0/math.sqrt(3.0), rtol=1e-6)
 
-    def test_precision_long_double(self):
-        v = wigner3j(1, 1, 0, 0, 0, 0, precision='longdouble')
-        assert near(v, -1.0/math.sqrt(3.0))
+    def test_precision_longdouble_removed(self):
+        # precision='longdouble' was removed in 0.8.0 because CPython's
+        # float is a C double and the extra precision was silently lost
+        # at the Python boundary. It now raises ValueError with a message
+        # pointing the caller at the C *_q or *_mpfr routines.
+        with pytest.raises(ValueError, match='longdouble'):
+            wigner3j(1, 1, 0, 0, 0, 0, precision='longdouble')
 
     def test_invalid_half_integer(self):
         with pytest.raises((ValueError, TypeError)):
@@ -292,8 +296,6 @@ class TestGauntReal:
                                precision='float'),  ref, rtol=1e-6)
         assert near(gaunt_real(1, 0, 1, 0, 2, 0,
                                precision='double'), ref)
-        assert near(gaunt_real(1, 0, 1, 0, 2, 0,
-                               precision='longdouble'), ref)
 
 
 # ── real_ylm_in_complex_ylm ──────────────────────────────────────────────────
@@ -330,16 +332,14 @@ class TestRealYlmInComplexYlm:
                     assert near_abs(acc.imag, 0.0,      atol=1e-14)
 
     def test_precision_keyword(self):
-        # All three precisions return the same Python-complex matrix.
+        # Both supported precisions return the same Python-complex matrix
+        # within the tolerance of binary32 vs binary64.
         C_d = real_ylm_in_complex_ylm(1, precision='double')
         C_f = real_ylm_in_complex_ylm(1, precision='float')
-        C_l = real_ylm_in_complex_ylm(1, precision='longdouble')
         for i in range(3):
             for j in range(3):
                 assert near_abs(C_f[i][j].real, C_d[i][j].real, atol=5e-7)
                 assert near_abs(C_f[i][j].imag, C_d[i][j].imag, atol=5e-7)
-                assert near_abs(C_l[i][j].real, C_d[i][j].real, atol=1e-15)
-                assert near_abs(C_l[i][j].imag, C_d[i][j].imag, atol=1e-15)
 
     def test_negative_l_raises(self):
         with pytest.raises(ValueError):
