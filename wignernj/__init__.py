@@ -7,9 +7,16 @@ All functions accept angular momentum arguments as integers, floats
 (half-integers), or fractions.Fraction objects.  An optional keyword
 argument ``precision`` selects the output type:
 
-  'float'      -- single precision (~7 digits)
-  'double'     -- double precision (~15 digits, default)
-  'longdouble' -- extended/quad precision where available
+  'float'  -- single precision (~7 digits)
+  'double' -- double precision (~15 digits, default)
+
+CPython's built-in ``float`` is a C ``double``, and no native CPython
+container exists for binary128 or arbitrary precision, so the Python
+wrapper does not offer a ``'longdouble'`` or ``'quad'`` option: either
+would have to box through a Python ``float`` and silently lose the
+extra precision.  Callers who need higher-than-double precision should
+call the C ``*_q`` (libquadmath, IEEE 754 binary128) or ``*_mpfr``
+(arbitrary precision) routines directly via ``ctypes`` or ``cffi``.
 
 Returns 0.0 if selection rules are violated (not an error).
 

@@ -5,8 +5,14 @@
  * Exposes wigner3j, wigner6j, wigner9j, clebsch_gordan, racah_w, fano_x, gaunt.
  *
  * Each function accepts integer, float (half-integer), or fractions.Fraction
- * arguments.  An optional keyword argument precision={'float','double',
- * 'longdouble'} selects the output precision (default: 'double').
+ * arguments.  An optional keyword argument precision={'float','double'}
+ * selects the output precision (default: 'double').  CPython's built-in
+ * float is a C double, and no native CPython container exists for any
+ * wider IEEE 754 type, so no 'longdouble' or 'quad' option is offered:
+ * either would have to box through PyFloat_FromDouble and silently lose
+ * the extra precision.  Callers who need higher-than-double precision
+ * should call the C *_q (libquadmath, IEEE 754 binary128) or *_mpfr
+ * (arbitrary precision) routines directly via ctypes/cffi.
  */
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
@@ -62,34 +68,37 @@ static int parse_half_int(PyObject *obj, int *out, const char *name)
 
 /* ── shared result builder ─────────────────────────────────────────────── */
 
-typedef enum { PREC_FLOAT, PREC_DOUBLE, PREC_LONGDOUBLE } Precision;
+typedef enum { PREC_FLOAT, PREC_DOUBLE } Precision;
 
 static Precision parse_precision(PyObject *prec_obj)
 {
     if (!prec_obj || prec_obj == Py_None) return PREC_DOUBLE;
     const char *s = PyUnicode_AsUTF8(prec_obj);
     if (!s) return (Precision)-1;  /* TypeError already set by PyUnicode_AsUTF8 */
-    if (strcmp(s, "float")      == 0) return PREC_FLOAT;
-    if (strcmp(s, "double")     == 0) return PREC_DOUBLE;
-    if (strcmp(s, "longdouble") == 0) return PREC_LONGDOUBLE;
+    if (strcmp(s, "float")  == 0) return PREC_FLOAT;
+    if (strcmp(s, "double") == 0) return PREC_DOUBLE;
+    if (strcmp(s, "longdouble") == 0) {
+        PyErr_SetString(PyExc_ValueError,
+            "wigner: precision='longdouble' was removed in 0.8.0 because"
+            " CPython's float is a C double and the extra precision"
+            " was silently lost at the Python boundary. The same applies"
+            " to libquadmath / binary128 and so no 'quad' option is"
+            " offered either. Call the C *_q or *_mpfr routines via"
+            " ctypes/cffi for higher precision.");
+        return (Precision)-1;
+    }
     PyErr_SetString(PyExc_ValueError,
-        "wigner: precision must be 'float', 'double', or 'longdouble'");
+        "wigner: precision must be 'float' or 'double'");
     return (Precision)-1;
 }
 
-static PyObject *make_result(long double val, Precision prec)
+static PyObject *make_result(double val, Precision prec)
 {
     switch (prec) {
-    case PREC_FLOAT:      return PyFloat_FromDouble((double)(float)val);
-    case PREC_DOUBLE:     return PyFloat_FromDouble((double)val);
-    case PREC_LONGDOUBLE: {
-#ifdef Py_HAS_NUMPY
-        /* Would use np.longdouble — skip for portability */
-#endif
-        return PyFloat_FromDouble((double)val);
+    case PREC_FLOAT:  return PyFloat_FromDouble((double)(float)val);
+    case PREC_DOUBLE: return PyFloat_FromDouble(val);
     }
-    }
-    return PyFloat_FromDouble((double)val);
+    return PyFloat_FromDouble(val);
 }
 
 /* ── wigner3j ──────────────────────────────────────────────────────────── */
@@ -112,11 +121,12 @@ static const char wigner3j_doc[] =
     "m1, m2, m3 : int, float, or fractions.Fraction\n"
     "    Magnetic projection quantum numbers.  Same type-acceptance\n"
     "    rules as the j_i.\n"
-    "precision : {'float', 'double', 'longdouble'}, optional\n"
+    "precision : {'float', 'double'}, optional\n"
     "    IEEE 754 binary precision of the returned value.  Default\n"
-    "    'double' (binary64).  'float' returns binary32; 'longdouble'\n"
-    "    returns the platform's extended type (binary80 on x86-64,\n"
-    "    binary128 on aarch64/POWER, otherwise the same as 'double').\n"
+    "    'double' (binary64).  'float' returns binary32.  Higher\n"
+    "    precisions are not offered because CPython's float maps to a\n"
+    "    C double; use the C *_q or *_mpfr routines via ctypes/cffi\n"
+    "    for binary128 / arbitrary precision.\n"
     "\n"
     "Returns\n"
     "-------\n"
@@ -129,7 +139,7 @@ static const char wigner3j_doc[] =
     "------\n"
     "ValueError\n"
     "    If any argument is not a half-integer, or if `precision` is\n"
-    "    not one of 'float', 'double', 'longdouble'.\n"
+    "    not one of 'float', 'double'.\n"
     "TypeError\n"
     "    If any argument is not int, float, or Fraction.\n"
     "\n"
@@ -167,7 +177,7 @@ static PyObject *py_wigner3j(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
     prec = parse_precision(prec_obj);
     if ((int)prec < 0) return NULL;
-    return make_result(wigner3j_l(tj1,tj2,tj3,tm1,tm2,tm3), prec);
+    return make_result(wigner3j(tj1,tj2,tj3,tm1,tm2,tm3), prec);
 }
 
 /* ── wigner6j ──────────────────────────────────────────────────────────── */
@@ -188,7 +198,7 @@ static const char wigner6j_doc[] =
     "    The four triangle conditions (j1 j2 j3), (j1 j5 j6),\n"
     "    (j4 j2 j6), (j4 j5 j3) must hold simultaneously for a\n"
     "    non-vanishing result.\n"
-    "precision : {'float', 'double', 'longdouble'}, optional\n"
+    "precision : {'float', 'double'}, optional\n"
     "    IEEE 754 binary precision of the returned value.  Default\n"
     "    'double'.\n"
     "\n"
@@ -222,7 +232,7 @@ static PyObject *py_wigner6j(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
     prec = parse_precision(prec_obj);
     if ((int)prec < 0) return NULL;
-    return make_result(wigner6j_l(tj1,tj2,tj3,tj4,tj5,tj6), prec);
+    return make_result(wigner6j(tj1,tj2,tj3,tj4,tj5,tj6), prec);
 }
 
 /* ── wigner9j ──────────────────────────────────────────────────────────── */
@@ -248,7 +258,7 @@ static const char wigner9j_doc[] =
     "    a float (e.g. ``0.5``) or ``Fraction(1, 2)`` for half-integer\n"
     "    j.  Equal-j ceiling is j <= 5004 with the default-build prime\n"
     "    table; the per-symbol cost scales as O(j^4).\n"
-    "precision : {'float', 'double', 'longdouble'}, optional\n"
+    "precision : {'float', 'double'}, optional\n"
     "    IEEE 754 binary precision of the returned value.  Default\n"
     "    'double'.\n"
     "\n"
@@ -282,7 +292,7 @@ static PyObject *py_wigner9j(PyObject *self, PyObject *args, PyObject *kwargs)
     prec = parse_precision(prec_obj);
     if ((int)prec < 0) return NULL;
     return make_result(
-        wigner9j_l(t[0],t[1],t[2],t[3],t[4],t[5],t[6],t[7],t[8]), prec);
+        wigner9j(t[0],t[1],t[2],t[3],t[4],t[5],t[6],t[7],t[8]), prec);
 }
 
 /* ── clebsch_gordan ────────────────────────────────────────────────────── */
@@ -308,7 +318,7 @@ static const char clebsch_gordan_doc[] =
     "J, M : int, float, or fractions.Fraction\n"
     "    Total angular momentum and projection of the coupled state.\n"
     "    M must equal m1 + m2 for a non-vanishing result.\n"
-    "precision : {'float', 'double', 'longdouble'}, optional\n"
+    "precision : {'float', 'double'}, optional\n"
     "    IEEE 754 binary precision of the returned value.  Default\n"
     "    'double'.\n"
     "\n"
@@ -344,7 +354,7 @@ static PyObject *py_clebsch_gordan(PyObject *self, PyObject *args,
         return NULL;
     prec = parse_precision(prec_obj);
     if ((int)prec < 0) return NULL;
-    return make_result(clebsch_gordan_l(tj1,tm1,tj2,tm2,tJ,tM), prec);
+    return make_result(clebsch_gordan(tj1,tm1,tj2,tm2,tJ,tM), prec);
 }
 
 /* ── racah_w ───────────────────────────────────────────────────────────── */
@@ -364,7 +374,7 @@ static const char racah_w_doc[] =
     "    Angular-momentum quantum numbers.  Pass an int for integer j,\n"
     "    a float (e.g. ``0.5``) or ``Fraction(1, 2)`` for half-integer\n"
     "    j.  All four triangles of the underlying 6j must hold.\n"
-    "precision : {'float', 'double', 'longdouble'}, optional\n"
+    "precision : {'float', 'double'}, optional\n"
     "    IEEE 754 binary precision of the returned value.  Default\n"
     "    'double'.\n"
     "\n"
@@ -396,7 +406,7 @@ static PyObject *py_racah_w(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
     prec = parse_precision(prec_obj);
     if ((int)prec < 0) return NULL;
-    return make_result(racah_w_l(tj1,tj2,tJ,tj3,tj12,tj23), prec);
+    return make_result(racah_w(tj1,tj2,tJ,tj3,tj12,tj23), prec);
 }
 
 /* ── fano_x ────────────────────────────────────────────────────────────── */
@@ -421,7 +431,7 @@ static const char fano_x_doc[] =
     "    as the underlying 9j.  Pass an int for integer j, a float or\n"
     "    Fraction for half-integer j.  Equal-j ceiling is j <= 5004\n"
     "    (delegates to the 9j pipeline; per-symbol cost O(j^4)).\n"
-    "precision : {'float', 'double', 'longdouble'}, optional\n"
+    "precision : {'float', 'double'}, optional\n"
     "    IEEE 754 binary precision of the returned value.  Default\n"
     "    'double'.\n"
     "\n"
@@ -457,7 +467,7 @@ static PyObject *py_fano_x(PyObject *self, PyObject *args, PyObject *kwargs)
     prec = parse_precision(prec_obj);
     if ((int)prec < 0) return NULL;
     return make_result(
-        fano_x_l(t[0],t[1],t[2],t[3],t[4],t[5],t[6],t[7],t[8]), prec);
+        fano_x(t[0],t[1],t[2],t[3],t[4],t[5],t[6],t[7],t[8]), prec);
 }
 
 /* ── gaunt ─────────────────────────────────────────────────────────────── */
@@ -487,7 +497,7 @@ static const char gaunt_doc[] =
     "    Magnetic projections.  Must satisfy m1 + m2 + m3 = 0 and\n"
     "    |m_i| <= l_i for a non-vanishing result.  l1 + l2 + l3 must\n"
     "    be even.\n"
-    "precision : {'float', 'double', 'longdouble'}, optional\n"
+    "precision : {'float', 'double'}, optional\n"
     "    IEEE 754 binary precision of the returned value.  Default\n"
     "    'double'.\n"
     "\n"
@@ -526,7 +536,7 @@ static PyObject *py_gaunt(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
     prec = parse_precision(prec_obj);
     if ((int)prec < 0) return NULL;
-    return make_result(gaunt_l(tl1,tm1,tl2,tm2,tl3,tm3), prec);
+    return make_result(gaunt(tl1,tm1,tl2,tm2,tl3,tm3), prec);
 }
 
 /* ── gaunt_real ────────────────────────────────────────────────────────── */
@@ -558,7 +568,7 @@ static const char gaunt_real_doc[] =
     "    Signed integer indices selecting between cosine-type (m > 0),\n"
     "    sine-type (m < 0), or the unique m = 0 harmonic.  Must\n"
     "    satisfy |m_i| <= l_i.\n"
-    "precision : {'float', 'double', 'longdouble'}, optional\n"
+    "precision : {'float', 'double'}, optional\n"
     "    IEEE 754 binary precision of the returned value.  Default\n"
     "    'double'.\n"
     "\n"
@@ -594,7 +604,7 @@ static PyObject *py_gaunt_real(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
     prec = parse_precision(prec_obj);
     if ((int)prec < 0) return NULL;
-    return make_result(gaunt_real_l(tl1,tm1,tl2,tm2,tl3,tm3), prec);
+    return make_result(gaunt_real(tl1,tm1,tl2,tm2,tl3,tm3), prec);
 }
 
 /* ── real_ylm_in_complex_ylm ─────────────────────────────────────────────────── */
@@ -622,13 +632,11 @@ static const char real_ylm_in_complex_ylm_doc[] =
     "----------\n"
     "l : int\n"
     "    Non-negative integer orbital angular momentum.\n"
-    "precision : {'float', 'double', 'longdouble'}, optional\n"
+    "precision : {'float', 'double'}, optional\n"
     "    IEEE 754 binary precision used internally for the 1/sqrt(2)\n"
     "    entries.  Default 'double'.  The Python `complex` returned to\n"
     "    the caller is always backed by a C `double` pair, so 'float'\n"
-    "    rounds to binary32 then promotes back to binary64 and\n"
-    "    'longdouble' is identical to 'double' on toolchains where\n"
-    "    long double = double.\n"
+    "    rounds to binary32 then promotes back to binary64.\n"
     "\n"
     "Returns\n"
     "-------\n"
@@ -684,16 +692,11 @@ static PyObject *py_real_ylm_in_complex_ylm(PyObject *self, PyObject *args,
     const size_t nflat = (size_t)dim * (size_t)dim;
     double *buf_d = NULL;
     float  *buf_f = NULL;
-    long double *buf_l = NULL;
 
     if (prec == PREC_FLOAT) {
         buf_f = (float *)PyMem_Malloc(2 * nflat * sizeof(float));
         if (!buf_f) return PyErr_NoMemory();
         wignernj_real_ylm_in_complex_ylm_f(l, (wignernj_cfloat_t *)buf_f);
-    } else if (prec == PREC_LONGDOUBLE) {
-        buf_l = (long double *)PyMem_Malloc(2 * nflat * sizeof(long double));
-        if (!buf_l) return PyErr_NoMemory();
-        wignernj_real_ylm_in_complex_ylm_l(l, (wignernj_cldouble_t *)buf_l);
     } else {
         buf_d = (double *)PyMem_Malloc(2 * nflat * sizeof(double));
         if (!buf_d) return PyErr_NoMemory();
@@ -715,9 +718,6 @@ static PyObject *py_real_ylm_in_complex_ylm(PyObject *self, PyObject *args,
             if (prec == PREC_FLOAT) {
                 re = (double)buf_f[slot];
                 im = (double)buf_f[slot + 1];
-            } else if (prec == PREC_LONGDOUBLE) {
-                re = (double)buf_l[slot];
-                im = (double)buf_l[slot + 1];
             } else {
                 re = buf_d[slot];
                 im = buf_d[slot + 1];
@@ -731,7 +731,6 @@ static PyObject *py_real_ylm_in_complex_ylm(PyObject *self, PyObject *args,
 fail:
     PyMem_Free(buf_f);
     PyMem_Free(buf_d);
-    PyMem_Free(buf_l);
     return outer;
 }
 
