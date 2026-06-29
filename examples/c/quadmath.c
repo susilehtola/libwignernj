@@ -9,7 +9,7 @@
  * Exits 0 on success, non-zero if any computed value disagrees with its
  * reference by more than 4 * FLT128_EPSILON of the reference.
  *
- * Requires libwignernj built with -DBUILD_QUADMATH=ON.
+ * Requires libwignernj built with -DWIGNERNJ_BUILD_QUADMATH=ON.
  *
  * Build (out-of-tree, against an installed libwignernj):
  *     cc -o quadmath_c quadmath.c -lwignernj -lquadmath -lm

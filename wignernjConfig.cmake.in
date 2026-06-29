@@ -6,7 +6,7 @@
 # Components (optional):
 #   - "Fortran"  Fortran 90 interface (target wignernj::wignernj_f03).
 #                Only present when the upstream build was configured with
-#                BUILD_FORTRAN=ON and a Fortran compiler was found.
+#                WIGNERNJ_BUILD_FORTRAN=ON and a Fortran compiler was found.
 #
 # Typical use:
 #

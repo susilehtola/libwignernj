@@ -35,12 +35,12 @@ BUILD="$WORK/build"
 PREFIX="$WORK/install"
 DOWN="$WORK/downstream"
 
-echo "=== 1. Build & install libwignernj (BUILD_SHARED_LIBS=$SHARED, BUILD_FORTRAN=$WITH_FORTRAN) ==="
+echo "=== 1. Build & install libwignernj (BUILD_SHARED_LIBS=$SHARED, WIGNERNJ_BUILD_FORTRAN=$WITH_FORTRAN) ==="
 cmake -S "$SOURCE_DIR" -B "$BUILD" \
       -DCMAKE_INSTALL_PREFIX="$PREFIX" \
       -DBUILD_SHARED_LIBS=$SHARED \
-      -DBUILD_FORTRAN=$WITH_FORTRAN \
-      -DBUILD_TESTS=OFF -DBUILD_CXX_TESTS=OFF
+      -DWIGNERNJ_BUILD_FORTRAN=$WITH_FORTRAN \
+      -DWIGNERNJ_BUILD_TESTS=OFF -DWIGNERNJ_BUILD_CXX_TESTS=OFF
 cmake --build "$BUILD" --parallel --verbose
 cmake --install "$BUILD"
 

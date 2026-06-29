@@ -28,8 +28,8 @@ target_include_directories(example_real_basis_lz PRIVATE
     ${CMAKE_SOURCE_DIR}/include)
 add_test(NAME example_real_basis_lz COMMAND example_real_basis_lz)
 
-# __float128 / libquadmath demo (requires BUILD_QUADMATH=ON).
-if(BUILD_QUADMATH)
+# __float128 / libquadmath demo (requires WIGNERNJ_BUILD_QUADMATH=ON).
+if(WIGNERNJ_BUILD_QUADMATH)
     add_executable(example_quadmath_c c/quadmath.c)
     target_link_libraries(example_quadmath_c PRIVATE wignernj ${LIBM_LINK})
     target_include_directories(example_quadmath_c PRIVATE
@@ -39,15 +39,15 @@ endif()
 
 # ── C++ example ──────────────────────────────────────────────────────────
 # Enable CXX if it isn't already.  tests/CMakeLists.txt enables it under
-# BUILD_CXX_TESTS only when an actual CXX compiler is present, so we
-# repeat the same probe here -- BUILD_EXAMPLES=ON without BUILD_TESTS is
+# WIGNERNJ_BUILD_CXX_TESTS only when an actual CXX compiler is present, so we
+# repeat the same probe here -- WIGNERNJ_BUILD_EXAMPLES=ON without WIGNERNJ_BUILD_TESTS is
 # a valid configuration on machines that only have a C compiler.
-if(BUILD_CXX_TESTS)
+if(WIGNERNJ_BUILD_CXX_TESTS)
     include(CheckLanguage)
     check_language(CXX)
     if(CMAKE_CXX_COMPILER)
         # enable_language is idempotent; tests/CMakeLists.txt may have
-        # called it already (when BUILD_TESTS is also on), in which case
+        # called it already (when WIGNERNJ_BUILD_TESTS is also on), in which case
         # this is a no-op.  Calling it unconditionally is safer than
         # querying ENABLED_LANGUAGES, which has been observed to lag
         # the actual state when subdirectories run in some orders.
@@ -75,11 +75,11 @@ if(BUILD_CXX_TESTS)
         add_test(NAME example_real_basis_lz_cpp
             COMMAND example_real_basis_lz_cpp)
 
-        # __float128 / libquadmath C++ demo (requires BUILD_QUADMATH=ON).
+        # __float128 / libquadmath C++ demo (requires WIGNERNJ_BUILD_QUADMATH=ON).
         # CXX_EXTENSIONS stays ON here: __float128 itself is a GCC
         # extension, and <quadmath.h> macros (FLT128_EPSILON, ...) expand
         # to `Q`-suffixed literals that strict -std=c++11 rejects.
-        if(BUILD_QUADMATH)
+        if(WIGNERNJ_BUILD_QUADMATH)
             add_executable(example_quadmath_cpp cpp/quadmath.cpp)
             set_target_properties(example_quadmath_cpp PROPERTIES
                 CXX_STANDARD          11
@@ -97,7 +97,7 @@ if(BUILD_CXX_TESTS)
 endif()
 
 # ── Fortran example ──────────────────────────────────────────────────────
-if(BUILD_FORTRAN)
+if(WIGNERNJ_BUILD_FORTRAN)
     add_executable(example_fortran fortran/all_symbols.f90)
     target_link_libraries(example_fortran
         PRIVATE wignernj_f03 wignernj ${LIBM_LINK})
@@ -110,10 +110,10 @@ if(BUILD_FORTRAN)
     add_test(NAME example_real_basis_lz_fortran
         COMMAND example_real_basis_lz_fortran)
 
-    # __float128 / libquadmath Fortran demo (requires BUILD_QUADMATH=ON).
+    # __float128 / libquadmath Fortran demo (requires WIGNERNJ_BUILD_QUADMATH=ON).
     # The .F90 source preprocesses on WIGNERNJ_HAVE_QUADMATH so a build
     # without the macro compiles to a no-op program instead of failing.
-    if(BUILD_QUADMATH)
+    if(WIGNERNJ_BUILD_QUADMATH)
         add_executable(example_quadmath_fortran fortran/quadmath.F90)
         target_link_libraries(example_quadmath_fortran
             PRIVATE wignernj_f03 wignernj ${LIBM_LINK})
@@ -125,12 +125,12 @@ if(BUILD_FORTRAN)
 endif()
 
 # ── Python example ───────────────────────────────────────────────────────
-# Run only when the Python extension is built in-tree (BUILD_PYTHON=ON);
+# Run only when the Python extension is built in-tree (WIGNERNJ_BUILD_PYTHON=ON);
 # point PYTHONPATH at the build directory so `import wignernj` finds
 # the freshly compiled _wignernj module without needing an editable
-# install.  When BUILD_PYTHON is off the Python example still ships in
+# install.  When WIGNERNJ_BUILD_PYTHON is off the Python example still ships in
 # the source tree but is not exercised by ctest.
-if(BUILD_PYTHON AND TARGET _wignernj)
+if(WIGNERNJ_BUILD_PYTHON AND TARGET _wignernj)
     find_package(Python3 COMPONENTS Interpreter)
     if(Python3_Interpreter_FOUND)
         add_test(NAME example_python

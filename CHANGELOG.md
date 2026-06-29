@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **All project-specific CMake options are now prefixed with
+  `WIGNERNJ_`** so that consumers who pull libwignernj in via
+  `add_subdirectory()` don't collide with their own (or a sibling
+  dependency's) cache variables.  `BUILD_FORTRAN` →
+  `WIGNERNJ_BUILD_FORTRAN`, and likewise `BUILD_PYTHON`,
+  `BUILD_MPFR`, `BUILD_QUADMATH`, `BUILD_FLINT`, `BUILD_TESTS`,
+  `BUILD_EXAMPLES`, `BUILD_CXX_TESTS`, `BUILD_LTO`,
+  `BUILD_COVERAGE`.  **Breaking change**: a configure-time check
+  fatal-errors if any of the legacy unprefixed names is set on the
+  command line, pointing at the new name; update your `-D...` flags
+  accordingly.  The standard CMake builtin `BUILD_SHARED_LIBS` is
+  intentionally left unprefixed.  The internal preprocessor /
+  compile definitions (`WIGNERNJ_HAVE_QUADMATH`,
+  `WIGNERNJ_HAVE_MPFR`, `WIGNERNJ_USE_FLINT`) are unchanged.
+
 ### Removed
 - **`precision='longdouble'` from the CPython wrapper.**  The keyword
   dispatched to the underlying `wigner*_l` C entry points so the
