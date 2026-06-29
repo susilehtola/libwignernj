@@ -5,9 +5,9 @@
 !
 ! Exercises the w3jq / w6jq / w9jq / wcgq / wracahwq / wfanoxq / wgauntq /
 ! wgaunt_realq / wreal_ylm_in_complex_ylmq convenience wrappers added by
-! the wignernj module when libwignernj is built with -DBUILD_QUADMATH=ON.
+! the wignernj module when libwignernj is built with -DWIGNERNJ_BUILD_QUADMATH=ON.
 !
-! Built only when the C library is configured with -DBUILD_QUADMATH=ON
+! Built only when the C library is configured with -DWIGNERNJ_BUILD_QUADMATH=ON
 ! (the WIGNERNJ_HAVE_QUADMATH macro is then defined for downstream
 ! preprocessing).  Compile with -cpp; .F90 extension enables the
 ! preprocessor in gfortran by default.
@@ -114,6 +114,6 @@ contains
 
 #else
   implicit none
-  print '(A)', 'libwignernj was built without -DBUILD_QUADMATH=ON; nothing to demo.'
+  print '(A)', 'libwignernj was built without -DWIGNERNJ_BUILD_QUADMATH=ON; nothing to demo.'
 #endif
 end program quadmath_demo

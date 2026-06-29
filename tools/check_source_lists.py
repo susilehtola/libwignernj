@@ -33,7 +33,7 @@ def parse_cmake_lib_sources(text: str) -> list[str]:
     The bigint backend is selected at CMake-configure time via
     ${BIGINT_SOURCE}; the Python extension always uses the default
     schoolbook backend (src/bigint.c), so we resolve the variable to
-    that branch of the if(BUILD_FLINT) block here before diffing.
+    that branch of the if(WIGNERNJ_BUILD_FLINT) block here before diffing.
     """
     m = re.search(r"set\(LIB_SOURCES\b(.*?)\)", text, re.DOTALL)
     if not m:
@@ -53,14 +53,14 @@ def parse_cmake_lib_sources(text: str) -> list[str]:
 
 def parse_cmake_bigint_default(text: str) -> str:
     """Extract the schoolbook (else-branch) source from
-    if(BUILD_FLINT) ... else() set(BIGINT_SOURCE <default>) endif()."""
+    if(WIGNERNJ_BUILD_FLINT) ... else() set(BIGINT_SOURCE <default>) endif()."""
     m = re.search(
-        r"if\(BUILD_FLINT\).*?else\(\)\s*set\(BIGINT_SOURCE\s+(\S+)\s*\)\s*endif\(\)",
+        r"if\(WIGNERNJ_BUILD_FLINT\).*?else\(\)\s*set\(BIGINT_SOURCE\s+(\S+)\s*\)\s*endif\(\)",
         text,
         re.DOTALL,
     )
     if not m:
-        sys.exit("error: could not find BUILD_FLINT/BIGINT_SOURCE block in CMakeLists.txt")
+        sys.exit("error: could not find WIGNERNJ_BUILD_FLINT/BIGINT_SOURCE block in CMakeLists.txt")
     return m.group(1)
 
 

@@ -49,12 +49,12 @@ jobs:
             cmake -B build \
               -DCMAKE_BUILD_TYPE=Release \
               -DBUILD_SHARED_LIBS=ON \
-              -DBUILD_FORTRAN=ON \
-              -DBUILD_MPFR=ON \
-              -DBUILD_QUADMATH=OFF \
-              -DBUILD_FLINT=OFF \
-              -DBUILD_CXX_TESTS=ON \
-              -DBUILD_TESTS=ON
+              -DWIGNERNJ_BUILD_FORTRAN=ON \
+              -DWIGNERNJ_BUILD_MPFR=ON \
+              -DWIGNERNJ_BUILD_QUADMATH=OFF \
+              -DWIGNERNJ_BUILD_FLINT=OFF \
+              -DWIGNERNJ_BUILD_CXX_TESTS=ON \
+              -DWIGNERNJ_BUILD_TESTS=ON
       - run:
           name: Build
           command: cmake --build build --parallel --verbose
@@ -94,12 +94,12 @@ jobs:
             cmake -B build \
               -DCMAKE_BUILD_TYPE=Release \
               -DBUILD_SHARED_LIBS=ON \
-              -DBUILD_FORTRAN=ON \
-              -DBUILD_MPFR=ON \
-              -DBUILD_QUADMATH=OFF \
-              -DBUILD_FLINT=OFF \
-              -DBUILD_CXX_TESTS=ON \
-              -DBUILD_TESTS=ON
+              -DWIGNERNJ_BUILD_FORTRAN=ON \
+              -DWIGNERNJ_BUILD_MPFR=ON \
+              -DWIGNERNJ_BUILD_QUADMATH=OFF \
+              -DWIGNERNJ_BUILD_FLINT=OFF \
+              -DWIGNERNJ_BUILD_CXX_TESTS=ON \
+              -DWIGNERNJ_BUILD_TESTS=ON
       - run:
           name: Build
           command: cmake --build build --parallel --verbose
@@ -137,12 +137,12 @@ jobs:
             cmake -B build \
               -DCMAKE_BUILD_TYPE=Release \
               -DBUILD_SHARED_LIBS=ON \
-              -DBUILD_FORTRAN=ON \
-              -DBUILD_MPFR=ON \
-              -DBUILD_QUADMATH=OFF \
-              -DBUILD_FLINT=OFF \
-              -DBUILD_CXX_TESTS=ON \
-              -DBUILD_TESTS=ON
+              -DWIGNERNJ_BUILD_FORTRAN=ON \
+              -DWIGNERNJ_BUILD_MPFR=ON \
+              -DWIGNERNJ_BUILD_QUADMATH=OFF \
+              -DWIGNERNJ_BUILD_FLINT=OFF \
+              -DWIGNERNJ_BUILD_CXX_TESTS=ON \
+              -DWIGNERNJ_BUILD_TESTS=ON
       - run:
           name: Build
           command: cmake --build build --parallel --verbose

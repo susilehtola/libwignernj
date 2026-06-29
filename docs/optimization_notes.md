@@ -30,7 +30,7 @@ ultimately merges); inspect `git log --grep` for the precise ranges.
 | (previously merged)    | Algorithm D for arbitrary 64-bit divisors         | corrects + speeds up the no-divq backend    |
 | (previously merged)    | Small-integer ratio recurrence in 3j/6j/9j Pass 2 | replaces O(π(j)) prime-power expansion per term with one batched mul/div |
 | (previously merged)    | Hensel exact division (`bigint_div_u64_exact`)    | 6j +1.13–1.20×; 9j ~flat; 3j untouched (Hensel setup didn't pay off at small bigints) |
-| (previously merged)    | `BUILD_LTO=ON` default                            | small but free perf win                     |
+| (previously merged)    | `WIGNERNJ_BUILD_LTO=ON` default                            | small but free perf win                     |
 | (previously merged)    | Drop explicit `-O2` override; default Release    | unblocks `-O3` for users who don't pass `-DCMAKE_BUILD_TYPE` |
 | (previously merged)    | `restrict` qualifier on pfrac vector adds         | unblocks SSE2 vpaddd auto-vectorisation     |
 | (recent)               | Möller-Granlund division for non-divq backends    | no-divq AlgoD: +16–21% on 3j at j ≥ 200     |

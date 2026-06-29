@@ -15,7 +15,7 @@
 //   #include "wignernj_quadmath.hpp"   // pulls in wignernj.hpp + wignernj_quadmath.h
 //   __float128 v = wignernj::symbol3j<__float128>(2, 2, 0, 0, 0, 0);
 //
-// Requires libwignernj built with -DBUILD_QUADMATH=ON so that the
+// Requires libwignernj built with -DWIGNERNJ_BUILD_QUADMATH=ON so that the
 // wigner3j_q / wigner6j_q / ... C entry points this header forwards to
 // are exported.  Link -lwignernj -lquadmath -lm.
 //

@@ -31,7 +31,7 @@ diagonal complex-basis form via the similarity transform
 All four reproduce the textbook `l_z = ((0,0,+i),(0,0,0),(−i,0,0))`
 at l = 1 with Hermiticity residual 0.
 
-When libwignernj is built with `-DBUILD_QUADMATH=ON`, an additional
+When libwignernj is built with `-DWIGNERNJ_BUILD_QUADMATH=ON`, an additional
 `quadmath` demo in each of C, C++, and Fortran exercises the
 `__float128` / `real(real128)` (binary128) precision surface:
 
@@ -47,7 +47,7 @@ ships.
 ## Building and running from this source tree
 
 The examples are built as part of the standard CMake build whenever
-`BUILD_EXAMPLES=ON` (the default), and are registered as ctest tests:
+`WIGNERNJ_BUILD_EXAMPLES=ON` (the default), and are registered as ctest tests:
 
 ```sh
 cmake -B build
@@ -60,7 +60,7 @@ table of computed-vs-expected values.  Non-zero exit indicates a
 tolerance violation (1e-14 against the analytic reference).
 
 The Python example is registered only when the Python extension is
-built in-tree (`-DBUILD_PYTHON=ON`); the source file ships in the
+built in-tree (`-DWIGNERNJ_BUILD_PYTHON=ON`); the source file ships in the
 distribution either way and can be run directly against an installed
 package (`pip install wignernj`) by
 

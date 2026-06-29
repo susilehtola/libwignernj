@@ -8,7 +8,7 @@
  *   for exact Wigner symbols and related coefficients", arXiv:2605.06634
  *   (2026), doi:10.48550/arXiv.2605.06634.
  *
- * Built only when configured with -DBUILD_QUADMATH=ON, which requires a
+ * Built only when configured with -DWIGNERNJ_BUILD_QUADMATH=ON, which requires a
  * compiler that exposes the __float128 type (GCC, Clang, Intel ICC/ICX
  * on Linux/macOS).  Microsoft Visual C++ does not provide __float128
  * and is unsupported here.
@@ -35,7 +35,7 @@
 /* libquadmath provides `__complex128` as `__float128 _Complex` on
  * gcc/clang/Intel (where the `_Complex` keyword is recognised); no
  * MSVC complication here because MSVC does not implement __float128
- * at all (and BUILD_QUADMATH is gated off on MSVC).  The C++ branch
+ * at all (and WIGNERNJ_BUILD_QUADMATH is gated off on MSVC).  The C++ branch
  * exposes a layout-compatible struct so the C-side declaration
  * parses in C++ TUs; C++ consumers should go through the
  * `wignernj::real_ylm_in_complex_ylm<__float128>(...)` template overload
