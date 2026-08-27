@@ -54,6 +54,7 @@ classifiers = [
 
 [project.urls]
 Homepage      = "https://github.com/susilehtola/libwignernj"
+Paper         = "https://doi.org/10.1016/j.cpc.2026.110342"
 Repository    = "https://github.com/susilehtola/libwignernj"
 Documentation = "https://github.com/susilehtola/libwignernj/blob/main/docs/reference.md"
 Changelog     = "https://github.com/susilehtola/libwignernj/blob/main/CHANGELOG.md"

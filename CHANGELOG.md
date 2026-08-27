@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Citation updated to the published journal reference.**  The
+  descriptor paper has appeared as S. Lehtola, *libwignernj: a reusable
+  C/C++/Fortran/Python library for exact Wigner symbols and related
+  coefficients*, Comput. Phys. Commun. **329**, 110342 (2026),
+  [doi:10.1016/j.cpc.2026.110342](https://doi.org/10.1016/j.cpc.2026.110342).
+  `CITATION.cff` (`preferred-citation`), the `README.md` citation
+  section and BibTeX snippet, `docs/reference.md`, and the citation
+  comment in every public header (`wignernj.h`, `wignernj.hpp`,
+  `wignernj_mpfr.h`, `wignernj_quadmath.h`, `wignernj_quadmath.hpp`),
+  the Fortran module, and the Python package docstring now give the
+  journal reference instead of the arXiv preprint.  The arXiv
+  identifier is retained in `CITATION.cff` and in the README BibTeX
+  entry as a secondary pointer to the preprint version.  A `Paper` URL
+  is added to `[project.urls]` in `pyproject.toml`.
+
 ## [0.8.0] – 2026-06-29
 
 ### Changed
