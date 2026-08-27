@@ -5,8 +5,8 @@
 //
 // Citation: if libwignernj contributes to published work, please cite
 //   S. Lehtola, "libwignernj: a reusable C/C++/Fortran/Python library
-//   for exact Wigner symbols and related coefficients", arXiv:2605.06634
-//   (2026), doi:10.48550/arXiv.2605.06634.
+//   for exact Wigner symbols and related coefficients", Comput. Phys.
+//   Commun. 329, 110342 (2026), doi:10.1016/j.cpc.2026.110342.
 //
 // "Header-only" means the C++ side has no separate .cpp -- every template and
 // overload below is inline.  It does NOT mean stand-alone: each specialisation

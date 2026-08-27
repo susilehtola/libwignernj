@@ -36,10 +36,13 @@ preferred-citation:
     - given-names: Susi
       family-names: Lehtola
       orcid: "https://orcid.org/0000-0001-6296-8103"
+  journal: "Computer Physics Communications"
+  volume: 329
+  start: 110342
   year: 2026
-  doi: 10.48550/arXiv.2605.06634
-  url: "https://arxiv.org/abs/2605.06634"
+  doi: 10.1016/j.cpc.2026.110342
+  url: "https://doi.org/10.1016/j.cpc.2026.110342"
   identifiers:
     - type: other
       value: "arXiv:2605.06634"
-      description: arXiv identifier
+      description: arXiv identifier of the preprint version

@@ -312,19 +312,22 @@ per-language examples: [docs/reference.md](docs/reference.md).
 If libwignernj contributes to published work, please cite:
 
 > S. Lehtola, *libwignernj: a reusable C/C++/Fortran/Python library for
-> exact Wigner symbols and related coefficients*, arXiv:2605.06634
-> (2026). doi:[10.48550/arXiv.2605.06634](https://doi.org/10.48550/arXiv.2605.06634).
+> exact Wigner symbols and related coefficients*, Comput. Phys. Commun.
+> **329**, 110342 (2026).
+> doi:[10.1016/j.cpc.2026.110342](https://doi.org/10.1016/j.cpc.2026.110342).
 
 ```bibtex
 @article{Lehtola2026libwignernj,
   author  = {Lehtola, Susi},
   title   = {{libwignernj}: a reusable {C}/{C}++/{F}ortran/{P}ython
              library for exact {W}igner symbols and related coefficients},
-  journal = {arXiv preprint},
+  journal = {Comput. Phys. Commun.},
+  volume  = {329},
+  pages   = {110342},
   year    = {2026},
+  doi     = {10.1016/j.cpc.2026.110342},
   eprint  = {2605.06634},
-  archivePrefix = {arXiv},
-  doi     = {10.48550/arXiv.2605.06634}
+  archivePrefix = {arXiv}
 }
 ```
 
