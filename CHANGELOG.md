@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Documented asymptotic cost of the 9j and Fano X corrected from
+  O(j⁴) to O(j³).**  The old figure double-counted: the 9j term count
+  is O(j²) (an outer loop over O(j) values of the intermediate k, each
+  running Racah sums of O(j) terms) and each elementary bigint
+  operation costs O(j), which multiplies to O(j³), not O(j⁴).  The
+  stated justification was wrong too: the per-k accumulators are
+  Θ(j)-bit, not "size-O(j²)", and the three big×big products per k are
+  O(j^1.58) under the Karatsuba path, so they never dominate the Racah
+  sums.  Confirmed both from the loop structure in `src/wigner9j.c`
+  (k loops at the Pass-1/Pass-2 sites, inner term loop, per-k
+  combination) and by measurement: the log-log slope over j = 200 →
+  1000 is 2.98 for the 9j, 1.89 for the 3j and 1.85 for the 6j.
+  Corrected in `README.md`, `docs/reference.md`, the performance note
+  in `src/primes.h`, and the `wigner9j` / `fano_x` docstrings in
+  `src/python/wignernjmodule.c`.  Documentation only; no code change,
+  so no behaviour or performance difference.
+- **Bigint growth rate in the documentation corrected.**  The claim
+  that intermediate bigints grow as "~j/ln 2 bits, since the LCM
+  denominator grows as the primorial" was wrong in both magnitude and
+  mechanism.  The growth is linear in j but the measured rates are
+  ≈ 9.5·j bits for the 6j tuple and ≈ 40·j bits for the 9j tuple (flat
+  to three significant figures over j = 32…2048), and it is driven by
+  the outer triangle coefficients, where Δ² = (j!)³/(3j+1)! cancels the
+  j ln j terms and leaves 3j log₂3 ≈ 4.75·j bits per Δ.  The 6j Racah
+  sum contributes nothing at all, its `(z+1)!` numerator making every
+  term integral so the LCM denominator is exactly 1; the 3j sum has no
+  such numerator factorial, so its LCM survives at Θ(j ln j) bits and
+  the 3j is strictly O(j² log j) rather than O(j²).
+- **Wall-clock horizon tables refreshed.**  The table in
+  `docs/reference.md` and the horizons in `src/primes.h` followed from
+  the wrong exponent and were off by orders of magnitude at the top end
+  (3j/6j at j ~ 5000 listed as "minutes" against an actual few to tens
+  of milliseconds; 9j at j ~ 1000 listed as "~ hours" against an actual
+  ~10 s).  Replaced with figures extrapolated from the descriptor
+  paper's benchmark data using the corrected exponents, with a note
+  that the measured slopes below j ~ 200 are pre-asymptotic.
+
 ### Changed
 - **Citation updated to the published journal reference.**  The
   descriptor paper has appeared as S. Lehtola, *libwignernj: a reusable

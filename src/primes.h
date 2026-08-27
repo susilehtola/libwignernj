@@ -51,17 +51,30 @@
  * Performance note
  * ----------------
  * The Racah sum has O(j) terms for 3j/6j and O(j^2) total for 9j (outer k
- * loop times inner Racah sums).  Intermediate bigints grow as ~j/ln2 bits,
- * so each elementary bigint operation already costs O(j).  Combined, the
+ * loop times inner Racah sums).  Intermediate bigints grow LINEARLY in j
+ * (measured: ~9.5*j bits for the 6j tuple, ~40*j bits for the 9j tuple,
+ * both flat to three significant figures over j = 32..2048), so each
+ * elementary bigint operation already costs O(j).  Combined, the
  * end-to-end asymptotic per-symbol cost is:
  *
- *   3j / 6j / CG / Racah W / Gaunt / Gaunt-real :  O(j^2)
- *   9j / Fano X                                 :  O(j^4)
+ *   6j / CG / Racah W / Gaunt / Gaunt-real       :  O(j^2)
+ *   3j                                           :  O(j^2 log j)
+ *   9j / Fano X                                  :  O(j^3)
+ *
+ * The 3j picks up the extra log because its Racah sum has no numerator
+ * factorial to cancel the LCM denominator, which therefore survives at
+ * Theta(j log j) bits; the 6j (z+1)! numerator makes every term integral
+ * so its LCM is exactly 1.  The 9j exponent is O(j) values of k times
+ * three Racah sums of O(j) terms on Theta(j)-bit accumulators; the three
+ * big-by-big products per k are O(j^1.58) under Karatsuba and never
+ * dominate.  Fano X delegates to the 9j pipeline and inherits its cost.
  *
  * Practical performance horizons (order of magnitude, modern hardware):
  *
- *   3j / 6j        :  j ~ 1000  in milliseconds;  j ~ 6000  in seconds
- *   9j / Fano X    :  j ~  100  in milliseconds;  j ~ 1000  in minutes
+ *   3j             :  j ~ 1000 in ~0.1 ms;  j ~ 5000 in ~3 ms
+ *   6j             :  j ~ 1000 in ~1 ms;    j ~ 5000 in ~15 ms
+ *   9j / Fano X    :  j ~  100 in ~13 ms;   j ~ 1000 in ~10 s;
+ *                     j ~ 5000 (the ceiling) in tens of minutes
  */
 
 /* PRIME_SIEVE_LIMIT, MAX_PRIME_COUNT, MAX_FACTORIAL_ARG.  All three are
