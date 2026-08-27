@@ -299,8 +299,11 @@ rebuilding, at the cost of a proportionally larger compiled-in table.
 `MAX_FACTORIAL_ARG` in the same header is derived from the sieve limit, so
 contributors do not need to keep the two values in sync by hand.
 
-The 9j is also O(j⁴) in computation time; evaluations with j > a few hundred
-can be slow.  See [docs/reference.md](docs/reference.md#limitations) for details.
+The 9j is also O(j³) in computation time (6j is O(j²), 3j is O(j² log j)), so
+evaluations with j > a few hundred can be slow: roughly 13 ms at j ~ 100 and
+10 s at j ~ 1000 on a single modern core.  See
+[docs/reference.md](docs/reference.md#limitations) for the derivation and a
+fuller timing table.
 
 ## Documentation
 

@@ -19,8 +19,9 @@ A376–A384, 2016
 
 If libwignernj contributes to published work, please cite S. Lehtola,
 *libwignernj: a reusable C/C++/Fortran/Python library for exact Wigner
-symbols and related coefficients*, arXiv:2605.06634 (2026),
-[doi:10.48550/arXiv.2605.06634](https://doi.org/10.48550/arXiv.2605.06634).
+symbols and related coefficients*, Comput. Phys. Commun. **329**,
+110342 (2026),
+[doi:10.1016/j.cpc.2026.110342](https://doi.org/10.1016/j.cpc.2026.110342).
 A machine-readable `CITATION.cff` is provided at the repository root.
 
 ---
@@ -849,24 +850,53 @@ sieve limit so the two stay in sync automatically.
 
 The Racah summation has O(j) terms for 3j and 6j; the 9j outer loop over the
 intermediate quantum number k adds another factor of O(j), so the *number* of
-sum terms is O(j) for 3j/6j and O(j²) for 9j.  Intermediate bigints grow
-proportional to j/ln 2 bits (the LCM denominator grows as the primorial), so
-each elementary bigint operation costs O(j).  The resulting end-to-end cost
-per symbol is
+sum terms is O(j) for 3j/6j and O(j²) for 9j.
 
-- **3j, 6j, CG, Racah W, complex / real Gaunt:** O(j²)
-- **9j, Fano X:** O(j⁴) (each k step contains three multiplications of size-O(j²) bigints; Fano X delegates to the 9j pipeline)
+The intermediate bigints grow **linearly** in j, so each elementary bigint
+operation (`bigint_mul_u64`, `bigint_div_u64_exact`, `bigint_add` on the
+running accumulator) costs O(j).  The measured growth rates are ≈ 9.5·j bits
+for the 6j tuple and ≈ 40·j bits for the 9j tuple, both constant to three
+significant figures across j = 32…2048.  The linear growth comes from the
+outer triangle coefficients, where Δ² = (j!)³/(3j+1)! makes the j ln j terms
+cancel and leaves 3j log₂3 ≈ 4.75·j bits per Δ; in the 6j Racah sum the
+`(z+1)!` numerator makes every term integral, so the LCM denominator is
+exactly 1 and contributes nothing.  The 3j sum has no such numerator
+factorial, so its LCM denominator survives at Θ(j ln j) bits.
 
-Approximate wall-clock times on a modern single core:
+Combining the term count with the per-operation cost, the end-to-end cost per
+symbol is
+
+- **3j:** O(j² ln j), the log coming from the surviving LCM denominator; in
+  practice indistinguishable from O(j²) over the usable range
+- **6j, CG, Racah W, complex / real Gaunt:** O(j²)
+- **9j, Fano X:** O(j³) — O(j) values of k, each running three Racah sums of
+  O(j) terms on Θ(j)-bit accumulators.  Fano X delegates to the 9j pipeline
+  and inherits its cost exactly.
+
+The three big×big products combining the per-k partial sums are O(j)-bit ×
+O(j)-bit, i.e. O(j^1.58) under the Karatsuba path, so they never dominate the
+Racah sums; this is why the effective exponent approaches 3 from below rather
+than sitting on it.
+
+Approximate wall-clock times on a single modern core, extrapolated with the
+exponents above from the benchmark data of the descriptor paper (which covers
+j = 1…200):
 
 | Symbol | j ~ 100 | j ~ 1000 | j ~ 5000 |
 |---|---|---|---|
-| 3j / 6j | < 1 ms | < 1 s | minutes |
-| 9j | ~ 1 ms | ~ hours | impractical |
+| 3j | ~ 2 µs | ~ 0.1 ms | ~ 3 ms |
+| 6j | ~ 17 µs | ~ 1 ms | ~ 15 ms |
+| 9j | ~ 13 ms | ~ 10 s | ~ 20 min |
 
-The 9j is the most expensive because it multiplies three large bigints at every
-k step.  For the highest 9j angular momenta supported by the prime table
-(j ~ 5000), a single evaluation may take hours or more.
+The 9j is by far the most expensive, being a sum over O(j) intermediate k of
+three 6j-shaped Racah sums.  At the highest 9j angular momenta the prime table
+supports (j ~ 5000) a single evaluation takes on the order of tens of minutes.
+
+Note that the *measured* log-log slopes below j ~ 200 are well under these
+asymptotic exponents (≈ 1.3 for 3j and 6j, ≈ 2.3 for 9j), because the bigints
+are still only a handful of 64-bit words there and the O(j) per-operation
+factor has not fully engaged.  The asymptotic exponents are reached higher up:
+measuring j = 200 → 1000 gives slopes of 1.89 (3j), 1.85 (6j) and 2.98 (9j).
 
 ### Argument type
 
